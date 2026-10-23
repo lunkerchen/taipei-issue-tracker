@@ -3,7 +3,7 @@
   "createdOnFiles": {"v": 1, "at": "2026-10-23T10:00:00Z"},
   "lists": "css",
   "title": "git checkout taipei",
-  "order": ["cover", "problem", "mapping", "bot", "staff", "build", "close"],
+  "order": ["cover", "problem", "mapping", "screen-list", "bot", "screen-flow", "staff", "build", "close"],
   "sections": {
     "s1": {"description": "開場：如果台北市是一個 repo", "start": "cover"},
     "s2": {"description": "概念：把 GitHub 的工作流程套到市政", "start": "mapping"},
