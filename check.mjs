@@ -2,11 +2,13 @@
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 const html = readFileSync(new URL("./taipei-issues.html", import.meta.url), "utf8");
+// Every inline script must parse: a syntax error stops the whole page (the form then does a native GET submit)
+for (const [, code] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(code);
 const grab = name => { const m = html.match(new RegExp(`^function ${name}\\b[\\s\\S]*?^}`, "m")); assert(m, `${name} not found`); return m[0]; };
 // const declarations run to the first line that ends in ";"
 const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\\s\\S]*?;[ \\t]*$`, "m")); assert(m, `${name} not found`); return m[0]; };
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
-const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","isStr","validDate","deptOf","inTaipei"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
+const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
 const M = "［已遮蔽］";
 for (const [src, want] of [
@@ -59,10 +61,15 @@ for (const [lat, lng] of [[24.94, 121.5], [25.23, 121.5], [25.0, 121.44], [25.0,
   assert(!("lat" in c) && !("lng" in c), `coordinates dropped: ${lat},${lng}`);
   assert.equal(c.loc, "pin"); assert.equal(c.address, "x"); assert.equal(c.title, "t");
 }
-for (const [lat, lng] of [[24.95, 121.45], [25.22, 121.67]]) assert.deepEqual([ok({ lat, lng }).lat, ok({ lat, lng }).lng], [lat, lng], "bounds are inclusive");
+// Bounding-box corners are New Taipei, so the boundary check drops them; a point inside the city keeps its coordinates
+for (const [lat, lng] of [[24.95, 121.45], [25.22, 121.67]]) assert(!("lat" in ok({ lat, lng })), `outside Taipei dropped: ${lat},${lng}`);
+assert.deepEqual([ok({ lat:25.0339, lng:121.5645 }).lat, ok({ lat:25.0339, lng:121.5645 }).lng], [25.0339, 121.5645]);
 for (const loc of ["GPS", "manual", "", null, 1, ["gps"]]) { c = ok({ lat:25.03, lng:121.5, loc }); assert(c && !("loc" in c) && c.lat === 25.03, `loc dropped: ${String(loc)}`); }
 assert.equal(ok({ address:"a".repeat(100) }).address.length, 100);
 for (const address of ["a".repeat(101), 5, null, ["x"], ""]) { c = ok({ address, lat:25.03, lng:121.5 }); assert(c && !("address" in c) && c.lat === 25.03, `address dropped: ${String(address).slice(0, 5)}`); }
 assert.equal(ok({ lat:25.03, lng:121.5 }, "u2"), null, "author mismatch still rejects the whole item");
 assert(inTaipei(25.0375, 121.5637) && !inTaipei(0, 0) && !inTaipei("25", "121.5"));
+// Taipei boundary: neighbours inside the old bounding box must be out
+for (const [name, la, ln, want] of [["板橋文化路", 25.0187, 121.4651, false], ["三重", 25.0615, 121.4870, false], ["永和", 25.0090, 121.5150, false],
+  ["台北101", 25.0339, 121.5645, true], ["北投", 25.137, 121.498, true], ["南港展覽館", 25.0565, 121.6176, true]]) assert.equal(inTaipei(la, ln), want, name);
 console.log("OK");

@@ -134,3 +134,15 @@
 - 追加：表單「食住行育樂醫療」大方向提示；新增教育局、文化局、體育局；定位失敗時以路名／地標縮短重查。
 - 已部署 https://taipei-issue-tracker.labanchen.workers.dev ，線上雙分頁即時更新與 AI 分類實測通過，測試資料已刪除。
 
+
+## PLAN 3：使用情境測試修正（2026-10-24）
+
+- [x] P3-1｜Opus｜taipei-issues.html, check.mjs, worker/data.json｜台北邊界改多邊形（OSM 1293250 簡化），板橋/三重/永和判為台北外；AI 回 outside_taipei 時先提示、可仍要送出；華江橋示範點移到萬華側｜已完成
+- [x] P3-2｜Opus｜taipei-issues.html｜切換分頁寫入 #hash 歷史，手機返回鍵回上一頁｜已完成
+- [x] P3-3｜Opus｜taipei-issues.html｜送出後捲到自己的新案件並標示 4 秒｜已完成
+- [x] P3-4｜Opus｜taipei-issues.html｜手機地圖高度依可視高度（svh）計算，Live／回報在 375×667 首屏可見｜已完成
+- [x] P3-5｜Opus｜taipei-issues.html｜空白送出顯示「請描述你遇到的問題」｜已完成
+- [x] P3-6｜Opus｜worker/build.mjs｜即時連線中斷 3 秒後顯示橫幅，恢復後消失｜已完成
+- [x] P3-7｜Opus｜taipei-issues.html, worker/build.mjs｜429 顯示「操作太頻繁」，連不上顯示「內容已保留」｜已完成
+- [x] P3-8｜Opus｜taipei-issues.html｜GPS 誤差 >200 m 自動開小地圖請市民修正｜已完成
+- [x] P3-9｜Opus｜taipei-issues.html｜AI 回 too_vague 時請市民補充地點與狀況（不再當垃圾訊息），可仍要送出｜已完成

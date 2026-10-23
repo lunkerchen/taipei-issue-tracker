@@ -147,6 +147,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
 .mapcol{display:flex;flex-direction:column;gap:10px;min-height:0}
+.issue.hl{outline:2px solid var(--link);outline-offset:2px;border-radius:6px}
 .mapcol .mapbox{flex:1}
 .mapact{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mapact .btn{min-height:48px;font-size:16px;font-weight:600;justify-content:center}
@@ -183,7 +184,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
-@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:60vh;min-height:320px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 110px);height:calc(100svh - var(--hdr,170px) - 110px);min-height:260px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
@@ -357,7 +358,11 @@ const DISTRICT_CENTER = { "中正區":[25.0324,121.5198], "大同區":[25.0633,1
   "北投區":[25.1372,121.4986], "內湖區":[25.0836,121.5942], "南港區":[25.0554,121.6070], "文山區":[24.9890,121.5703] };
 const CITY_HALL = [25.0375,121.5637];
 const BOUNDS = { lat:[24.95, 25.22], lng:[121.45, 121.67] }, LOC_KINDS = ["gps","pin","geocode","district"];
-const inTaipei = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= BOUNDS.lat[0] && lat <= BOUNDS.lat[1] && lng >= BOUNDS.lng[0] && lng <= BOUNDS.lng[1];
+// Taipei City boundary [lat, lng], OSM relation 1293250 simplified to ~200 m (Nominatim polygon_threshold=0.002).
+// The bounding box alone let 板橋/三重/永和 reports onto the Taipei map.
+const TAIPEI_RING = [[25.108,121.4571],[25.1017,121.4662],[25.1009,121.4814],[25.097,121.489],[25.0872,121.4998],[25.0753,121.5059],[25.0497,121.5049],[25.0428,121.4957],[25.0418,121.4879],[25.0369,121.4837],[25.0111,121.4905],[25.0094,121.4956],[25.0218,121.5106],[25.0198,121.5191],[25.0078,121.5324],[25.0031,121.5342],[24.9979,121.5306],[24.9905,121.5317],[24.9951,121.5352],[24.9885,121.537],[24.9881,121.5441],[24.9836,121.5454],[24.9869,121.5523],[24.9773,121.5539],[24.9647,121.5613],[24.9666,121.5787],[24.9632,121.5857],[24.9642,121.5934],[24.9605,121.5972],[24.9672,121.6196],[24.9735,121.6144],[24.9782,121.5995],[24.9904,121.602],[24.9945,121.5981],[25.0012,121.6004],[25.0045,121.5959],[25.0147,121.5974],[25.0152,121.6027],[25.021,121.6093],[25.0173,121.6233],[25.0256,121.6324],[25.0217,121.6464],[25.0247,121.6649],[25.0299,121.6659],[25.028,121.6468],[25.0351,121.6302],[25.0404,121.6216],[25.048,121.6165],[25.0565,121.6203],[25.0555,121.6243],[25.0639,121.6161],[25.0833,121.628],[25.0961,121.6262],[25.1039,121.6154],[25.1095,121.5975],[25.1141,121.5956],[25.126,121.6017],[25.1302,121.6078],[25.1308,121.6046],[25.1367,121.6057],[25.1403,121.5984],[25.1501,121.5938],[25.1524,121.5894],[25.1559,121.5918],[25.1637,121.5899],[25.1672,121.577],[25.1772,121.5833],[25.182,121.5809],[25.1946,121.5838],[25.1954,121.5717],[25.1997,121.5661],[25.2095,121.5627],[25.2085,121.5549],[25.1979,121.5521],[25.1957,121.5449],[25.1872,121.5407],[25.1793,121.5219],[25.1693,121.5199],[25.1733,121.5026],[25.1514,121.4874],[25.1502,121.4829],[25.1315,121.4656],[25.1243,121.4648],[25.1229,121.4588],[25.1162,121.4609],[25.108,121.4571]];
+const inRing = (la, ln) => { let c = false; for (let i = 0, j = TAIPEI_RING.length - 1; i < TAIPEI_RING.length; j = i++) { const [yi, xi] = TAIPEI_RING[i], [yj, xj] = TAIPEI_RING[j]; if ((yi > la) !== (yj > la) && ln < (xj - xi) * (la - yi) / (yj - yi) + xi) c = !c; } return c; };
+const inTaipei = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= BOUNDS.lat[0] && lat <= BOUNDS.lat[1] && lng >= BOUNDS.lng[0] && lng <= BOUNDS.lng[1] && inRing(lat, lng);
 // Map layers = the 9 official 1999 main categories (by categories/<id>) + "none". Colors are fixed so a category looks the same on every screen.
 const LAYERS = [["TYPEA-AC0100","#6f7f00"],["TYPEA-AC0200","#0969da"],["TYPEA-AC0300","#0e8a9e"],["TYPEA-AC0400","#8250df"],["TYPEA-AC0500","#bf3989"],
   ["TYPEA-AC0600","#9a6700"],["TYPEA-AC0700","#cf222e"],["TYPEA-AC0800","#1f3a93"],["TYPEA-AC0900","#d4741c"],["none","#6e7781"]].map(([id, color]) => ({ id, color }));
@@ -411,6 +416,8 @@ function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); to
 // A rejected write from a non-admin means the rules only give this viewer read access: drop to read-only.
 function fail(e) {
   if (e && e.code === "invalid_argument" && canWrite && !admin) { canWrite = false; applyRole(); render(); return toast("你目前只能檢視"); }
+  if (e && e.status === 429) return toast("操作太頻繁，請 1 分鐘後再試");
+  if (e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false)) return toast("目前連不上伺服器，請稍後再試（你輸入的內容已保留）");
   toast(e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試");
 }
 function applyRole() {
@@ -507,7 +514,7 @@ function cleanTri(t) {
 
 // reports/<user> holds each citizen's own items; triage/<id> holds what departments decided. Merge by id.
 const hiddenFor = i => i.hidden === true || (!!i.flagged && i.hidden !== false);
-let gotReports = false, gotTriage = false, loadErr = false, mine = null;
+let gotReports = false, gotTriage = false, loadErr = false, mine = null, scrollTo = null;
 function build(checkMine) {
   if (!gotReports || !gotTriage) return; // wait for a server-definitive snapshot of both, or a hidden case shows for a moment
   // A citizen item's id is "<doc id>:<key>" so nobody can write another user's key; demo-seed keeps its plain keys.
@@ -671,6 +678,9 @@ function render() {
   }).join("");
   for (const id in typed) if ($(id)) $(id).value = typed[id];
   if (focused && focused.startsWith("pr-") && $(focused)) $(focused).focus();
+  // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
+  const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
+  if (own) { scrollTo = null; const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */ setTimeout(() => card.classList.remove("hl"), 4000); }
 }
 
 $("list").addEventListener("click", async e => {
@@ -713,7 +723,7 @@ async function triage(text, district, aspect) {
   try {
     const r = await ask(
 `你是台北市 1999 陳情分派員。讀市民陳情，回傳 JSON，不要其他文字：
-{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "category": "1999 官方子分類代碼", "district": "行政區或空字串", "address": "內文提到的地點（路名加門牌或地標），沒有就空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": "", "spam": false}
+{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "category": "1999 官方子分類代碼", "district": "行政區或空字串", "address": "內文提到的地點（路名加門牌或地標），沒有就空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": "", "spam": false, "outside_taipei": false, "too_vague": false}
 dept 只能是其中之一：${Object.keys(DEPTS).join("、")}（無法判斷用「1999 待分派」）
 tags 只能從這些選：${TAGS.join("、")}
 category：從下列 1999 官方子分類選最符合的一個，填代碼（例如 AC0501）；都不符合就填該大類的「其他事項」，完全無法判斷填空字串。
@@ -722,7 +732,9 @@ ${cats.map(c => `【${c.name}】` + c.subs.map(s => `${s.id.replace("TYPEA-", ""
 市民選的大方向：${aspect ? ASPECTS[aspect] : "未選"}（只是參考，與內文衝突時以內文為準）
 district 只能是：${DISTRICTS.join("、")}，或空字串。使用者已選：${district || "未選"}
 address：只抄內文裡出現的地址或地標，不要猜；沒有就填空字串。
-spam：廣告、謾罵、或與市政無關的內容填 true，正常陳情填 false。
+spam：廣告、謾罵、或與市政無關的內容填 true，正常陳情填 false。內容只是太短或太模糊不算 spam。
+outside_taipei：地點明確在台北市以外（例如新北市、基隆市）填 true，其他填 false。
+too_vague：看不出發生什麼問題或在哪裡（例如只寫「好熱」）填 true，其他填 false。
 duplicate_of：如果陳情和下列某個未結案件是同一地點的同一問題，填該案件編號（數字），並在 duplicate_reason 用一句話說明；不確定就填 null。
 未結案件：
 ${open.map(i => `#${i.n} ${i.title}（${i.district || "未填"}）`).join("\n") || "（無）"}
@@ -735,6 +747,7 @@ ${text}`, { modelTier: "quick", cache: false }, 30000);
       category: SUBS[cat] ? cat : "",
       dup: dup ? { id: dup.id, n: dup.n, title: dup.title, reason: String(r.duplicate_reason || "").slice(0, 200) } : null,
       title: String(r.title || "").slice(0, 60) || fallback.title,
+      outside: r.outside_taipei === true, vague: r.too_vague === true && r.spam !== true,
       dept, flagged: r.spam === true, tags: (r.tags || []).filter(t => TAGS.includes(t)).slice(0, 2),
       district: district || (DISTRICTS.includes(r.district) ? r.district : ""), address: String(r.address || "").slice(0, 100),
       triage: { by: "ai", reason: String(r.reason || "").slice(0, 200) }
@@ -747,13 +760,24 @@ $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled) return;
   const m = maskPII($("newText").value.trim()), text = m.text;
-  if (!text) return;
+  if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
   maskedN = m.count;
   $("newText").value = text;
   $("submitBtn").disabled = true;
   const note = m.count ? `已遮蔽 ${m.count} 項個資。` : "";
   $("newStatus").textContent = note + (sample ? "taipei-bot 正在分類…" : "送出中…");
   const t = await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
+  // Not Taipei, or too vague to dispatch: ask before creating a case, but let the citizen send anyway (AI can be wrong)
+  if (t.outside || t.vague) {
+    pending = { t, text };
+    $("newStatus").textContent = note;
+    $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
+      <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
+      <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+    $("dupBox").hidden = false;
+    $("submitBtn").disabled = false;
+    return;
+  }
   if (t.dup) {
     pending = { t, text };
     $("newStatus").textContent = note;
@@ -773,6 +797,7 @@ $("dupBox").addEventListener("click", e => {
   if (!b || !pending) return;
   const { t, text } = pending;
   pending = null; $("dupBox").hidden = true;
+  if (b.dataset.dup === "edit") return $("newText").focus();
   if (b.dataset.dup === "new") return create({ ...t, dup: null }, text);
   setVote(t.dup.id, true);
   view.open.add(t.dup.id); view.closed = false;
@@ -807,8 +832,9 @@ async function create(t, text) {
     await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
-    view.open.add(full); view.closed = false;
+    view.open.add(full); view.closed = false; scrollTo = full;
     $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
+    render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
   } catch (e) { mine = null; $("newStatus").textContent = ""; fail(e); }
@@ -992,6 +1018,9 @@ $("gpsBtn").onclick = () => {
     const { latitude:la, longitude:ln } = p.coords;
     if (!inTaipei(la, ln)) return setLoc("你目前不在台北市範圍內，請改在地圖上標記位置");
     setPicked(la, ln, "gps"); placePin(la, ln); if (pickLM) pickLM.setView([la, ln], 16);
+    // Coarse fix (Wi-Fi / cell towers): open the pin map on it so the citizen can correct the spot
+    const acc = p.coords.accuracy;
+    if (acc > 200) Promise.resolve($("pickMap").hidden && $("pinBtn").onclick()).finally(() => setLoc(`定位誤差約 ${Math.round(acc)} 公尺，請拖曳大頭針或點地圖修正位置`));
   }, e => setLoc(e && e.code === 1 ? "你拒絕了定位權限，可改在地圖上標記位置" : "無法取得位置（逾時或訊號不佳），可改在地圖上標記位置"), { timeout:8000, maximumAge:60000 });
 };
 $("pinBtn").onclick = async () => {
@@ -1039,7 +1068,9 @@ async function loadNews() {
 }
 
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
-function show(v) {
+// Each view is a history entry (#map, #issues…), so the phone's back button returns to the previous view instead of leaving
+function show(v, replace) {
+  if (location.hash.slice(1) !== v) window.history[replace ? "replaceState" : "pushState"](null, "", location.pathname + location.search + "#" + v);
   curView = v;
   $("wrap").classList.toggle("wide", v === "map");
   VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
@@ -1048,7 +1079,9 @@ function show(v) {
 }
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 // Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
-show(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues");
+const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
+show(homeView(), true);
+addEventListener("popstate", () => show(homeView(), true));
 
 const coLines = ["# .github/CODEOWNERS", "# 每類陳情的負責局處。taipei-bot 依這份規則分派，跨類時選最主要的。", "",
   ...TAGS.map(t => `/${t}/`.padEnd(10, "\u3000") + " @" + CODEOWNERS[t]), "", "# 判斷不出來的，先交給 1999 人工分派", "*".padEnd(10, "\u3000") + " @1999-待分派"];

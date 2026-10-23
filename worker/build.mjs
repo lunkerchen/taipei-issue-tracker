@@ -61,12 +61,23 @@ const load = async () => {
 };
 // ready is replaced on every reload, so a failed first load recovers once the socket reconnects
 let ready = load(); ready.catch(() => {});
+// Banner while the live socket is down; shown only after 3 s so a quick reconnect does not flash it
+let offTimer = null, banner;
+const offline = on => {
+  if (!on) { clearTimeout(offTimer); offTimer = null; if (banner) banner.hidden = true; return; }
+  if (offTimer || (banner && !banner.hidden)) return; // reconnect attempts every 2 s must not restart the 3 s wait
+  offTimer = setTimeout(() => { offTimer = null;
+    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status"); banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;padding:8px 12px;background:#9a6700;color:#fff;font:14px system-ui;text-align:center"; banner.textContent = "連線中斷，重新連線中…地圖與列表暫停更新"; document.body.append(banner); }
+    banner.hidden = false;
+  }, 3000);
+};
+addEventListener("offline", () => offline(true));
 const connect = () => {
   const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws");
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
-  ws.onopen = () => { ready = load(); ready.then(fire, () => {}); };
-  ws.onclose = () => setTimeout(connect, 2000);
+  ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
+  ws.onclose = () => { offline(true); setTimeout(connect, 2000); };
 };
 connect();
 
@@ -76,7 +87,7 @@ const write = async (op, path, data) => {
   if (adminToken) h["x-admin"] = adminToken;
   const v = await visitor; if (v) h["x-visitor"] = v;
   const r = await req("/api/db", { method: "POST", headers: h, body: JSON.stringify({ op, path, data }) });
-  if (!r.ok) throw new Error("write " + r.status);
+  if (!r.ok) throw Object.assign(new Error("write " + r.status), { status: r.status });
   const j = await r.json(); apply(path, j.data, j.seq); // own write shows at once; the broadcast echo is ignored by seq
 };
 const ref = (c, id) => ({
