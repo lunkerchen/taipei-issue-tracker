@@ -33,7 +33,7 @@ export default {
     let body;
     try { body = await req.json(); } catch { return err(400, "bad_json"); }
     const { prompt, tier } = body || {};
-    if (typeof prompt !== "string" || prompt.length > 12000 || !PREFIXES.some(p => prompt.startsWith(p)) || !MODELS[tier]) return err(400, "bad_request");
+    if (typeof prompt !== "string" || prompt.length > 16000 || !PREFIXES.some(p => prompt.startsWith(p)) || !MODELS[tier]) return err(400, "bad_request");
     try { return Response.json(await claude(env, MODELS[tier], prompt)); }
     catch (e) { return err(502, "upstream_error"); }
   },
