@@ -1,7 +1,7 @@
 // Builds public/index.html: the artifact page plus a window.claude stand-in.
 // State lives in the Worker's Hub Durable Object: the shim loads GET /api/db, applies pushes from /api/ws, and writes via POST /api/db.
 // AI calls go to the Worker's /api/sample. ?admin=<token> sends x-admin so the presenter gets the bureau controls (merge, draft release).
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
 const page = readFileSync(here("../taipei-issues.html"), "utf8");
@@ -114,11 +114,15 @@ const geocode = async q => { try { const j = await (await req("/api/geocode?q=" 
 const news = async () => { try { return (await (await req("/api/news")).json()).items || []; } catch { return []; } };
 const ai = fetch("/api/health", { signal: AbortSignal.timeout(5000) }).then(r => r.json()).then(j => j.ai).catch(() => false);
 const revgeo = async (lat, lng) => { try { const j = await (await req("/api/geocode?lat=" + lat + "&lng=" + lng)).json(); return j.address ? j : null; } catch { return null; } };
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news })[n] ?? null };
+// 1999 dispatch history (Jan–Sep 2026), a static file of about 1.8 MB: loaded once, on first use
+let histP = null;
+const hist = () => histP ||= (async () => { for (let i = 0; i < 2; i++) try { const r = await fetch("/history-2026.json", { signal: AbortSignal.timeout(30000) }); if (r.ok) return await r.json(); } catch {} histP = null; return null; })();
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist })[n] ?? null };
 })();
 </script>`;
 
 mkdirSync(here("public"), { recursive: true });
+if (existsSync(here("../data/history-2026.json"))) copyFileSync(here("../data/history-2026.json"), here("public/history-2026.json"));
 writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台北市 Issue Tracker</title></head><body style="margin:0">
 <div style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">展示版：資料為模擬資料，所有訪客共用、即時同步。</div>
 ${shim}${page}</body></html>`);

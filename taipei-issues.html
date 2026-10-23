@@ -179,6 +179,12 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .lyr:hover{background:var(--hover)}
 .lyr i{width:12px;height:12px;border-radius:50%;flex:none}
 .lyr .nm{flex:1;min-width:0}
+.tline{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.tl-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.tl-top label{display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer}
+.tl-row{display:flex;align-items:center;gap:6px}
+.tl-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.tl-row .btn{min-width:40px;justify-content:center}
 .mapside .foot{padding:10px 14px;border-top:1px solid var(--line)}
 .mapbox .leaflet-container{font:inherit;background:var(--hover)}
 .mapbox .leaflet-popup-content-wrapper,.mapbox .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
@@ -302,6 +308,16 @@ Switched to branch 'taipei'
         <div class="mapmsg" id="mapMsg"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+      </div>
+      <div class="tline" id="tline" hidden>
+        <div class="tl-top"><label><input type="checkbox" id="histOn">歷史派工時間軸</label><span class="note">2026 年 1–9 月</span><span class="spacer"></span><b id="histDate"></b><span class="note" id="histCount"></span></div>
+        <div class="tl-row" id="histRow" hidden>
+          <button class="btn" type="button" id="histPrev" aria-label="前一天">◀</button>
+          <button class="btn" type="button" id="histPlay" aria-pressed="false">播放</button>
+          <input type="range" id="histDay" min="0" value="0" aria-label="日期">
+          <button class="btn" type="button" id="histNext" aria-label="後一天">▶</button>
+        </div>
+        <div class="note" id="histSrc" hidden>資料來源：臺北市政府 1999 派工資料（data.taipei）。點位為路段或行政區的概略位置，不含門牌。</div>
       </div>
       <div class="mapact">
         <button class="btn" type="button" id="liveBtn" aria-pressed="false" aria-controls="liveBox"><span class="live-dot" aria-hidden="true"></span>Live</button>
@@ -893,7 +909,7 @@ function loadLeaflet() {
 const addBase = m => L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
   { maxZoom:19, attribution:'© <a href="https://maps.nlsc.gov.tw/" target="_blank" rel="noopener">內政部國土測繪中心</a>' }).addTo(m);
 
-let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "";
+let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "", histOn = false;
 const markers = new Map(), seen = new Set(), fresh = new Map();
 let seenInit = false, noteTimer;
 const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10, maxBounds:[[24.85,121.35],[25.30,121.78]] };
@@ -991,7 +1007,7 @@ function popupHtml(id) {
 }
 // Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
 function syncMap() {
-  if (!mainLM) return;
+  if (!mainLM || histOn) return;
   const c = counts(), live = new Set(), tally = {}, now = Date.now();
   for (const i of issues) {
     if (!inTaipei(i.lat, i.lng)) continue;
@@ -1017,9 +1033,12 @@ function syncMap() {
   if (sig === layerSig) return;
   layerSig = sig;
   const located = Object.values(tally).reduce((a, b) => a + b, 0);
+  layerPanel(tally, `共 ${located} 件有位置${issues.length > located ? `，${issues.length - located} 件沒有位置` : ""}`);
+}
+function layerPanel(tally, foot) {
   $("mapLayers").innerHTML = LAYERS.map(l => { const name = l.id === "none" ? "未分類" : (cats.find(x => x.id === l.id) || {}).name || l.id;
     return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === false ? "" : "checked"}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
-  $("mapFoot").textContent = `共 ${located} 件有位置${issues.length > located ? `，${issues.length - located} 件沒有位置` : ""}`;
+  $("mapFoot").textContent = foot;
 }
 // Flash a new marker for 3s via CSS (.mk-new on its SVG path). A hidden layer has no element, so there is nothing to flash.
 function pulse(m) { const el = m.getElement(); if (!el) return; el.classList.add("mk-new"); setTimeout(() => el.classList.remove("mk-new"), 3000); }
@@ -1031,15 +1050,16 @@ function trackNew() {
   if (!seenInit) { seenInit = true; return; }
   const now = Date.now();
   added.forEach(i => fresh.set(i.id, now));
-  if (added.length && curView === "map") {
+  if (added.length && curView === "map" && !histOn) {
     $("mapNote").textContent = `新通報：${added[0].title}${added.length > 1 ? `（等 ${added.length} 件）` : ""}`; $("mapNote").hidden = false;
     clearTimeout(noteTimer); noteTimer = setTimeout(() => $("mapNote").hidden = true, 5000);
   }
 }
 $("mapLayers").addEventListener("change", e => {
-  const b = e.target.closest("[data-layer]"); if (!b || !groups[b.dataset.layer]) return;
+  const g = b => (histOn ? histGroups : groups)[b.dataset.layer];
+  const b = e.target.closest("[data-layer]"); if (!b || !g(b)) return;
   layerOn[b.dataset.layer] = b.checked;
-  b.checked ? mainLM.addLayer(groups[b.dataset.layer]) : mainLM.removeLayer(groups[b.dataset.layer]);
+  b.checked ? mainLM.addLayer(g(b)) : mainLM.removeLayer(g(b));
 });
 // Popup button: jump to Issues with that case expanded. Filters are cleared so the case is certain to be listed.
 $("map").addEventListener("click", goIssue);
@@ -1051,6 +1071,57 @@ function goIssue(e) {
   show("issues"); render();
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
 }
+
+// ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
+// The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
+let histFn = null, hist = null, histDays = [], histGroups = {}, histR = null, histTimer = null;
+const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
+const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(k + "T12:00:00+08:00").getDay()]}）`; };
+async function setHist(on) {
+  stopPlay();
+  if (on && !hist) {
+    $("histCount").textContent = "載入中…";
+    hist = await histFn().catch(() => null);
+    if (!hist || !hist.days) { hist = null; $("histOn").checked = false; $("histCount").textContent = "歷史資料載入失敗，請稍後再試"; return; }
+    histDays = Object.keys(hist.days).sort();
+    $("histDay").max = histDays.length - 1; $("histDay").value = histDays.length - 1;
+  }
+  histOn = on;
+  for (const l of LAYERS) {
+    histGroups[l.id] ||= L.layerGroup();
+    const [show, hide] = on ? [histGroups[l.id], groups[l.id]] : [groups[l.id], histGroups[l.id]];
+    mainLM.removeLayer(hide); if (layerOn[l.id] !== false) mainLM.addLayer(show);
+  }
+  $("histRow").hidden = $("histSrc").hidden = !on;
+  $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
+  if (on) drawHist(); else { $("histDate").textContent = $("histCount").textContent = ""; for (const g of Object.values(histGroups)) g.clearLayers(); layerSig = ""; syncMap(); }
+}
+function drawHist() {
+  const key = histDays[+$("histDay").value], list = hist.days[key] || [], tally = {};
+  histR ||= L.canvas({ padding:.3 }); // ~470 points a day: canvas keeps panning smooth on phones
+  for (const g of Object.values(histGroups)) g.clearLayers();
+  list.forEach(([ri, ii, hm], k) => {
+    const rd = hist.roads[ri], it = hist.items[ii], lay = groups[it[1]] ? it[1] : "none", spread = rd[4] ? .0012 : .006;
+    const color = (LAYERS.find(l => l.id === lay) || {}).color;
+    const m = L.circleMarker([rd[2] + noise(ri * 7919 + k) * spread, rd[3] + noise(ri * 104729 + k) * spread], { renderer:histR, radius:5, weight:1, color:"#fff", fillColor:color, fillOpacity:.85 });
+    m.bindPopup(`<b>${esc(it[0])}</b><div class="meta">${esc(rd[0] + rd[1])} · ${dayLabel(key)} ${String(hm).padStart(4, "0").replace(/(..)$/, ":$1")}</div><div class="meta">${rd[4] ? "路段" : "行政區"}概略位置</div>`);
+    histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
+  });
+  $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length} 件派工`;
+  layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length} 件`);
+}
+function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
+const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
+$("histOn").onchange = () => mainLM && setHist($("histOn").checked);
+$("histDay").addEventListener("input", () => { stopPlay(); drawHist(); });
+$("histPrev").onclick = () => { stopPlay(); stepDay(-1); };
+$("histNext").onclick = () => { stopPlay(); stepDay(1); };
+$("histPlay").onclick = () => {
+  if (histTimer) return stopPlay();
+  if (+$("histDay").value >= histDays.length - 1) $("histDay").value = 0;
+  $("histPlay").textContent = "暫停"; $("histPlay").setAttribute("aria-pressed", "true");
+  histTimer = setInterval(() => { if (stepDay(1) >= histDays.length - 1) stopPlay(); }, 700);
+};
 
 // ---- Live: today's newest reports (Asia/Taipei day), newest first. Tap one to fly the map to it. ----
 function renderLive() {
@@ -1065,6 +1136,7 @@ function renderLive() {
     <div class="meta">${esc(new Date(i.createdAt).toLocaleString("zh-TW", { ...(dayKey(i.createdAt) === today ? {} : { month:"numeric", day:"numeric" }), hour:"2-digit", minute:"2-digit", timeZone:"Asia/Taipei" }))} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${esc(st[0])}${sub ? ` · 1999：${esc(sub.name)}` : ""}</div></button></li>`; }).join("");
 }
 $("liveBtn").onclick = () => {
+  if (histOn) { $("histOn").checked = false; setHist(false); } // Live is about today; leave the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
   if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
@@ -1374,6 +1446,7 @@ document.addEventListener("keydown", e => {
   const opt = n => Promise.resolve().then(() => claude.use(n)).catch(() => null); // geocode/news exist only on the Worker host
   [db, sample, geocode, revgeo, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("revgeo"), opt("news")]);
   if (typeof revgeo !== "function") revgeo = null;
+  histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;
   if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
   const user = await claude.use("user");

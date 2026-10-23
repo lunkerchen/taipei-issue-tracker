@@ -146,3 +146,10 @@
 - [x] P3-7｜Opus｜taipei-issues.html, worker/build.mjs｜429 顯示「操作太頻繁」，連不上顯示「內容已保留」｜已完成
 - [x] P3-8｜Opus｜taipei-issues.html｜GPS 誤差 >200 m 自動開小地圖請市民修正｜已完成
 - [x] P3-9｜Opus｜taipei-issues.html｜AI 回 too_vague 時請市民補充地點與狀況（不再當垃圾訊息），可仍要送出｜已完成
+
+## PLAN 4：地圖歷史時間軸（2026-10-24）
+
+- [x] P4-1｜Opus｜scripts/fetch-1999-history.mjs, data/history-*.json｜下載 data.taipei 1999 派工資料 115 年 1–9 月（Big5／UTF-8 自動判斷），去重、排除非台北，24 個派工項目全部對應到 1999 九大類；路名層級地理編碼（Nominatim ≥1.1 s 間隔，查不到用行政區中心）；輸出不含門牌、樓層；每天 1/1–9/30 都有資料、筆數相符｜已完成
+- [x] P4-2｜Opus｜worker/build.mjs｜歷史資料以靜態檔提供，shim 加 claude.use("history")；artifact 環境為 null 時頁面隱藏時間軸｜已完成
+- [x] P4-3｜Opus｜taipei-issues.html｜地圖「歷史」模式：日期滑桿（1/1–9/30）、前一天／後一天、播放；當天案件以 canvas 畫在路段位置（加抖動），沿用九大類圖層勾選與計數；彈窗只顯示派工項目、行政區、路名、時間；註明資料來源；手機 375px 無水平捲動｜已完成
+- [ ] P4-4｜reviewer → gpt-6.1-sol｜唯讀｜依上列驗收｜待辦
