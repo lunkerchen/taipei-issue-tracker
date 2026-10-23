@@ -1,0 +1,673 @@
+<title>台北市 Issue Tracker</title>
+<style>
+/* Layout: repo-style header, one issue list column; filters wrap above it on phones */
+/* GitHub Primer palette, light + dark */
+:root{
+  --bg:#ffffff; --panel:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0;
+  --accent:#1f883d; --accent-fg:#ffffff; --link:#0969da; --term:#161b22; --term-fg:#f0f6fc; --term-dim:#9198a1;
+  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa;
+  --merged:#8250df; --hm0:#eff2f5; --hm1:#aceebb; --hm2:#4ac26b; --hm3:#2da44e; --hm4:#116329;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
+  --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
+  --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:18px}
+.repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
+.repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
+.repo h1 b{font-weight:600}
+.repo .vis{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:99px;padding:1px 8px;color:var(--muted);margin-left:6px;vertical-align:middle}
+.term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+.term .p{color:var(--term-dim)}
+.note{font-size:13px;color:var(--muted)}
+.btn{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:6px;padding:6px 12px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent;font-weight:500}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.title:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar input[type=search]{flex:1 1 220px;min-width:0}
+input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.boxhead{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 14px;background:var(--hover);border-bottom:1px solid var(--line);font-size:14px}
+.tab{background:none;border:0;font:inherit;color:var(--muted);cursor:pointer;padding:2px 0;display:inline-flex;gap:6px;align-items:center}
+.tab[aria-pressed=true]{color:var(--fg);font-weight:700}
+.tab svg{width:16px;height:16px}
+.boxhead .spacer{flex:1}
+.issue{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 10px;padding:10px 14px;border-top:1px solid var(--line)}
+.issue:first-child{border-top:0}
+.issue:hover{background:var(--hover)}
+.ico{width:16px;height:16px;margin-top:4px}
+.title{font-weight:700;color:var(--fg);background:none;border:0;padding:0;font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.title:hover{color:var(--link)}
+.meta{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.labels{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:6px;vertical-align:2px}
+.lbl{font-size:12px;font-weight:500;border-radius:99px;padding:0 8px;line-height:20px;border:1px solid transparent;white-space:nowrap}
+.plus{display:flex;align-items:flex-start}
+.vote{font-family:var(--mono);font-size:13px;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:99px;padding:2px 10px;cursor:pointer;font-variant-numeric:tabular-nums}
+.vote[aria-pressed=true]{border-color:var(--link);color:var(--link);background:color-mix(in srgb, var(--link) 10%, transparent);font-weight:600}
+.repo h1{color:var(--link)}
+.vote:disabled{cursor:default}
+.detail{grid-column:2/4;display:flex;flex-direction:column;gap:10px;padding:6px 0 4px}
+.detail .body{white-space:pre-wrap;max-width:68ch}
+.bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
+.bot .h{font-size:13px;background:var(--hover);padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+.bot .b{padding:8px 10px;font-size:14px}
+.admin{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.empty{padding:36px 16px;text-align:center;color:var(--muted)}
+.new{display:flex;flex-direction:column;gap:10px;padding:14px}
+.new textarea{min-height:96px;resize:vertical;width:100%;box-sizing:border-box}
+.new .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.status{font-size:13px;color:var(--muted)}
+.hm-wrap{overflow-x:auto;padding:12px 14px 6px}
+.hm{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:11px;gap:3px;width:max-content}
+.hm i,.legend i{display:block;width:11px;height:11px;border-radius:2px;background:var(--hm0);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 6%,transparent)}
+.hm i[data-l="1"],.legend i:nth-child(2){background:var(--hm1)}
+.hm i[data-l="2"],.legend i:nth-child(3){background:var(--hm2)}
+.hm i[data-l="3"],.legend i:nth-child(4){background:var(--hm3)}
+.hm i[data-l="4"],.legend i:nth-child(5){background:var(--hm4)}
+.hm-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;font-size:12px;color:var(--muted);padding:0 14px 12px}
+.legend{display:inline-flex;gap:3px;align-items:center}
+.tl{display:flex;flex-direction:column;border-left:2px solid var(--line);margin-left:8px;padding-left:16px;max-width:68ch}
+.ev{position:relative;font-size:13px;color:var(--muted);padding:5px 0}
+.ev::before{content:"";position:absolute;left:-23px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--panel);border:2px solid var(--line)}
+.ev b{color:var(--fg)}
+.pr{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px;color:var(--fg);background:var(--panel)}
+.pr svg{width:16px;height:16px;flex:none}
+.pill{font-size:12px;font-weight:600;color:#ffffff;border-radius:99px;padding:1px 9px}
+.dup{border:1px solid var(--progress);background:color-mix(in srgb,var(--progress) 10%,transparent);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.nav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-top:-6px}
+.nav button{font:inherit;font-size:14px;background:none;border:0;border-bottom:2px solid transparent;color:var(--fg);padding:8px 10px;cursor:pointer;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.nav button:hover{background:var(--hover);border-radius:6px 6px 0 0}
+.nav button[aria-current=page]{border-bottom-color:#fd8c73;font-weight:600}
+.nav button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.cnt{font-size:12px;background:color-mix(in srgb,var(--muted) 18%,transparent);border-radius:99px;padding:0 7px;font-weight:500}
+.cnt:empty{display:none}
+.view{display:flex;flex-direction:column;gap:18px}
+[hidden]{display:none!important}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--hover);color:var(--fg)}
+.file{overflow-x:auto}
+.file table{border-collapse:collapse;font-family:var(--mono);font-size:13px;width:100%}
+.file td{padding:1px 12px;white-space:pre;line-height:20px}
+.file td:first-child{color:var(--muted);text-align:right;width:1%;user-select:none}
+.file .cm{color:var(--muted)}
+.file .ow{color:var(--link)}
+.row-item{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:12px 14px;border-top:1px solid var(--line)}
+.row-item:first-child{border-top:0}
+.row-item .grow{flex:1 1 260px;min-width:0}
+.prog{height:8px;border-radius:99px;background:color-mix(in srgb,var(--muted) 20%,transparent);overflow:hidden;margin:8px 0 4px;display:flex}
+.prog i{display:block;height:100%}
+.ms{display:flex;flex-direction:column;padding:14px;border-top:1px solid var(--line)}
+.ms:first-child{border-top:0}
+.ms .title{font-size:18px}
+.pulse{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:14px}
+.pulse .big{font-size:13px;color:var(--muted)}
+.pulse .big b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums;margin-right:4px}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%;font-size:14px}
+.tbl th,.tbl td{text-align:left;padding:8px 14px;border-top:1px solid var(--line);white-space:nowrap}
+.tbl th{font-weight:600;font-size:12px;color:var(--muted);border-top:0}
+.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;font-family:Verdana,var(--sans);font-size:11px;border-radius:3px;overflow:hidden;color:#ffffff;line-height:18px}
+.badge span{padding:0 6px;background:#555555}
+.badge span+span{background:var(--b)}
+.rel{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.rel:first-child{border-top:0}
+.rel .side{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.rel .tag{font-family:var(--mono);color:var(--fg)}
+.rel h2{margin:0 0 6px;font-size:22px;text-wrap:balance}
+.rel h3{margin:12px 0 4px;font-size:15px}
+.rel ul{margin:0;padding-left:20px}
+.latest{align-self:flex-start;font-size:12px;font-weight:600;color:var(--open);border:1px solid var(--open);border-radius:99px;padding:0 8px}
+@media (max-width:560px){.rel{grid-template-columns:1fr;gap:6px}}
+@media (max-width:560px){.issue{grid-template-columns:18px minmax(0,1fr)}.plus{grid-column:2}.detail{grid-column:1/3}}
+@media (prefers-reduced-motion:no-preference){.vote{transition:transform .12s}.vote:active{transform:scale(.94)}}
+</style>
+
+<div class="wrap">
+  <header class="repo">
+    <h1>taipei-city / <b>1999</b><span class="vis">Public</span></h1>
+    <button class="btn primary" id="newBtn" type="button">New issue</button>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="專案分頁">
+    <button type="button" data-view="code">Code</button>
+    <button type="button" data-view="issues" aria-current="page">Issues <span class="cnt" id="cIssues"></span></button>
+    <button type="button" data-view="pulls">Pull requests <span class="cnt" id="cPulls"></span></button>
+    <button type="button" data-view="milestones">Milestones</button>
+    <button type="button" data-view="insights">Insights</button>
+    <button type="button" data-view="releases">Releases</button>
+  </nav>
+
+  <div class="view" id="v-issues">
+
+  <div class="term" aria-label="終端機示意"><span class="p">$</span> git checkout taipei
+Switched to branch 'taipei'
+<span class="p">$</span> gh issue list --label 處理中 --sort reactions</div>
+
+  <section class="box">
+    <div class="boxhead"><b id="hmTotal">contributions in the last year</b><span class="spacer"></span><span class="note">每天開立與修好的陳情</span></div>
+    <div class="hm-wrap"><div class="hm" id="hm" role="img" aria-label="過去一年每天的陳情處理量"></div></div>
+    <div class="hm-foot"><span>今天以前的歷史數字為模擬資料</span><span class="legend">Less <i></i><i></i><i></i><i></i><i></i> More</span></div>
+  </section>
+
+  <section class="box" id="newBox" hidden>
+    <form class="new" id="newForm">
+      <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
+      <div class="row" id="tpls"><span class="note">範本：</span></div>
+      <textarea id="newText" required maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <div class="dup" id="dupBox" hidden></div>
+      <div class="row">
+        <select id="newDistrict" aria-label="行政區"></select>
+        <button class="btn primary" id="submitBtn" type="submit">Submit new issue</button>
+        <button class="btn" type="button" id="cancelBtn">Cancel</button>
+        <span class="status" id="newStatus" role="status"></span>
+      </div>
+    </form>
+  </section>
+
+  <div class="bar">
+    <input type="search" id="q" placeholder="is:issue 搜尋標題或內容" aria-label="搜尋">
+    <select id="deptFilter" aria-label="依局處篩選"></select>
+    <select id="msFilter" aria-label="依里程碑篩選"></select>
+    <select id="sort" aria-label="排序">
+      <option value="votes">最多 +1</option>
+      <option value="new">最新</option>
+      <option value="stale">閒置最久</option>
+    </select>
+  </div>
+
+  <section class="box">
+    <div class="boxhead">
+      <button class="tab" id="tabOpen" aria-pressed="true" type="button"></button>
+      <button class="tab" id="tabClosed" aria-pressed="false" type="button"></button>
+      <span class="spacer"></span>
+      <span class="note" id="who"></span>
+    </div>
+    <div id="list"><div class="empty">正在載入陳情案件…</div></div>
+  </section>
+  </div>
+
+  <div class="view" id="v-code" hidden>
+    <section class="box">
+      <div class="boxhead"><span class="meta">taipei-city/1999 / .github / <b>CODEOWNERS</b></span><span class="spacer"></span><span class="note" id="coLines"></span></div>
+      <div class="file"><table id="coFile"></table></div>
+    </section>
+    <p class="note">每類陳情由哪個局處負責。taipei-bot 分派新陳情時，會把這份規則一起交給 Claude 參考。</p>
+  </div>
+
+  <div class="view" id="v-pulls" hidden>
+    <section class="box"><div class="boxhead"><b id="prHead">Pull requests</b><span class="spacer"></span><span class="note">局處送出的修繕單</span></div><div id="prList"></div></section>
+  </div>
+
+  <div class="view" id="v-milestones" hidden>
+    <section class="box"><div class="boxhead"><b>Milestones</b><span class="spacer"></span><span class="note">市政計畫與預算期</span></div><div id="msList"></div></section>
+  </div>
+
+  <div class="view" id="v-insights" hidden>
+    <section class="box"><div class="boxhead"><b>Pulse</b><span class="spacer"></span><span class="note">過去 7 天</span></div><div class="pulse" id="pulse"></div></section>
+    <section class="box"><div class="boxhead"><b>各局處處理速度</b><span class="spacer"></span><span class="note">SLA：平均 7 天內修好</span></div><div class="tbl"><table id="slaTable"></table></div></section>
+  </div>
+
+  <div class="view" id="v-releases" hidden>
+    <div class="bar"><button class="btn primary" id="relBtn" type="button" hidden>Draft a new release</button><span class="status" id="relStatus" role="status"></span></div>
+    <div id="relList"></div>
+  </div>
+
+  <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</p>
+</div>
+
+<script>
+const DEPTS = {
+  "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
+  "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
+  "建管處":        "#9a6700", "衛生局":       "#cf222e", "動保處":       "#d4741c",
+  "台電/路燈管理": "#8250df", "1999 待分派":  "#6e7781"
+};
+const DISTRICTS = ["中正區","大同區","中山區","松山區","大安區","萬華區","信義區","士林區","北投區","內湖區","南港區","文山區"];
+// .github/CODEOWNERS: which department owns each issue type. Shown on the Code tab and given to Claude when triaging.
+const CODEOWNERS = {
+  "路面坑洞":"工務局新工處", "人行道":"工務局新工處", "路燈":"台電/路燈管理", "違規停車":"交通局",
+  "交通號誌":"交通局", "噪音":"環保局", "垃圾":"環保局", "公園設施":"工務局公園處",
+  "排水淤積":"工務局水利處", "流浪動物":"動保處", "違建":"建管處", "食安":"衛生局"
+};
+const TAGS = Object.keys(CODEOWNERS);
+const TEMPLATES = {
+  "路面或人行道": "地點（路名、門牌或地標）：\n狀況（坑洞大小、磚塊鬆動…）：\n影響（有人跌倒、機車打滑…）：",
+  "噪音": "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：",
+  "路燈": "地點（路名、巷弄、最近的門牌）：\n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始：",
+  "空白": ""
+};
+const STALE_DAYS = 7, DAY = 864e5;
+const VIEWS = ["code","issues","pulls","milestones","insights","releases"];
+const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
+const ICON = {
+  open:'<svg class="ico" viewBox="0 0 16 16" fill="var(--open)"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>',
+  progress:'<svg class="ico" viewBox="0 0 16 16" fill="var(--progress)"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/><path d="M8 1.5A6.5 6.5 0 0 1 8 14.5Z"/></svg>',
+  fixed:'<svg class="ico" viewBox="0 0 16 16" fill="var(--fixed)"><path d="M10.28 6.28 7.03 9.53a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.22 1.22 2.72-2.72a.75.75 0 0 1 1.06 1.06Z"/><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm1.5 0a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>'
+};
+
+let db = null, me = null, admin = false, canWrite = false, sample = null;
+let issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
+let view = { closed:false, open:new Set() };
+const PR_ICON = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.12v5.26a2.25 2.25 0 1 1-1.5 0V5.37A2.25 2.25 0 0 1 1.5 3.25Zm5.68-.53L9.4.5a.25.25 0 0 1 .43.18V2h1.25A2.5 2.5 0 0 1 13.58 4.5v6.13a2.25 2.25 0 1 1-1.5 0V4.5a1 1 0 0 0-1-1H9.83v1.32a.25.25 0 0 1-.43.18L7.18 2.78a.25.25 0 0 1 0-.36ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const lbl = (text, color) => `<span class="lbl" style="color:${color};border-color:color-mix(in srgb, ${color} 45%, transparent);background:color-mix(in srgb, ${color} 12%, transparent)">${esc(text)}</span>`;
+const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
+
+$("newDistrict").innerHTML = `<option value="">行政區（可不選）</option>` + DISTRICTS.map(d => `<option>${d}</option>`).join("");
+
+function counts() {
+  const c = {};
+  for (const v of votes) for (const id in (v.issues || {})) if (v.issues[id]) c[id] = (c[id] || 0) + 1;
+  return c;
+}
+
+// Issues seeded before the timeline existed have no events; derive the first two.
+const evs = i => i.events || [{ t:i.createdAt, type:"opened" }, { t:i.createdAt, type:"labeled", dept:i.dept, by:"taipei-bot" }];
+const nextN = () => Math.max(0, ...issues.map(i => i.n || 0), ...issues.flatMap(i => evs(i).filter(e => e.type === "pr").map(e => e.n))) + 1;
+const dayKey = d => new Date(d).toLocaleDateString("sv-SE", { timeZone:"Asia/Taipei" });
+const lastAct = i => Math.max(...evs(i).map(e => +new Date(e.t)));
+// Stale is derived on read, so the bot needs no writes or schedule.
+const isStale = i => i.status !== "fixed" && Date.now() - lastAct(i) > STALE_DAYS * DAY;
+const closedAt = i => { const e = evs(i).find(e => e.type === "merged" || (e.type === "status" && e.to === "fixed")); return e && +new Date(e.t); };
+const prs = () => issues.flatMap(i => { const ev = evs(i), done = new Set(ev.filter(e => e.type === "merged").map(e => e.pr));
+  return ev.filter(e => e.type === "pr").map(e => ({ ...e, issue:i, merged:done.has(e.n), mergedAt:(ev.find(m => m.type === "merged" && m.pr === e.n) || {}).t })); });
+const fmtDate = d => new Date(d).toLocaleDateString("zh-TW", { year:"numeric", month:"long", day:"numeric", timeZone:"Asia/Taipei" });
+
+async function act(i, list, patch = {}) {
+  // ponytail: read-modify-write on the events array; two admins acting on one issue in the same instant can drop an event
+  const t = new Date().toISOString();
+  await db.collection("issues").doc(i.id).update({ ...patch, events: [...evs(i), ...list.map(ev => ({ t, by:i.dept, ...ev }))] });
+}
+
+async function setVote(id, on) {
+  const next = { ...myVotes };
+  if (on) next[id] = true; else delete next[id];
+  myVotes = next; render();
+  try { await db.collection("votes").doc(me).set({ issues: next }); }
+  catch { canWrite = false; render(); }
+}
+
+function heatmap() {
+  const c = { ...history };
+  for (const i of issues) for (const e of evs(i))
+    if (e.type === "opened" || e.type === "merged" || (e.type === "status" && e.to === "fixed")) { const k = dayKey(e.t); c[k] = (c[k] || 0) + 1; }
+  const today = new Date(dayKey(Date.now()) + "T12:00:00+08:00");
+  const start = new Date(today); start.setDate(start.getDate() - 364 - start.getDay());
+  const days = [];
+  for (const d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) days.push(dayKey(d));
+  const max = Math.max(1, ...days.map(k => c[k] || 0));
+  const total = days.reduce((s, k) => s + (c[k] || 0), 0);
+  $("hmTotal").textContent = `${total.toLocaleString()} contributions in the last year`;
+  $("hm").innerHTML = days.map(k => { const n = c[k] || 0;
+    return `<i data-l="${n ? Math.ceil(n / max * 4) : 0}" title="${n} 件 · ${k}"></i>`; }).join("");
+}
+
+function timeline(i) {
+  const merged = new Set(evs(i).filter(e => e.type === "merged").map(e => e.pr));
+  return `<div class="tl">${evs(i).map(e => {
+    const who = `<b>${esc(e.by || "市民")}</b>`, when = ` · ${ago(e.t)}`;
+    if (e.type === "opened") return `<div class="ev"><b>市民</b> 開立了這個案件${when}</div>`;
+    if (e.type === "labeled") return `<div class="ev">${who} 加上標籤 ${lbl(e.dept, DEPTS[e.dept] || DEPTS["1999 待分派"])}${when}</div>`;
+    if (e.type === "status") { const s = STATUS[e.to] || STATUS.open; return `<div class="ev">${who} 把狀態改成 ${lbl(s[0], s[1])}${when}</div>`; }
+    if (e.type === "merged") return `<div class="ev">${who} 合併了 #${e.pr}，這個案件自動關閉${when}</div>`;
+    if (e.type === "milestone") return `<div class="ev">${who} ${e.title ? `把案件加入里程碑 <b>${esc(e.title)}</b>` : "移除了里程碑"}${when}</div>`;
+    if (e.type === "pr") { const m = merged.has(e.n);
+      return `<div class="ev">${who} 開了修繕單${when}
+        <div class="pr" style="color:${m ? "var(--merged)" : "var(--open)"}">${PR_ICON}
+          <b style="color:var(--fg)">${esc(e.title)}</b><span class="meta">#${e.n}</span>
+          <span class="pill" style="background:${m ? "var(--merged)" : "var(--accent)"}">${m ? "Merged" : "Open"}</span>
+          <span class="meta">Closes #${i.n}</span>
+          ${admin && !m ? `<button class="btn" data-merge="${e.n}" data-id="${i.id}">Merge pull request</button>` : ""}
+        </div></div>`; }
+    return "";
+  }).join("")}${isStale(i) ? `<div class="ev"><b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度 · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
+}
+
+function render() {
+  heatmap();
+  const c = counts();
+  const q = $("q").value.trim().toLowerCase();
+  const dept = $("deptFilter").value;
+  const openN = issues.filter(i => i.status !== "fixed").length;
+  $("tabOpen").innerHTML = ICON.open + `${openN} Open`;
+  $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
+  $("tabOpen").setAttribute("aria-pressed", !view.closed);
+  $("tabClosed").setAttribute("aria-pressed", view.closed);
+
+  const prev = dept;
+  const byDept = {};
+  issues.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  $("deptFilter").innerHTML = `<option value="">全部局處</option>` +
+    Object.keys(DEPTS).filter(d => byDept[d]).map(d => `<option value="${esc(d)}">${esc(d)}（${byDept[d]}）</option>`).join("");
+  $("deptFilter").value = prev;
+  const ms = $("msFilter").value;
+  $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
+  $("msFilter").value = ms;
+  renderViews(c);
+
+  let rows = issues.filter(i => (i.status === "fixed") === view.closed)
+    .filter(i => !dept || i.dept === dept)
+    .filter(i => !ms || i.milestone === ms)
+    .filter(i => !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q));
+  const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
+    votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
+  rows.sort(sorts[$("sort").value]);
+
+  if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
+  if (!rows.length) { $("list").innerHTML = `<div class="empty">${issues.length ? "沒有符合條件的案件。" : "還沒有任何陳情。按右上角 New issue 送出第一筆。"}</div>`; return; }
+
+  // Snapshots from other viewers re-render the list; keep what an admin is typing.
+  const typed = {}, focused = document.activeElement && document.activeElement.id;
+  document.querySelectorAll("#list input[id^=pr-]").forEach(x => typed[x.id] = x.value);
+  $("list").innerHTML = rows.map(i => {
+    const st = STATUS[i.status] || STATUS.open;
+    const mine = !!myVotes[i.id];
+    const labels = [lbl(i.dept, DEPTS[i.dept] || DEPTS["1999 待分派"])]
+      .concat(i.status !== "open" ? [lbl(st[0], st[1])] : [])
+      .concat((i.tags || []).map(t => lbl(t, "var(--muted)")))
+      .concat(isStale(i) ? [lbl("stale", "var(--muted)")] : []).join("");
+    const m = milestones.find(m => m.id === i.milestone);
+    const t = i.triage || {};
+    return `<div class="issue">
+      ${ICON[i.status] || ICON.open}
+      <div style="min-width:0">
+        <button class="title" data-open="${i.id}" aria-expanded="${view.open.has(i.id)}">${esc(i.title)}</button><span class="labels">${labels}</span>
+        <div class="meta">#${i.n} · ${esc(i.district || "未填行政區")} · ${ago(i.createdAt)}開立${m ? ` · 里程碑：${esc(m.title)}` : ""}</div>
+      </div>
+      <div class="plus"><button class="vote" data-vote="${i.id}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
+      ${view.open.has(i.id) ? `<div class="detail">
+        <div class="body">${esc(i.body)}</div>
+        <div class="bot"><div class="h">taipei-bot 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
+          <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
+        ${timeline(i)}
+        ${admin && i.status !== "fixed" ? `<div class="admin">
+          <input id="pr-${i.id}" placeholder="修繕單標題，例：人行道全段重鋪" aria-label="修繕單標題" style="flex:1 1 220px;min-width:0">
+          <button class="btn" data-pr="${i.id}">Open pull request</button>
+        </div>` : ""}
+        ${admin ? `<div class="admin">
+          <span class="note">局處操作</span>
+          ${i.status !== "progress" ? `<button class="btn" data-status="progress" data-id="${i.id}">標記處理中</button>` : ""}
+          ${i.status !== "fixed" ? `<button class="btn" data-status="fixed" data-id="${i.id}">標記已修復</button>` : ""}
+          ${i.status !== "open" ? `<button class="btn" data-status="open" data-id="${i.id}">重新開啟</button>` : ""}
+          <select data-dept="${i.id}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>
+          <select data-ms="${i.id}" aria-label="里程碑"><option value="">無里程碑</option>${milestones.map(x => `<option value="${esc(x.id)}" ${x.id === i.milestone ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select>
+        </div>` : ""}
+      </div>` : ""}
+    </div>`;
+  }).join("");
+  for (const id in typed) if ($(id)) $(id).value = typed[id];
+  if (focused && focused.startsWith("pr-") && $(focused)) $(focused).focus();
+}
+
+$("list").addEventListener("click", async e => {
+  const o = e.target.closest("[data-open]");
+  if (o) { const id = o.dataset.open; view.open.has(id) ? view.open.delete(id) : view.open.add(id); return render(); }
+  const v = e.target.closest("[data-vote]");
+  if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
+  const btn = e.target.closest("[data-status],[data-pr],[data-merge]");
+  if (!btn) return;
+  const i = issues.find(x => x.id === (btn.dataset.id || btn.dataset.pr));
+  if (btn.dataset.status) { btn.disabled = true; return act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }); }
+  if (btn.dataset.merge) { btn.disabled = true; return act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }); }
+  const title = $("pr-" + i.id).value.trim();
+  if (!title) return $("pr-" + i.id).focus();
+  btn.disabled = true;
+  const list = [{ type:"pr", n:nextN(), title:title.slice(0, 80) }];
+  if (i.status === "open") list.push({ type:"status", to:"progress" });
+  act(i, list, { status: i.status === "open" ? "progress" : i.status });
+});
+$("list").addEventListener("change", e => {
+  const d = e.target.closest("[data-dept]");
+  const i = d && issues.find(x => x.id === d.dataset.dept);
+  if (i && d.value !== i.dept) act(i, [{ type:"labeled", dept:d.value, by:"1999 管理者" }], { dept:d.value });
+  const s = e.target.closest("[data-ms]");
+  const j = s && issues.find(x => x.id === s.dataset.ms);
+  if (j) act(j, [{ type:"milestone", title:(milestones.find(m => m.id === s.value) || {}).title || "", by:"1999 管理者" }], { milestone:s.value });
+});
+["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
+$("tabOpen").onclick = () => { view.closed = false; render(); };
+$("tabClosed").onclick = () => { view.closed = true; render(); };
+$("newBtn").onclick = () => { show("issues"); $("newBox").hidden = false; $("newText").focus(); };
+$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; };
+
+async function triage(text, district) {
+  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, triage: { by: "fallback" } };
+  if (!sample) return fallback;
+  // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
+  const open = issues.filter(i => i.status !== "fixed").sort((a, b) => b.n - a.n).slice(0, 60);
+  try {
+    const r = await sample.json(
+`你是台北市 1999 陳情分派員。讀市民陳情，回傳 JSON，不要其他文字：
+{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "district": "行政區或空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": ""}
+dept 只能是其中之一：${Object.keys(DEPTS).join("、")}（無法判斷用「1999 待分派」）
+tags 只能從這些選：${TAGS.join("、")}
+分派規則（CODEOWNERS，依 tag 決定 dept，跨類時選最主要的）：${TAGS.map(t => `${t}→${CODEOWNERS[t]}`).join("、")}
+district 只能是：${DISTRICTS.join("、")}，或空字串。使用者已選：${district || "未選"}
+duplicate_of：如果陳情和下列某個未結案件是同一地點的同一問題，填該案件編號（數字），並在 duplicate_reason 用一句話說明；不確定就填 null。
+未結案件：
+${open.map(i => `#${i.n} ${i.title}（${i.district || "未填"}）`).join("\n") || "（無）"}
+陳情內容：
+${text}`, { modelTier: "quick", cache: false });
+    const dept = DEPTS[r.dept] ? r.dept : "1999 待分派";
+    const dup = open.find(i => i.n === Number(r.duplicate_of));
+    return {
+      dup: dup ? { id: dup.id, n: dup.n, title: dup.title, reason: String(r.duplicate_reason || "").slice(0, 200) } : null,
+      title: String(r.title || "").slice(0, 60) || fallback.title,
+      dept, tags: (r.tags || []).filter(t => TAGS.includes(t)).slice(0, 2),
+      district: district || (DISTRICTS.includes(r.district) ? r.district : ""),
+      triage: { by: "ai", reason: String(r.reason || "").slice(0, 200) }
+    };
+  } catch { return fallback; }
+}
+
+$("newForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = $("newText").value.trim();
+  if (!text || !db) return;
+  $("submitBtn").disabled = true;
+  $("newStatus").textContent = sample ? "taipei-bot 正在分類…" : "送出中…";
+  const t = await triage(text, $("newDistrict").value);
+  $("submitBtn").disabled = false;
+  if (t.dup) {
+    pending = { t, text };
+    $("newStatus").textContent = "";
+    $("dupBox").innerHTML = `<div>這可能和 <b>#${t.dup.n} ${esc(t.dup.title)}</b> 重複。${esc(t.dup.reason)}</div>
+      <div class="row"><button class="btn primary" type="button" data-dup="vote">改成幫 #${t.dup.n} 按 +1</button>
+      <button class="btn" type="button" data-dup="new">仍要送出新案件</button></div>`;
+    $("dupBox").hidden = false;
+    return;
+  }
+  create(t, text);
+});
+
+$("dupBox").addEventListener("click", e => {
+  const b = e.target.closest("[data-dup]");
+  if (!b || !pending) return;
+  const { t, text } = pending;
+  pending = null; $("dupBox").hidden = true;
+  if (b.dataset.dup === "new") return create({ ...t, dup: null }, text);
+  setVote(t.dup.id, true);
+  view.open.add(t.dup.id); view.closed = false;
+  $("newText").value = ""; $("newBox").hidden = true; render();
+});
+
+async function create(t, text) {
+  const { dup, ...fields } = t;
+  // ponytail: max+1 numbering can collide if two people submit in the same second; use a counter doc with acquire() if that matters
+  const n = nextN(), now = new Date().toISOString();
+  try {
+    const ref = await db.collection("issues").add({ n, ...fields, body: text, status: "open", createdAt: now, author: me,
+      events: [{ t: now, type: "opened" }, { t: now, type: "labeled", dept: fields.dept, by: "taipei-bot" }] });
+    view.open.add(ref.id); view.closed = false;
+    $("newText").value = ""; $("newBox").hidden = true; $("newStatus").textContent = "";
+  } catch {
+    $("newStatus").textContent = "無法送出：你目前只有檢視權限，請向擁有者要求 Contributor 權限。";
+  }
+}
+
+// ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
+function show(v) {
+  VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
+  document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+}
+$("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
+show(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "issues");
+
+const coLines = ["# .github/CODEOWNERS", "# 每類陳情的負責局處。taipei-bot 依這份規則分派，跨類時選最主要的。", "",
+  ...TAGS.map(t => `/${t}/`.padEnd(10, "\u3000") + " @" + CODEOWNERS[t]), "", "# 判斷不出來的，先交給 1999 人工分派", "*".padEnd(10, "\u3000") + " @1999-待分派"];
+$("coLines").textContent = `${coLines.length} lines`;
+$("coFile").innerHTML = coLines.map((l, n) => `<tr><td>${n + 1}</td><td>${l.startsWith("#") ? `<span class="cm">${esc(l)}</span>`
+  : esc(l).replace(/@(\S+)/, '<span class="ow">@$1</span>')}</td></tr>`).join("");
+
+const badge = (ok, text) => `<span class="badge" style="--b:${ok === null ? "#9f9f9f" : ok ? "#2da44e" : "#cf222e"}"><span>SLA</span><span>${text}</span></span>`;
+
+function renderViews(c) {
+  const all = prs(), openPrs = all.filter(p => !p.merged);
+  $("cIssues").textContent = issues.filter(i => i.status !== "fixed").length || "";
+  $("cPulls").textContent = openPrs.length || "";
+
+  $("prHead").textContent = `${openPrs.length} Open · ${all.length - openPrs.length} Merged`;
+  $("prList").innerHTML = all.length ? all.sort((a, b) => b.n - a.n).map(p => `<div class="row-item">
+      <span style="color:${p.merged ? "var(--merged)" : "var(--open)"};align-self:center;display:flex">${PR_ICON.replace("<svg", '<svg width="16" height="16"')}</span>
+      <div class="grow"><b>${esc(p.title)}</b> <span class="pill" style="background:${p.merged ? "var(--merged)" : "var(--accent)"}">${p.merged ? "Merged" : "Open"}</span>
+        <div class="meta">#${p.n} · ${esc(p.by)} 開立於 ${ago(p.t)} · Closes #${p.issue.n} ${esc(p.issue.title)}</div></div></div>`).join("")
+    : `<div class="empty">還沒有修繕單。局處在案件裡按 Open pull request 就會出現在這裡。</div>`;
+
+  $("msList").innerHTML = milestones.length ? milestones.map(m => {
+    const list = issues.filter(i => i.milestone === m.id), done = list.filter(i => i.status === "fixed").length;
+    const pct = list.length ? Math.round(done / list.length * 100) : 0;
+    return `<div class="ms"><button class="title" data-msgo="${esc(m.id)}">${esc(m.title)}</button>
+      <div class="meta">${m.due ? `Due by ${fmtDate(m.due)}` : "未設期限"}</div>
+      <div class="prog" role="img" aria-label="完成 ${pct}%"><i style="width:${pct}%;background:var(--accent)"></i></div>
+      <div class="note"><b style="color:var(--fg)">${pct}%</b> complete · ${list.length - done} open · ${done} closed${m.description ? ` · ${esc(m.description)}` : ""}</div></div>`;
+  }).join("") : `<div class="empty">還沒有里程碑。</div>`;
+
+  const since = Date.now() - 7 * DAY, recent = e => +new Date(e.t) >= since;
+  const opened = issues.filter(i => recent(evs(i)[0])).length;
+  const closed = issues.filter(i => closedAt(i) >= since).length;
+  const prOpened = all.filter(recent).length, prMerged = all.filter(p => p.mergedAt && +new Date(p.mergedAt) >= since).length;
+  const split = (a, b, ca, cb) => `<div class="prog"><i style="width:${a + b ? a / (a + b) * 100 : 0}%;background:${ca}"></i><i style="width:${a + b ? b / (a + b) * 100 : 0}%;background:${cb}"></i></div>`;
+  $("pulse").innerHTML = `<div><div class="big"><b>${prOpened + prMerged}</b> Active pull requests</div>${split(prMerged, prOpened, "var(--merged)", "var(--open)")}
+      <div class="note">${prMerged} 張修繕單合併 · ${prOpened} 張新開</div></div>
+    <div><div class="big"><b>${opened + closed}</b> Active issues</div>${split(closed, opened, "var(--merged)", "var(--open)")}
+      <div class="note">${closed} 件已修復 · ${opened} 件新陳情</div></div>
+    <div><div class="big"><b>${issues.filter(isStale).length}</b> Stale issues</div>
+      <div class="note">超過 ${STALE_DAYS} 天沒有任何進度的未結案件</div></div>`;
+
+  const depts = Object.keys(DEPTS).filter(d => issues.some(i => i.dept === d));
+  $("slaTable").innerHTML = `<tr><th>局處</th><th>未結</th><th>已修復</th><th>平均修復天數</th><th>最多 +1 的未結案</th><th>狀態</th></tr>` + depts.map(d => {
+    const mine = issues.filter(i => i.dept === d), fixed = mine.filter(i => closedAt(i));
+    const avg = fixed.length ? fixed.reduce((s, i) => s + (closedAt(i) - +new Date(i.createdAt)), 0) / fixed.length / DAY : null;
+    const top = mine.filter(i => i.status !== "fixed").sort((a, b) => (c[b.id] || 0) - (c[a.id] || 0))[0];
+    return `<tr><td>${lbl(d, DEPTS[d])}</td><td class="n">${mine.length - fixed.length}</td><td class="n">${fixed.length}</td>
+      <td class="n">${avg === null ? "—" : avg.toFixed(1)}</td><td>${top ? `#${top.n} ${esc(top.title)}（+${c[top.id] || 0}）` : "—"}</td>
+      <td>${avg === null ? badge(null, "no data") : badge(avg <= 7, avg <= 7 ? "passing" : "failing")}</td></tr>`;
+  }).join("");
+
+  $("relList").innerHTML = releases.length ? releases.map((r, n) => `<div class="rel">
+      <div class="side"><span class="tag">${esc(r.tag)}</span><span>${fmtDate(r.createdAt)}</span>${n === 0 ? '<span class="latest">Latest</span>' : ""}</div>
+      <div style="min-width:0"><h2>${esc(r.title)}</h2>${md(r.body)}</div></div>`).join("")
+    : `<div class="empty">還沒有任何 release。</div>`;
+}
+
+$("msList").addEventListener("click", e => {
+  const b = e.target.closest("[data-msgo]");
+  if (b) { $("msFilter").value = b.dataset.msgo; view.closed = false; show("issues"); render(); }
+});
+
+// Tiny markdown: "## " headings and "- " bullets; everything else is a paragraph.
+function md(text) {
+  let out = "", list = false;
+  for (const line of String(text || "").split("\n")) {
+    const li = line.match(/^\s*[-*] (.*)/);
+    if (li && !list) { out += "<ul>"; list = true; }
+    if (!li && list) { out += "</ul>"; list = false; }
+    if (li) out += `<li>${esc(li[1])}</li>`;
+    else if (line.startsWith("## ")) out += `<h3>${esc(line.slice(3))}</h3>`;
+    else if (line.trim()) out += `<p>${esc(line)}</p>`;
+  }
+  return out + (list ? "</ul>" : "");
+}
+
+const isoWeek = d => { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return [t.getUTCFullYear(), Math.ceil(((t - y) / DAY + 1) / 7)]; };
+
+$("relBtn").onclick = async () => {
+  const since = Date.now() - 7 * DAY;
+  const done = issues.filter(i => closedAt(i) >= since);
+  if (!done.length) { $("relStatus").textContent = "過去 7 天沒有修好的案件，沒有內容可以發布。"; return; }
+  $("relBtn").disabled = true; $("relStatus").textContent = sample ? "Claude 正在撰寫更新紀錄…" : "產生中…";
+  const [y, w] = isoWeek(new Date()), base = `v${y}.${w}`;
+  const tag = releases.some(r => r.tag === base) ? `${base}.${releases.filter(r => r.tag.startsWith(base)).length}` : base;
+  const items = done.map(i => `#${i.n} ${i.title}（${i.district || "未填"}，${i.dept}，${(prs().find(p => p.issue.id === i.id && p.merged) || {}).title || "直接修復"}）`);
+  let r = { title: `台北市 ${tag}：本週修好 ${done.length} 件`, body: `## 本週修好的問題\n${items.map(x => "- " + x).join("\n")}` };
+  if (sample) try {
+    const a = await sample.json(`你是台北市政府的工程師，用軟體版本更新紀錄（release notes）的口吻，替市民寫本週市政更新。回傳 JSON：{"title": "25 字內標題", "body": "內文"}
+內文用「## 」當小標、「- 」當條列，依局處或類型分組，每條寫出案件編號（#數字）與地點，語氣輕鬆、具體，不要誇大或宣傳，不要 emoji。最後加一段「## 下一版」列出還在處理中的重點。
+本週修好的案件：
+${items.join("\n")}
+仍在處理中：
+${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false });
+    if (a && a.title && a.body) r = { title: String(a.title).slice(0, 80), body: String(a.body).slice(0, 4000) };
+  } catch {}
+  try {
+    await db.collection("releases").doc(tag).set({ tag, ...r, createdAt: new Date().toISOString(), fixed: done.map(i => i.n) });
+    $("relStatus").textContent = `已發布 ${tag}`;
+  } catch { $("relStatus").textContent = "無法發布：需要 Editor 權限。"; }
+  $("relBtn").disabled = false;
+};
+
+// Issue templates fill the textarea with the fields 1999 needs.
+$("tpls").insertAdjacentHTML("beforeend", Object.keys(TEMPLATES).map(k => `<button class="btn" type="button" data-tpl="${k}">${k}</button>`).join(""));
+$("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (b) { $("newText").value = TEMPLATES[b.dataset.tpl]; $("newText").focus(); } });
+
+// GitHub-style keyboard shortcuts.
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("newBox").hidden) return $("cancelBtn").click();
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
+  if (e.key === "/") { e.preventDefault(); show("issues"); $("q").focus(); }
+  else if (e.key === "c" && !$("newBtn").hidden) { e.preventDefault(); $("newBtn").click(); }
+  else if (e.key === "j" || e.key === "k") {
+    const t = [...document.querySelectorAll("#list .title")];
+    if (!t.length) return;
+    const n = t.indexOf(document.activeElement) + (e.key === "j" ? 1 : -1);
+    t[Math.max(0, Math.min(t.length - 1, n))].focus();
+  }
+});
+
+(async () => {
+  [db, sample] = await Promise.all([claude.use("db"), claude.use("sample")]);
+  const user = await claude.use("user");
+  if (!db) return render();
+  me = user ? await user.id() : null;
+  admin = user ? await user.canEdit() : false;
+  canWrite = !!me && (await user.can("data.write")) !== false;
+  $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
+  $("newBtn").hidden = !canWrite;
+  db.collection("issues").onSnapshot(s => { issues = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); },
+    () => { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; });
+  $("relBtn").hidden = !admin;
+  db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.due || "").localeCompare(b.due || "")); render(); });
+  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
+  db.doc("stats/history").onSnapshot(s => { history = (s.exists && s.data().days) || {}; render(); });
+  db.collection("votes").onSnapshot(s => {
+    votes = s.docs.map(d => d.data());
+    const mine = s.docs.find(d => d.id === me);
+    myVotes = { ...(mine ? mine.data().issues : {}) };
+    render();
+  });
+})();
+</script>
