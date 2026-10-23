@@ -72,4 +72,10 @@ assert(inTaipei(25.0375, 121.5637) && !inTaipei(0, 0) && !inTaipei("25", "121.5"
 // Taipei boundary: neighbours inside the old bounding box must be out
 for (const [name, la, ln, want] of [["板橋文化路", 25.0187, 121.4651, false], ["三重", 25.0615, 121.4870, false], ["永和", 25.0090, 121.5150, false],
   ["台北101", 25.0339, 121.5645, true], ["北投", 25.137, 121.498, true], ["南港展覽館", 25.0565, 121.6176, true]]) assert.equal(inTaipei(la, ln), want, name);
+// A template with nothing filled in is empty; any real content after a label counts
+const withoutTemplate = new Function(["TEMPLATES","TPL_LINES","withoutTemplate"].map(n => grabConst(n)).join("\n") + "\nreturn withoutTemplate;")();
+assert.equal(withoutTemplate("地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）："), "");
+assert.equal(withoutTemplate("地點：  \n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始："), "");
+assert.notEqual(withoutTemplate("地點：民生東路三段\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）："), "");
+assert.notEqual(withoutTemplate("敦化南路紅綠燈一直閃黃燈"), "");
 console.log("OK");

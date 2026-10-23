@@ -179,6 +179,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .lyr:hover{background:var(--hover)}
 .lyr i{width:12px;height:12px;border-radius:50%;flex:none}
 .lyr .nm{flex:1;min-width:0}
+@media (hover:none){.kbd-hint{display:none}}
 .tline{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .tl-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
 .tl-top label{display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer}
@@ -205,7 +206,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
-@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 110px);height:calc(100svh - var(--hdr,170px) - 110px);min-height:260px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:260px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
@@ -310,11 +311,11 @@ Switched to branch 'taipei'
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
       <div class="tline" id="tline" hidden>
-        <div class="tl-top"><label><input type="checkbox" id="histOn">歷史派工時間軸</label><span class="note">2026 年 1–9 月</span><span class="spacer"></span><b id="histDate"></b><span class="note" id="histCount"></span></div>
+        <div class="tl-top"><label><input type="checkbox" id="histOn" autocomplete="off">歷史派工時間軸</label><span class="note">2026 年 1–9 月</span><span class="spacer"></span><b id="histDate"></b><span class="note" id="histCount"></span></div>
         <div class="tl-row" id="histRow" hidden>
           <button class="btn" type="button" id="histPrev" aria-label="前一天">◀</button>
           <button class="btn" type="button" id="histPlay" aria-pressed="false">播放</button>
-          <input type="range" id="histDay" min="0" value="0" aria-label="日期">
+          <input type="range" id="histDay" min="0" value="0" aria-label="日期" autocomplete="off">
           <button class="btn" type="button" id="histNext" aria-label="後一天">▶</button>
         </div>
         <div class="note" id="histSrc" hidden>資料來源：臺北市政府 1999 派工資料（data.taipei）。點位為路段或行政區的概略位置，不含門牌。</div>
@@ -381,7 +382,7 @@ Switched to branch 'taipei'
     </div></div>
   </section>
 
-  <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</p>
+  <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
@@ -432,6 +433,9 @@ const TEMPLATES = {
   "路燈": "地點（路名、巷弄、最近的門牌）：\n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始：",
   "空白": ""
 };
+const TPL_LINES = Object.values(TEMPLATES).flatMap(t => t.split("\n")).filter(Boolean);
+// What the user actually wrote once template labels are removed; empty means only a template was submitted
+const withoutTemplate = text => text.split("\n").map(l => { l = l.trim(); const t = TPL_LINES.find(t => l.startsWith(t)); return t ? l.slice(t.length).trim() : l; }).join("").trim();
 const STALE_DAYS = 7, DAY = 864e5;
 const VIEWS = ["code","issues","map","pulls","milestones","insights","releases","admin"];
 const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
@@ -759,8 +763,13 @@ $("list").addEventListener("change", onListChange);
 ["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
 $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
-$("newBtn").onclick = () => { show("issues"); $("newBox").hidden = false; $("newText").focus(); };
-$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); };
+let formFrom = "issues";
+$("newBtn").onclick = () => {
+  if ($("newBox").hidden) formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
+  if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
+  show("issues"); $("newBox").hidden = false; $("newText").focus();
+};
+$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); if (formFrom === "map") show("map"); };
 
 async function triage(text, district, aspect) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
@@ -808,6 +817,7 @@ $("newForm").addEventListener("submit", async e => {
   if (!db || !canWrite || $("submitBtn").disabled) return;
   const m = maskPII($("newText").value.trim()), text = m.text;
   if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
+  if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
   maskedN = m.count;
   $("newText").value = text;
   $("submitBtn").disabled = true;
@@ -1087,6 +1097,7 @@ async function setHist(on) {
     $("histDay").max = histDays.length - 1; $("histDay").value = histDays.length - 1;
     if (!$("histOn").checked) { $("histCount").textContent = ""; return; } // unticked (or Live pressed) while the file was loading
   }
+  if (on) $("histDay").value = histDays.length - 1; // every opening starts on the newest day
   histOn = on;
   for (const l of LAYERS) {
     histGroups[l.id] ||= L.layerGroup();
@@ -1109,6 +1120,7 @@ function drawHist() {
     histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
   });
   $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length} 件派工`;
+  $("histDay").setAttribute("aria-valuetext", `${dayLabel(key)}，${list.length} 件派工`);
   layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length} 件`);
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
@@ -1237,6 +1249,7 @@ function show(v, replace) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
   if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
   curView = v;
+  if (v !== "map") stopPlay();
   $("wrap").classList.toggle("wide", v === "map");
   VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
