@@ -115,6 +115,17 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .ms{display:flex;flex-direction:column;padding:14px;border-top:1px solid var(--line)}
 .ms:first-child{border-top:0}
 .ms .title{font-size:18px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.kpi div{border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--muted)}
+.kpi .warn b{color:var(--danger,#cf222e)}
+.bars{padding:10px 14px;display:grid;gap:6px;font-size:13px}
+.bars div{display:grid;grid-template-columns:minmax(90px,38%) 1fr 32px;gap:8px;align-items:center}
+.bars i{display:block;height:10px;border-radius:3px;background:var(--accent);min-width:2px}
+.bars .n{text-align:right;font-variant-numeric:tabular-nums}
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 16px}
+.q .row-item select{max-width:100%}
 .pulse{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:14px}
 .pulse .big{font-size:13px;color:var(--muted)}
 .pulse .big b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums;margin-right:4px}
@@ -219,6 +230,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
     <button type="button" data-view="milestones">Milestones</button>
     <button type="button" data-view="insights">Insights</button>
     <button type="button" data-view="releases">Releases</button>
+    <button type="button" data-view="admin" id="navAdmin" hidden>後台</button>
   </nav>
 
   <div class="view" id="v-issues">
@@ -329,6 +341,15 @@ Switched to branch 'taipei'
     <div id="relList"></div>
   </div>
 
+  <div class="view" id="v-admin" hidden>
+    <div class="kpi" id="admKpi"></div>
+    <div class="q" id="admQueues"></div>
+    <div class="adm-grid">
+      <section class="box"><div class="boxhead"><b>各局處待辦</b><span class="spacer"></span><span class="note">未結案件數</span></div><div class="bars" id="admDept"></div></section>
+      <section class="box"><div class="boxhead"><b>1999 分類分布</b><span class="spacer"></span><span class="note">全部案件</span></div><div class="bars" id="admCat"></div></section>
+    </div>
+  </div>
+
   <section class="box" id="demoTools" hidden>
     <div class="boxhead"><b>展示工具</b><span class="spacer"></span><span class="note">只有局處管理者看得到</span></div>
     <div class="new"><div class="row">
@@ -390,7 +411,7 @@ const TEMPLATES = {
   "空白": ""
 };
 const STALE_DAYS = 7, DAY = 864e5;
-const VIEWS = ["code","issues","map","pulls","milestones","insights","releases"];
+const VIEWS = ["code","issues","map","pulls","milestones","insights","releases","admin"];
 const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
 const ICON = {
   open:'<svg class="ico" viewBox="0 0 16 16" fill="var(--open)"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>',
@@ -422,7 +443,7 @@ function fail(e) {
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
-  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin;
+  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (!admin && curView === "admin") show("issues", true);
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -619,7 +640,7 @@ function render() {
   const ms = $("msFilter").value;
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
-  renderViews(c);
+  renderViews(c); if (admin) renderAdmin(c);
   trackNew(); syncMap(); renderLive();
 
   let rows = issues.filter(i => (i.status === "fixed") === view.closed)
@@ -683,7 +704,7 @@ function render() {
   if (own) { scrollTo = null; const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */ setTimeout(() => card.classList.remove("hl"), 4000); }
 }
 
-$("list").addEventListener("click", async e => {
+async function onListClick(e) {
   const o = e.target.closest("[data-open]");
   if (o) { const id = o.dataset.open; view.open.has(id) ? view.open.delete(id) : view.open.add(id); return render(); }
   const v = e.target.closest("[data-vote]");
@@ -699,8 +720,9 @@ $("list").addEventListener("click", async e => {
   const isOpen = cur => (cur.status || "open") === "open";
   run(btn, () => act(i, cur => [{ type:"pr", n:nextN(), title:title.slice(0, 80) }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])],
     cur => isOpen(cur) ? { status:"progress" } : {}));
-});
-$("list").addEventListener("change", e => {
+}
+$("list").addEventListener("click", onListClick);
+function onListChange(e) {
   const d = e.target.closest("[data-dept]");
   const i = d && issues.find(x => x.id === d.dataset.dept);
   const done = ok => ok || render(), bad = e => { fail(e); render(); };
@@ -708,7 +730,8 @@ $("list").addEventListener("change", e => {
   const s = e.target.closest("[data-ms]");
   const j = s && issues.find(x => x.id === s.dataset.ms);
   if (j) act(j, [{ type:"milestone", title:(milestones.find(m => m.id === s.value) || {}).title || "", by:"1999 管理者" }], { milestone:s.value }).then(done, bad);
-});
+}
+$("list").addEventListener("change", onListChange);
 ["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
 $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
@@ -953,14 +976,15 @@ $("mapLayers").addEventListener("change", e => {
   b.checked ? mainLM.addLayer(groups[b.dataset.layer]) : mainLM.removeLayer(groups[b.dataset.layer]);
 });
 // Popup button: jump to Issues with that case expanded. Filters are cleared so the case is certain to be listed.
-$("map").addEventListener("click", e => {
+$("map").addEventListener("click", goIssue);
+function goIssue(e) {
   const b = e.target.closest("[data-go]"); if (!b) return;
   const i = issues.find(x => x.id === b.dataset.go); if (!i) return;
   view.open.add(i.id); view.closed = i.status === "fixed";
   $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
   show("issues"); render();
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
-});
+}
 
 // ---- Live: today's newest reports (Asia/Taipei day), newest first. Tap one to fly the map to it. ----
 function renderLive() {
@@ -1190,6 +1214,39 @@ ${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).joi
   } catch (e) { $("relStatus").textContent = ""; fail(e); }
   $("relBtn").disabled = false;
 };
+
+// ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
+const PENDING = "1999 待分派";
+function renderAdmin(c) {
+  const open = issues.filter(i => i.status !== "fixed"), today = dayKey(Date.now());
+  const fixed = issues.filter(closedAt), avg = fixed.length ? fixed.reduce((s, i) => s + closedAt(i) - +new Date(i.createdAt), 0) / fixed.length / DAY : null;
+  const age = i => (Date.now() - +new Date(i.createdAt)) / DAY;
+  const review = issues.filter(i => i.flagged && i.hidden === undefined), unassigned = open.filter(i => i.dept === PENDING && !hiddenFor(i));
+  const overdue = open.filter(i => age(i) > STALE_DAYS && !hiddenFor(i)).sort((a, b) => age(b) - age(a));
+  const k = (n, t, warn) => `<div class="${warn && n ? "warn" : ""}"><b>${n}</b><span>${t}</span></div>`;
+  $("admKpi").innerHTML = k(issues.filter(i => dayKey(i.createdAt) === today).length, "今日通報") + k(open.length, "未結案件")
+    + k(review.length, "待審核", 1) + k(unassigned.length, "待分派", 1) + k(overdue.length, `超過 ${STALE_DAYS} 天未結`, 1)
+    + k(avg === null ? "—" : avg.toFixed(1), "平均修復天數");
+  const row = (i, extra) => `<div class="row-item"><div class="grow"><button class="title" data-go="${esc(i.id)}">${esc(i.title)}</button>
+      <div class="meta">#${esc(i.n)} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${ago(i.createdAt)}開立 · +${c[i.id] || 0}</div></div>
+      <div class="admin" style="padding:0;border:0">${extra}</div></div>`;
+  const deptSel = i => `<select data-dept="${esc(i.id)}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>`;
+  const st = i => i.status === "open" ? `<button class="btn" data-status="progress" data-id="${esc(i.id)}">標記處理中</button>` : `<button class="btn" data-status="fixed" data-id="${esc(i.id)}">標記已修復</button>`;
+  const q = (title, note, list, extra) => `<section class="box"><div class="boxhead"><b>${title}</b> <span class="cnt">${list.length}</span><span class="spacer"></span><span class="note">${note}</span></div>
+    ${list.length ? list.slice(0, 20).map(i => row(i, extra(i))).join("") : `<div class="empty" style="padding:16px">沒有案件</div>`}</section>`;
+  $("admQueues").innerHTML = q("待審核", "AI 判為垃圾訊息，審核前一般訪客看不到", review,
+      i => `<button class="btn" data-hide="false" data-id="${esc(i.id)}">放行</button><button class="btn" data-hide="true" data-id="${esc(i.id)}">隱藏</button>`)
+    + q("待分派", "taipei-bot 判斷不出局處", unassigned, deptSel)
+    + q(`逾期未結`, `開立超過 ${STALE_DAYS} 天，最久的在前`, overdue, i => st(i) + deptSel(i));
+  const bars = (pairs, color) => { const max = Math.max(1, ...pairs.map(p => p[1]));
+    return pairs.length ? pairs.map(([n, v, col]) => `<div><span>${esc(n)}</span><i style="width:${v / max * 100}%;background:${col || color}"></i><span class="n">${v}</span></div>`).join("") : `<div class="empty" style="padding:12px">沒有資料</div>`; };
+  const byDept = {}; open.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  $("admDept").innerHTML = bars(Object.entries(byDept).sort((a, b) => b[1] - a[1]).map(([d, v]) => [d, v, DEPTS[d]]));
+  const byCat = {}; issues.forEach(i => { const m = (SUBS[i.category] || {}).main || "未分類"; byCat[m] = (byCat[m] || 0) + 1; });
+  $("admCat").innerHTML = bars(Object.entries(byCat).sort((a, b) => b[1] - a[1]), "var(--accent)");
+}
+$("v-admin").addEventListener("click", e => e.target.closest("[data-go]") ? goIssue(e) : onListClick(e));
+$("v-admin").addEventListener("change", onListChange);
 
 // ---- Demo tools: snapshot the pre-demo state, put it back after a rehearsal ----
 // demo/snapshot keeps every triage doc and the admin's own +1, plus which releases and reports existed. Audience +1 is never touched.
