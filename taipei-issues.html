@@ -944,14 +944,8 @@ function initMap() {
   mainLM = L.map("map", TAIPEI_VIEW);
   addBase(mainLM);
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
-  // Long-press on touch and right-click fire contextmenu; a mouse has no long-press event, so a 600 ms still hold is timed here
+  // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
-  let hold = null;
-  mainLM.on("mousedown", e => { if (e.originalEvent.button !== 0) return; clearTimeout(hold); const p0 = e.containerPoint;
-    hold = setTimeout(() => { hold = null; mainLM.dragging.disable(); mainLM.dragging.enable(); askReport(e.latlng); }, 600);
-    hold.p0 = p0; });
-  mainLM.on("mousemove", e => { if (hold && hold.p0 && e.containerPoint.distanceTo(hold.p0) > 6) { clearTimeout(hold); hold = null; } });
-  mainLM.on("mouseup dragstart zoomstart", () => { clearTimeout(hold); hold = null; });
 }
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
@@ -1001,7 +995,7 @@ $("map").addEventListener("click", e => {
   if (e.target.closest("[data-askno]")) mainLM.closePopup();
   if (e.target.closest("[data-askok]") && askM) { const m = askM; m.confirmed = true; mainLM.closePopup(); reportAt(m.getLatLng(), "長按", m.geo); }
 });
-if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖上按住滑鼠（或按右鍵），直接回報那個位置";
+if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖上按右鍵，直接回報那個位置";
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
 function markerStyle(i, votes, key) {
