@@ -238,7 +238,7 @@ Switched to branch 'taipei'
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
-      <textarea id="newText" required maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
       <div class="dup" id="dupBox" hidden></div>
       <div class="row">
         <button class="btn" type="button" id="gpsBtn">使用我的位置</button>
@@ -798,7 +798,7 @@ $("dupBox").addEventListener("click", e => {
   const { t, text } = pending;
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
-  if (b.dataset.dup === "new") return create({ ...t, dup: null }, text);
+  if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return create({ ...t, dup: null }, text).finally(() => $("submitBtn").disabled = false); }
   setVote(t.dup.id, true);
   view.open.add(t.dup.id); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; render();
@@ -820,7 +820,7 @@ async function locate(address, district) {
 }
 
 async function create(t, text) {
-  const { dup, address, ...fields } = t;
+  const { dup, address, outside, vague, ...fields } = t;
   const where = await locate(address, fields.district);
   // n is ignored on read (build() numbers citizen items), kept only as a hint
   const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(address ? { address } : {}), body:text, createdAt:new Date().toISOString(), author:me };
@@ -832,7 +832,7 @@ async function create(t, text) {
     await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
-    view.open.add(full); view.closed = false; scrollTo = full;
+    view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
     $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
     render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
@@ -1020,7 +1020,7 @@ $("gpsBtn").onclick = () => {
     setPicked(la, ln, "gps"); placePin(la, ln); if (pickLM) pickLM.setView([la, ln], 16);
     // Coarse fix (Wi-Fi / cell towers): open the pin map on it so the citizen can correct the spot
     const acc = p.coords.accuracy;
-    if (acc > 200) Promise.resolve($("pickMap").hidden && $("pinBtn").onclick()).finally(() => setLoc(`定位誤差約 ${Math.round(acc)} 公尺，請拖曳大頭針或點地圖修正位置`));
+    if (acc > 200) Promise.resolve($("pickMap").hidden && $("pinBtn").onclick()).finally(() => !$("pickMap").hidden && setLoc(`定位誤差約 ${Math.round(acc)} 公尺，請拖曳大頭針或點地圖修正位置`));
   }, e => setLoc(e && e.code === 1 ? "你拒絕了定位權限，可改在地圖上標記位置" : "無法取得位置（逾時或訊號不佳），可改在地圖上標記位置"), { timeout:8000, maximumAge:60000 });
 };
 $("pinBtn").onclick = async () => {
@@ -1070,7 +1070,7 @@ async function loadNews() {
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
 // Each view is a history entry (#map, #issues…), so the phone's back button returns to the previous view instead of leaving
 function show(v, replace) {
-  if (location.hash.slice(1) !== v) window.history[replace ? "replaceState" : "pushState"](null, "", location.pathname + location.search + "#" + v);
+  if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
   curView = v;
   $("wrap").classList.toggle("wide", v === "map");
   VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
