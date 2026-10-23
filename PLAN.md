@@ -127,3 +127,10 @@
 - visitor id 只防偽造不防大量申請；一人可開無痕取得多個 id 多投 +1。
 - 單一 Durable Object，展示規模足夠；上千人同時連線要分片。
 - `acquire()` 在 Worker 版不鎖；兩位 admin 同時操作同一案件可能互蓋。
+
+### PLAN 2 驗收紀錄（2026-10-24）
+- reviewer：FAIL → 修正（新聞連結截斷、訪客上限 150 定案、admin token 移出網址、build hook）。
+- gpt-6.1-sol：第 1 輪 FAIL（5 項）、第 2 輪 FAIL（序號下限、loadErr、geocode 間隔）、第 3 輪 PASS。
+- 追加：表單「食住行育樂醫療」大方向提示；新增教育局、文化局、體育局；定位失敗時以路名／地標縮短重查。
+- 已部署 https://taipei-issue-tracker.labanchen.workers.dev ，線上雙分頁即時更新與 AI 分類實測通過，測試資料已刪除。
+

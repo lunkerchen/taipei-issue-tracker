@@ -759,7 +759,10 @@ async function locate(address, district) {
   if (picked) return { lat:picked.lat, lng:picked.lng, loc:picked.loc };
   if (address && geocode) {
     $("newStatus").textContent = "定位中…";
-    try { const g = await tryTwice(() => geocode(address), 10000); if (g && inTaipei(g.lat, g.lng)) return { lat:g.lat, lng:g.lng, loc:"geocode" }; } catch {}
+    // Second try cuts to the road or landmark: Nominatim misses "大安森林公園兒童遊戲場" but finds "大安森林公園"
+    const short = (/^.*?(?:路|街|大道)(?:[一二三四五六七八九十]段)?|^.*?(?:公園|車站|市場|夜市|醫院|學校|國小|國中|大學|商圈|捷運站|站)/.exec(address) || [])[0];
+    for (const q of [address, short].filter((q, k, a) => q && a.indexOf(q) === k))
+      try { const g = await tryTwice(() => geocode(q), 10000); if (g && inTaipei(g.lat, g.lng)) return { lat:g.lat, lng:g.lng, loc:"geocode" }; } catch {}
   }
   // ponytail: ±0.002 jitter (~200 m) so same-district fallbacks do not stack on one dot; they still read as "district level" via loc
   const [la, ln] = DISTRICT_CENTER[district] || CITY_HALL, j = () => (Math.random() - .5) * .004;
