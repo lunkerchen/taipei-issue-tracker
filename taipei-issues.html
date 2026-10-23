@@ -443,7 +443,7 @@ function fail(e) {
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
-  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (!admin && curView === "admin") show("issues", true);
+  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -1093,7 +1093,9 @@ async function loadNews() {
 
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
 // Each view is a history entry (#map, #issues…), so the phone's back button returns to the previous view instead of leaving
+const wantAdmin = location.hash === "#admin";
 function show(v, replace) {
+  if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
   if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
   curView = v;
   $("wrap").classList.toggle("wide", v === "map");
@@ -1218,7 +1220,7 @@ ${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).joi
 // ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
 const PENDING = "1999 待分派";
 function renderAdmin(c) {
-  const open = issues.filter(i => i.status !== "fixed"), today = dayKey(Date.now());
+  const open = issues.filter(i => i.status !== "fixed" && !hiddenFor(i)), today = dayKey(Date.now());
   const fixed = issues.filter(closedAt), avg = fixed.length ? fixed.reduce((s, i) => s + closedAt(i) - +new Date(i.createdAt), 0) / fixed.length / DAY : null;
   const age = i => (Date.now() - +new Date(i.createdAt)) / DAY;
   const review = issues.filter(i => i.flagged && i.hidden === undefined), unassigned = open.filter(i => i.dept === PENDING && !hiddenFor(i));
