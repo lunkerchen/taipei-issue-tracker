@@ -1,9 +1,12 @@
-// Pull maskPII and isoWeek out of taipei-issues.html and assert on them. Run: node check.mjs
+// Pull maskPII, isoWeek and cleanItem (with the consts it needs) out of taipei-issues.html and assert on them. Run: node check.mjs
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 const html = readFileSync(new URL("./taipei-issues.html", import.meta.url), "utf8");
 const grab = name => { const m = html.match(new RegExp(`^function ${name}\\b[\\s\\S]*?^}`, "m")); assert(m, `${name} not found`); return m[0]; };
+// const declarations run to the first line that ends in ";"
+const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\\s\\S]*?;[ \\t]*$`, "m")); assert(m, `${name} not found`); return m[0]; };
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
+const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","isStr","validDate","deptOf","inTaipei"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
 const M = "［已遮蔽］";
 for (const [src, want] of [
@@ -41,4 +44,25 @@ assert.deepEqual(isoWeek(new Date(2026, 9, 23)), [2026, 43]);
 assert.deepEqual(isoWeek(new Date(2021, 0, 1)), [2020, 53]);
 assert.deepEqual(isoWeek(new Date(2024, 11, 30)), [2025, 1]);
 assert.deepEqual(isoWeek(new Date(2026, 0, 1)), [2026, 1]);
+
+// cleanItem: coordinates, loc and address are validated on their own; a bad one is dropped, never the whole item.
+const base = { n:1, title:"t", body:"b", createdAt:"2026-10-23T09:00:00+08:00", dept:"環保局", district:"大安區", tags:["噪音"], author:"u1" };
+const ok = (extra, doc = "u1") => cleanItem("k1", { ...base, ...extra }, doc);
+let c = ok({ lat:25.033, lng:121.565, loc:"gps", address:"信義路四段 200 號" });
+assert.deepEqual([c.lat, c.lng, c.loc, c.address], [25.033, 121.565, "gps", "信義路四段 200 號"]);
+for (const loc of ["gps", "pin", "geocode", "district"]) assert.equal(ok({ loc }).loc, loc);
+c = ok({});
+assert(c && !("lat" in c) && !("lng" in c) && !("loc" in c) && !("address" in c), "fields stay absent when not given");
+for (const [lat, lng] of [[24.94, 121.5], [25.23, 121.5], [25.0, 121.44], [25.0, 121.68], ["25.03", 121.5], [25.03, "121.5"], [NaN, 121.5], [25.03, Infinity], [null, 121.5], [25.03, undefined], [{}, []]]) {
+  c = ok({ lat, lng, loc:"pin", address:"x" });
+  assert(c, `item kept: ${lat},${lng}`);
+  assert(!("lat" in c) && !("lng" in c), `coordinates dropped: ${lat},${lng}`);
+  assert.equal(c.loc, "pin"); assert.equal(c.address, "x"); assert.equal(c.title, "t");
+}
+for (const [lat, lng] of [[24.95, 121.45], [25.22, 121.67]]) assert.deepEqual([ok({ lat, lng }).lat, ok({ lat, lng }).lng], [lat, lng], "bounds are inclusive");
+for (const loc of ["GPS", "manual", "", null, 1, ["gps"]]) { c = ok({ lat:25.03, lng:121.5, loc }); assert(c && !("loc" in c) && c.lat === 25.03, `loc dropped: ${String(loc)}`); }
+assert.equal(ok({ address:"a".repeat(100) }).address.length, 100);
+for (const address of ["a".repeat(101), 5, null, ["x"], ""]) { c = ok({ address, lat:25.03, lng:121.5 }); assert(c && !("address" in c) && c.lat === 25.03, `address dropped: ${String(address).slice(0, 5)}`); }
+assert.equal(ok({ lat:25.03, lng:121.5 }, "u2"), null, "author mismatch still rejects the whole item");
+assert(inTaipei(25.0375, 121.5637) && !inTaipei(0, 0) && !inTaipei("25", "121.5"));
 console.log("OK");

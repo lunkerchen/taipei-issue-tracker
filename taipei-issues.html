@@ -131,9 +131,59 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (max-width:560px){.rel{grid-template-columns:1fr;gap:6px}}
 @media (max-width:560px){.issue{grid-template-columns:18px minmax(0,1fr)}.plus{grid-column:2}.detail{grid-column:1/3}}
 @media (prefers-reduced-motion:no-preference){.vote{transition:transform .12s}.vote:active{transform:scale(.94)}}
+/* Map view: full-height map plus a layer panel; stacks on phones. --hdr is set by sizeMap() to the map's top offset. */
+.wrap.wide{max-width:none;padding-bottom:16px}
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;height:calc(100vh - var(--hdr,170px));min-height:420px}
+.mapbox{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:0;isolation:isolate}
+#map{position:absolute;inset:0}
+.mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
+.mapmsg:empty{display:none}
+.mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
+.lyr{display:flex;gap:8px;align-items:center;padding:7px 14px;border-top:1px solid var(--line);cursor:pointer;font-size:14px}
+.lyr:first-child{border-top:0}
+.lyr:hover{background:var(--hover)}
+.lyr i{width:12px;height:12px;border-radius:50%;flex:none}
+.lyr .nm{flex:1;min-width:0}
+.mapside .foot{padding:10px 14px;border-top:1px solid var(--line)}
+.mapbox .leaflet-container{font:inherit;background:var(--hover)}
+.mapbox .leaflet-popup-content-wrapper,.mapbox .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+.mapbox .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
+.mapbox .leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted)}
+.mapbox .leaflet-control-attribution a{color:var(--link)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
+:root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
+.pop b{display:block;margin-bottom:2px}
+.pop .btn{margin-top:8px}
+.pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
+.pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
+.pin-wrap{background:none;border:0}
+.pin{display:block;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
+@media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
+@keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:60vh;min-height:320px}.mapside{overflow:visible}}
+/* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
+.ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
+.ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
+.tk-view{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
+.tk-track{display:flex;width:max-content}
+.tk-set{display:flex;flex:none}
+.ticker a,.ticker .it{color:var(--term-fg);text-decoration:none;padding-right:36px}
+.ticker a:hover,.ticker a:focus-visible{text-decoration:underline}
+.ticker a:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.ticker .src{color:var(--term-dim);margin-right:6px}
+.tk-view .it{display:block;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:no-preference){.tk-track{animation:tkmove linear infinite}.ticker:hover .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}}
+@keyframes tkmove{to{transform:translateX(-50%)}}
+.has-tk .wrap{padding-bottom:104px}
+.has-tk .wrap.wide{padding-bottom:48px}
+.has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
+.has-tk .toast{bottom:48px}
+@media (max-width:760px){.has-tk .mapgrid{height:auto}}
 </style>
 
-<div class="wrap">
+<div class="wrap" id="wrap">
   <header class="repo">
     <h1>taipei-city / <b>1999</b><span class="vis">Public</span></h1>
     <button class="btn primary" id="newBtn" type="button">New issue</button>
@@ -142,6 +192,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
   <nav class="nav" id="nav" aria-label="專案分頁">
     <button type="button" data-view="code">Code</button>
     <button type="button" data-view="issues" aria-current="page">Issues <span class="cnt" id="cIssues"></span></button>
+    <button type="button" data-view="map">Map</button>
     <button type="button" data-view="pulls">Pull requests <span class="cnt" id="cPulls"></span></button>
     <button type="button" data-view="milestones">Milestones</button>
     <button type="button" data-view="insights">Insights</button>
@@ -166,6 +217,13 @@ Switched to branch 'taipei'
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <textarea id="newText" required maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
       <div class="dup" id="dupBox" hidden></div>
+      <div class="row">
+        <button class="btn" type="button" id="gpsBtn">使用我的位置</button>
+        <button class="btn" type="button" id="pinBtn" aria-expanded="false">在地圖上標記位置</button>
+        <button class="btn" type="button" id="clrLoc" hidden>清除位置</button>
+        <span class="status" id="locStatus" role="status"></span>
+      </div>
+      <div class="pickbox" id="pickMap" hidden></div>
       <div class="row">
         <select id="newDistrict" aria-label="行政區"></select>
         <button class="btn primary" id="submitBtn" type="submit">Submit new issue</button>
@@ -195,6 +253,21 @@ Switched to branch 'taipei'
     </div>
     <div id="list"><div class="empty">正在載入陳情案件…</div></div>
   </section>
+  </div>
+
+  <div class="view" id="v-map" hidden>
+    <div class="mapgrid">
+      <div class="mapbox">
+        <div id="map" role="application" aria-label="陳情地圖"></div>
+        <div class="mapmsg" id="mapMsg"></div>
+        <div class="mapnote" id="mapNote" role="status" hidden></div>
+      </div>
+      <aside class="box mapside" aria-label="圖層">
+        <div class="boxhead"><b>圖層</b><span class="spacer"></span><span class="note">1999 九大類</span></div>
+        <div id="mapLayers"></div>
+        <div class="foot note" id="mapFoot"></div>
+      </aside>
+    </div>
   </div>
 
   <div class="view" id="v-code" hidden>
@@ -234,6 +307,7 @@ Switched to branch 'taipei'
 
   <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</p>
 </div>
+<div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -244,6 +318,16 @@ const DEPTS = {
   "台電/路燈管理": "#8250df", "1999 待分派":  "#6e7781"
 };
 const DISTRICTS = ["中正區","大同區","中山區","松山區","大安區","萬華區","信義區","士林區","北投區","內湖區","南港區","文山區"];
+// Fallback map points: approximate district centers, and Taipei City Hall when even the district is unknown.
+const DISTRICT_CENTER = { "中正區":[25.0324,121.5198], "大同區":[25.0633,121.5130], "中山區":[25.0685,121.5333], "松山區":[25.0497,121.5780],
+  "大安區":[25.0267,121.5436], "萬華區":[25.0340,121.4997], "信義區":[25.0307,121.5714], "士林區":[25.0925,121.5260],
+  "北投區":[25.1372,121.4986], "內湖區":[25.0836,121.5942], "南港區":[25.0554,121.6070], "文山區":[24.9890,121.5703] };
+const CITY_HALL = [25.0375,121.5637];
+const BOUNDS = { lat:[24.95, 25.22], lng:[121.45, 121.67] }, LOC_KINDS = ["gps","pin","geocode","district"];
+const inTaipei = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= BOUNDS.lat[0] && lat <= BOUNDS.lat[1] && lng >= BOUNDS.lng[0] && lng <= BOUNDS.lng[1];
+// Map layers = the 9 official 1999 main categories (by categories/<id>) + "none". Colors are fixed so a category looks the same on every screen.
+const LAYERS = [["TYPEA-AC0100","#6f7f00"],["TYPEA-AC0200","#0969da"],["TYPEA-AC0300","#0e8a9e"],["TYPEA-AC0400","#8250df"],["TYPEA-AC0500","#bf3989"],
+  ["TYPEA-AC0600","#9a6700"],["TYPEA-AC0700","#cf222e"],["TYPEA-AC0800","#1f3a93"],["TYPEA-AC0900","#d4741c"],["none","#6e7781"]].map(([id, color]) => ({ id, color }));
 // .github/CODEOWNERS: which department owns each issue type. Shown on the Code tab and given to Claude when triaging.
 const CODEOWNERS = {
   "路面坑洞":"工務局新工處", "人行道":"工務局新工處", "路燈":"台電/路燈管理", "違規停車":"交通局",
@@ -258,7 +342,7 @@ const TEMPLATES = {
   "空白": ""
 };
 const STALE_DAYS = 7, DAY = 864e5;
-const VIEWS = ["code","issues","pulls","milestones","insights","releases"];
+const VIEWS = ["code","issues","map","pulls","milestones","insights","releases"];
 const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
 const ICON = {
   open:'<svg class="ico" viewBox="0 0 16 16" fill="var(--open)"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>',
@@ -266,7 +350,7 @@ const ICON = {
   fixed:'<svg class="ico" viewBox="0 0 16 16" fill="var(--fixed)"><path d="M10.28 6.28 7.03 9.53a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.22 1.22 2.72-2.72a.75.75 0 0 1 1.06 1.06Z"/><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm1.5 0a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>'
 };
 
-let db = null, me = null, admin = false, canWrite = false, sample = null;
+let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, newsFn = null;
 let reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -361,7 +445,10 @@ function cleanItem(key, it, docId) {
   if (!Array.isArray(tags) || !tags.every(isStr)) return null;
   if (!seed && it.author !== docId) return null; // the doc id is the writer's user id; an item must be signed by it
   const t = isObj(it.triage) ? it.triage : {};
-  return { seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
+  // Location fields are optional; a bad one is dropped alone. lat and lng only make sense together, so they stand or fall as a pair.
+  const geo = inTaipei(it.lat, it.lng) ? { lat:it.lat, lng:it.lng } : {};
+  return { ...geo, ...(LOC_KINDS.includes(it.loc) ? { loc:it.loc } : {}), ...(isStr(it.address) && it.address && it.address.length <= 100 ? { address:it.address } : {}),
+    seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
     tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), category:isStr(it.category) && /^TYPEA-AC\d{4}$/.test(it.category) ? it.category : "", flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
     createdAt:it.createdAt, author:isStr(it.author) ? it.author : "" };
 }
@@ -483,6 +570,7 @@ function render() {
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
   renderViews(c);
+  trackNew(); syncMap();
 
   let rows = issues.filter(i => (i.status === "fixed") === view.closed)
     .filter(i => !dept || i.dept === dept)
@@ -572,7 +660,7 @@ $("list").addEventListener("change", e => {
 $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
 $("newBtn").onclick = () => { show("issues"); $("newBox").hidden = false; $("newText").focus(); };
-$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; };
+$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); };
 
 async function triage(text, district) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
@@ -582,13 +670,14 @@ async function triage(text, district) {
   try {
     const r = await ask(
 `你是台北市 1999 陳情分派員。讀市民陳情，回傳 JSON，不要其他文字：
-{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "category": "1999 官方子分類代碼", "district": "行政區或空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": "", "spam": false}
+{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "category": "1999 官方子分類代碼", "district": "行政區或空字串", "address": "內文提到的地點（路名加門牌或地標），沒有就空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": "", "spam": false}
 dept 只能是其中之一：${Object.keys(DEPTS).join("、")}（無法判斷用「1999 待分派」）
 tags 只能從這些選：${TAGS.join("、")}
 category：從下列 1999 官方子分類選最符合的一個，填代碼（例如 AC0501）；都不符合就填該大類的「其他事項」，完全無法判斷填空字串。
 ${cats.map(c => `【${c.name}】` + c.subs.map(s => `${s.id.replace("TYPEA-", "")} ${s.name}`).join("；")).join("\n")}
 分派規則（CODEOWNERS，依 tag 決定 dept，跨類時選最主要的）：${TAGS.map(t => `${t}→${CODEOWNERS[t]}`).join("、")}
 district 只能是：${DISTRICTS.join("、")}，或空字串。使用者已選：${district || "未選"}
+address：只抄內文裡出現的地址或地標，不要猜；沒有就填空字串。
 spam：廣告、謾罵、或與市政無關的內容填 true，正常陳情填 false。
 duplicate_of：如果陳情和下列某個未結案件是同一地點的同一問題，填該案件編號（數字），並在 duplicate_reason 用一句話說明；不確定就填 null。
 未結案件：
@@ -603,7 +692,7 @@ ${text}`, { modelTier: "quick", cache: false }, 30000);
       dup: dup ? { id: dup.id, n: dup.n, title: dup.title, reason: String(r.duplicate_reason || "").slice(0, 200) } : null,
       title: String(r.title || "").slice(0, 60) || fallback.title,
       dept, flagged: r.spam === true, tags: (r.tags || []).filter(t => TAGS.includes(t)).slice(0, 2),
-      district: district || (DISTRICTS.includes(r.district) ? r.district : ""),
+      district: district || (DISTRICTS.includes(r.district) ? r.district : ""), address: String(r.address || "").slice(0, 100),
       triage: { by: "ai", reason: String(r.reason || "").slice(0, 200) }
     };
   } catch { return fallback; }
@@ -646,10 +735,23 @@ $("dupBox").addEventListener("click", e => {
   $("newText").value = ""; $("newBox").hidden = true; render();
 });
 
+// Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.
+async function locate(address, district) {
+  if (picked) return { lat:picked.lat, lng:picked.lng, loc:picked.loc };
+  if (address && geocode) {
+    $("newStatus").textContent = "定位中…";
+    try { const g = await tryTwice(() => geocode(address), 10000); if (g && inTaipei(g.lat, g.lng)) return { lat:g.lat, lng:g.lng, loc:"geocode" }; } catch {}
+  }
+  // ponytail: ±0.002 jitter (~200 m) so same-district fallbacks do not stack on one dot; they still read as "district level" via loc
+  const [la, ln] = DISTRICT_CENTER[district] || CITY_HALL, j = () => (Math.random() - .5) * .004;
+  return { lat:+(la + j()).toFixed(5), lng:+(ln + j()).toFixed(5), loc:"district" };
+}
+
 async function create(t, text) {
-  const { dup, ...fields } = t;
+  const { dup, address, ...fields } = t;
+  const where = await locate(address, fields.district);
   // n is ignored on read (build() numbers citizen items), kept only as a hint
-  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, body:text, createdAt:new Date().toISOString(), author:me };
+  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(address ? { address } : {}), body:text, createdAt:new Date().toISOString(), author:me };
   const full = `${me}:${id}`;
   const ref = db.doc("reports/" + me);
   try {
@@ -658,16 +760,216 @@ async function create(t, text) {
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
     view.open.add(full); view.closed = false;
-    $("newText").value = ""; $("newBox").hidden = true; $("newStatus").textContent = "";
+    $("newText").value = ""; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
   } catch (e) { mine = null; $("newStatus").textContent = ""; fail(e); }
 }
 
+// ---- Map, location picker and news ticker. Leaflet 1.9.4 loads from cdnjs the first time either map opens. ----
+const within = (p, ms) => { let t; return Promise.race([p, new Promise((_, rej) => t = setTimeout(() => rej(new Error("timeout")), ms))]).finally(() => clearTimeout(t)); };
+// One retry at most; every geocode/news call is bounded by a timeout.
+async function tryTwice(fn, ms) { for (let k = 0; ; k++) try { return await within(Promise.resolve().then(fn), ms); } catch (e) { if (k) throw e; } }
+
+const LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet";
+let leafletP = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  return leafletP ||= within(new Promise((ok, no) => {
+    const css = document.createElement("link"), js = document.createElement("script");
+    css.rel = "stylesheet"; css.href = LEAFLET + ".min.css";
+    js.src = LEAFLET + ".min.js"; js.onload = () => window.L ? ok() : no(new Error("leaflet")); js.onerror = () => no(new Error("leaflet"));
+    document.head.append(css, js);
+  }), 10000).catch(e => { leafletP = null; document.querySelectorAll('link[href*="leaflet"],script[src*="leaflet"]').forEach(n => n.remove()); throw e; });
+}
+
+// Basemap: NLSC 臺灣通用電子地圖 (free, no key, Chinese labels). Dark theme inverts it in CSS (.leaflet-tile-pane filter).
+const addBase = m => L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
+  { maxZoom:19, attribution:'© <a href="https://maps.nlsc.gov.tw/" target="_blank" rel="noopener">內政部國土測繪中心</a>' }).addTo(m);
+
+let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "";
+const markers = new Map(), seen = new Set(), fresh = new Map();
+let seenInit = false, noteTimer;
+const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10, maxBounds:[[24.85,121.35],[25.30,121.78]] };
+
+// The map fills the viewport below the nav: --hdr is the distance from the page top to the map.
+function sizeMap() { document.documentElement.style.setProperty("--hdr", Math.round($("v-map").getBoundingClientRect().top + scrollY) + 16 + "px"); }
+addEventListener("resize", () => { if (curView === "map") { sizeMap(); mainLM && mainLM.invalidateSize(); } });
+
+async function openMap() {
+  sizeMap();
+  if (!mainLM) {
+    $("mapMsg").textContent = "正在載入地圖…";
+    mapP ||= loadLeaflet().then(initMap).finally(() => mapP = null);
+    try { await mapP; } catch { $("mapMsg").textContent = "地圖載入失敗（網路不通或被擋下），切換分頁再回來可重試。"; return; }
+  }
+  $("mapMsg").textContent = "";
+  if (curView !== "map") return;
+  mainLM.invalidateSize(); syncMap(); // show() already unhid the view, so layout is current
+}
+function initMap() {
+  if (mainLM) return;
+  mainLM = L.map("map", TAIPEI_VIEW);
+  addBase(mainLM);
+  for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
+}
+
+const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
+function markerStyle(i, votes, key) {
+  const color = LAYERS.find(l => l.id === key).color, fixed = i.status === "fixed";
+  return { radius:7 + Math.min(4, votes), color, weight:2, opacity:fixed ? .5 : 1, fillColor:color, fillOpacity:fixed ? .25 : .75 };
+}
+function popupHtml(id) {
+  const r = markers.get(id); if (!r) return "";
+  const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
+  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}
+    <div class="meta">${esc(i.dept)}${sub ? ` · 1999：${esc(sub.name)}` : ""} · +1：${r.votes}</div>
+    <button class="btn" type="button" data-go="${esc(i.id)}">看詳情</button></div>`;
+}
+// Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
+function syncMap() {
+  if (!mainLM) return;
+  const c = counts(), live = new Set(), tally = {}, now = Date.now();
+  for (const i of issues) {
+    if (!inTaipei(i.lat, i.lng)) continue;
+    live.add(i.id);
+    const key = layerOf(i), votes = c[i.id] || 0, st = markerStyle(i, votes, key), sig = JSON.stringify(st);
+    tally[key] = (tally[key] || 0) + 1;
+    let r = markers.get(i.id);
+    if (!r) {
+      r = { m:L.circleMarker([i.lat, i.lng], st), key, sig, votes, i };
+      r.m.bindPopup(() => popupHtml(i.id));
+      markers.set(i.id, r); groups[key].addLayer(r.m);
+      if (now - (fresh.get(i.id) || 0) < 3000) pulse(r.m);
+      continue;
+    }
+    if (r.key !== key) { groups[r.key].removeLayer(r.m); groups[key].addLayer(r.m); r.key = key; }
+    if (r.sig !== sig) { r.m.setStyle(st); r.sig = sig; }
+    const ll = r.m.getLatLng(); if (ll.lat !== i.lat || ll.lng !== i.lng) r.m.setLatLng([i.lat, i.lng]);
+    r.i = i; r.votes = votes;
+    if (r.m.isPopupOpen()) r.m.setPopupContent(popupHtml(i.id));
+  }
+  for (const [id, r] of markers) if (!live.has(id)) { groups[r.key].removeLayer(r.m); markers.delete(id); }
+  const sig = LAYERS.map(l => tally[l.id] || 0).join() + cats.map(x => x.name).join() + issues.length;
+  if (sig === layerSig) return;
+  layerSig = sig;
+  const located = Object.values(tally).reduce((a, b) => a + b, 0);
+  $("mapLayers").innerHTML = LAYERS.map(l => { const name = l.id === "none" ? "未分類" : (cats.find(x => x.id === l.id) || {}).name || l.id;
+    return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === false ? "" : "checked"}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
+  $("mapFoot").textContent = `共 ${located} 件有位置${issues.length > located ? `，${issues.length - located} 件沒有位置` : ""}`;
+}
+// Flash a new marker for 3s via CSS (.mk-new on its SVG path). A hidden layer has no element, so there is nothing to flash.
+function pulse(m) { const el = m.getElement(); if (!el) return; el.classList.add("mk-new"); setTimeout(() => el.classList.remove("mk-new"), 3000); }
+// Issues that appear after the first complete load are "new"; the first load is the baseline.
+function trackNew() {
+  if (!gotReports || !gotTriage) return;
+  const added = issues.filter(i => !seen.has(i.id));
+  issues.forEach(i => seen.add(i.id));
+  if (!seenInit) { seenInit = true; return; }
+  const now = Date.now();
+  added.forEach(i => fresh.set(i.id, now));
+  if (added.length && curView === "map") {
+    $("mapNote").textContent = `新通報：${added[0].title}${added.length > 1 ? `（等 ${added.length} 件）` : ""}`; $("mapNote").hidden = false;
+    clearTimeout(noteTimer); noteTimer = setTimeout(() => $("mapNote").hidden = true, 5000);
+  }
+}
+$("mapLayers").addEventListener("change", e => {
+  const b = e.target.closest("[data-layer]"); if (!b || !groups[b.dataset.layer]) return;
+  layerOn[b.dataset.layer] = b.checked;
+  b.checked ? mainLM.addLayer(groups[b.dataset.layer]) : mainLM.removeLayer(groups[b.dataset.layer]);
+});
+// Popup button: jump to Issues with that case expanded. Filters are cleared so the case is certain to be listed.
+$("map").addEventListener("click", e => {
+  const b = e.target.closest("[data-go]"); if (!b) return;
+  const i = issues.find(x => x.id === b.dataset.go); if (!i) return;
+  view.open.add(i.id); view.closed = i.status === "fixed";
+  $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
+  show("issues"); render();
+  const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
+});
+
+// ---- Location picker on the New issue form ----
+let picked = null, pickLM = null, pinM = null;
+const setLoc = msg => $("locStatus").textContent = msg;
+function setPicked(lat, lng, loc) {
+  picked = { lat:+lat.toFixed(5), lng:+lng.toFixed(5), loc };
+  $("clrLoc").hidden = false; setLoc(loc === "gps" ? "已使用你的位置" : "已標記位置，可拖曳調整");
+}
+function placePin(lat, lng) {
+  if (!pickLM) return;
+  if (pinM) return pinM.setLatLng([lat, lng]);
+  pinM = L.marker([lat, lng], { draggable:true, keyboard:false, icon:L.divIcon({ className:"pin-wrap", html:'<span class="pin"></span>', iconSize:[22,22], iconAnchor:[11,22] }) }).addTo(pickLM);
+  let last = [lat, lng];
+  pinM.on("dragend", () => { const p = pinM.getLatLng();
+    if (!inTaipei(p.lat, p.lng)) { pinM.setLatLng(last); return setLoc("位置超出台北市範圍"); }
+    last = [p.lat, p.lng]; setPicked(p.lat, p.lng, "pin"); });
+}
+function clearPick() {
+  picked = null; setLoc(""); $("clrLoc").hidden = true;
+  if (pinM) { pinM.remove(); pinM = null; }
+  $("pickMap").hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
+}
+$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; setLoc(""); $("clrLoc").hidden = true; };
+$("gpsBtn").onclick = () => {
+  if (!navigator.geolocation) return setLoc("這個瀏覽器不支援定位，請改在地圖上標記位置");
+  setLoc("定位中…");
+  navigator.geolocation.getCurrentPosition(p => {
+    const { latitude:la, longitude:ln } = p.coords;
+    if (!inTaipei(la, ln)) return setLoc("你目前不在台北市範圍內，請改在地圖上標記位置");
+    setPicked(la, ln, "gps"); placePin(la, ln); if (pickLM) pickLM.setView([la, ln], 16);
+  }, e => setLoc(e && e.code === 1 ? "你拒絕了定位權限，可改在地圖上標記位置" : "無法取得位置（逾時或訊號不佳），可改在地圖上標記位置"), { timeout:8000, maximumAge:60000 });
+};
+$("pinBtn").onclick = async () => {
+  const box = $("pickMap");
+  if (!box.hidden) { box.hidden = true; return $("pinBtn").setAttribute("aria-expanded", "false"); }
+  box.hidden = false; $("pinBtn").setAttribute("aria-expanded", "true");
+  try { await loadLeaflet(); } catch { box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false"); return setLoc("地圖載入失敗，請稍後再試，或直接送出由系統依地址判斷"); }
+  if (!pickLM) {
+    pickLM = L.map("pickMap", TAIPEI_VIEW); addBase(pickLM);
+    pickLM.on("click", e => { if (!inTaipei(e.latlng.lat, e.latlng.lng)) return setLoc("位置超出台北市範圍");
+      setPicked(e.latlng.lat, e.latlng.lng, "pin"); placePin(e.latlng.lat, e.latlng.lng); });
+  }
+  pickLM.invalidateSize();
+  if (picked && !pinM) { placePin(picked.lat, picked.lng); pickLM.setView([picked.lat, picked.lng], 16); }
+  else if (!picked) setLoc("點一下地圖放下大頭針");
+};
+
+// ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
+let newsItems = [], tkTimer = 0, tkI = 0;
+const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
+const tkItem = (n, hid) => { const t = `<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
+  return /^https?:\/\//i.test(n.url) ? `<a href="${esc(n.url)}" target="_blank" rel="noopener"${hid ? ' tabindex="-1"' : ""}>${t}</a>` : `<span class="it">${t}</span>`; };
+function drawTicker() {
+  clearInterval(tkTimer);
+  const el = $("ticker"), n = newsItems.length;
+  el.hidden = !n; document.documentElement.classList.toggle("has-tk", !!n);
+  if (!n) return;
+  if (reduceMQ.matches) {
+    // static rotation: one headline at a time, every 5s, held while the pointer or focus is on the bar
+    const one = () => { $("tkView").innerHTML = tkItem(newsItems[tkI++ % n]).replace(/^<a /, '<a class="it" '); };
+    one(); tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within")) one(); }, 5000);
+  } else {
+    const set = hid => `<span class="tk-set"${hid ? ' aria-hidden="true"' : ""}>${newsItems.map(x => tkItem(x, hid)).join("")}</span>`;
+    $("tkView").innerHTML = `<div class="tk-track" style="animation-duration:${Math.max(40, n * 9)}s">${set(false)}${set(true)}</div>`;
+  }
+}
+reduceMQ.addEventListener("change", drawTicker);
+async function loadNews() {
+  try {
+    const r = await tryTwice(() => newsFn(), 12000);
+    newsItems = (Array.isArray(r) ? r : []).filter(n => isObj(n) && isStr(n.title) && n.title.trim()).slice(0, 30)
+      .map(n => ({ title:n.title.slice(0, 120), url:isStr(n.url) ? n.url : "", source:isStr(n.source) ? n.source.slice(0, 30) : "" }));
+  } catch {} // keep the last good list
+  drawTicker();
+}
+
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
 function show(v) {
+  curView = v;
+  $("wrap").classList.toggle("wide", v === "map");
   VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  if (v === "map") openMap();
 }
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 show(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "issues");
@@ -834,7 +1136,10 @@ document.addEventListener("keydown", e => {
 });
 
 (async () => {
-  [db, sample] = await Promise.all([claude.use("db"), claude.use("sample")]);
+  const opt = n => Promise.resolve().then(() => claude.use(n)).catch(() => null); // geocode/news exist only on the Worker host
+  [db, sample, geocode, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("news")]);
+  if (typeof geocode !== "function") geocode = null;
+  if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
   const user = await claude.use("user");
   if (!db) return render();
   me = user ? await user.id() : null;
@@ -850,7 +1155,7 @@ document.addEventListener("keydown", e => {
   db.collection("categories").onSnapshot(s => {
     cats = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => isStr(c.name) && Array.isArray(c.subs)).sort((a, b) => a.id.localeCompare(b.id))
       .map(c => ({ id: c.id, name: c.name, subs: c.subs.filter(x => isObj(x) && isStr(x.id) && isStr(x.name)) }));
-    SUBS = Object.fromEntries(cats.flatMap(c => c.subs.map(x => [x.id, { name: x.name, main: c.name }])));
+    SUBS = Object.fromEntries(cats.flatMap(c => c.subs.map(x => [x.id, { name: x.name, main: c.name, mid: c.id }])));
     render();
   });
   db.doc("stats/history").onSnapshot(s => { history = (s.exists && s.data().days) || {}; render(); });
