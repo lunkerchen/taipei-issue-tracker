@@ -34,7 +34,7 @@ const ent = s => s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) =
   if (named) return named;
   try { return String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)); } catch { return m; }
 });
-const clean = s => ent(s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "")).trim().slice(0, 120);
+const clean = (s, n = 120) => ent(s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "")).trim().slice(0, n);
 const tag = (x, t) => (new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`).exec(x) || [])[1] || "";
 
 async function googleNews() {
@@ -43,7 +43,7 @@ async function googleNews() {
     const source = clean(tag(x, "source")) || "Google News";
     const title = clean(tag(x, "title")).replace(new RegExp(" - " + source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$"), "");
     const t = Date.parse(tag(x, "pubDate"));
-    return { title, url: clean(tag(x, "link")), source, time: t ? new Date(t).toISOString() : "", t: t || 0 };
+    return { title, url: clean(tag(x, "link"), 2000), source, time: t ? new Date(t).toISOString() : "", t: t || 0 };
   }).filter(i => i.title && /^https?:\/\//.test(i.url)).sort((a, b) => b.t - a.t).slice(0, 15).map(({ t, ...i }) => i);
 }
 

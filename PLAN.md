@@ -96,7 +96,7 @@
 
 1. 一個 Durable Object（SQLite storage）存所有集合；DO 為空時以 `worker/data.json` 為初始資料（build 時一併打包）。
 2. 權限在 Worker 端判定：visitor 只能寫 `reports/<自己 id>`、`votes/<自己 id>`；帶正確 `x-admin`（secret `ADMIN_TOKEN`，常數時間比較）才能寫其他路徑。visitor id 用 HMAC 簽章，偽造或缺少 → 403。
-3. 防濫用：寫入依已驗證的 visitor id 限每分鐘 20 次（rate limit binding，key = visitor id；admin 不限）；`POST /api/visitor` 每 IP 每分鐘 30 個新 id（另一個 binding）；單一文件 ≤ 32KB；`reports/<id>` 的 items ≤ 20 筆；path 只允許 `[\w:-]{1,80}/[\w:-]{1,80}`。
+3. 防濫用：寫入依已驗證的 visitor id 限每分鐘 20 次（rate limit binding，key = visitor id；admin 不限）；`POST /api/visitor` 每 IP 每分鐘 150 個新 id（現場共用 Wi-Fi，主控調高）（另一個 binding）；單一文件 ≤ 32KB；`reports/<id>` 的 items ≤ 20 筆；path 只允許 `[\w:-]{1,80}/[\w:-]{1,80}`。
 4. WebSocket 廣播：寫入成功後 1 秒內推給所有連線；用 DO hibernation API。
 5. `build.mjs` 的 shim 改成：啟動時 `POST /api/visitor`（存 localStorage，讀寫包 try/catch），`GET /api/db` 載入，`/api/ws` 收更新並觸發 onSnapshot；斷線 2 秒後重連並重新 `GET /api/db`。`?admin=<token>` 時帶 `x-admin`，`canEdit()` 回 true。`acquire()` 回 `{acquired:true}`（ponytail 註明上限）。
 6. `/api/geocode`：Nominatim（`countrycodes=tw`、`viewbox` 台北市、`bounded=1`、User-Agent 帶專案名與 email `labanchen@gmail.com`），逾時 8 秒、重試 1 次，結果用 Cache API 快取 7 天；全域節流 1 req/s（DO 內排隊或拒絕）。

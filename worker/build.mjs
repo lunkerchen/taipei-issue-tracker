@@ -25,7 +25,14 @@ const req = async (url, init = {}) => {
   throw last;
 };
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-const adminToken = new URLSearchParams(location.search).get("admin") || "";
+// Admin token moves from ?admin=<token> to sessionStorage and is stripped from the URL bar, so the projector never shows it.
+const adminToken = (() => {
+  const q = new URLSearchParams(location.search), t = q.get("admin");
+  if (t === null) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
+  try { sessionStorage.setItem("admin", t); } catch {}
+  q.delete("admin"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
+  return t;
+})();
 
 // Visitor identity: "<id>.<signature>" from the Worker, kept in localStorage; the page only sees the id.
 const visitor = (async () => {
