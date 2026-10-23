@@ -66,6 +66,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .new textarea{min-height:96px;resize:vertical;width:100%;box-sizing:border-box}
 .new .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .status{font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:16px;right:16px;bottom:16px;margin:0 auto;width:fit-content;max-width:480px;background:var(--term);color:var(--term-fg);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:10}
+.toast:empty{opacity:0;pointer-events:none}
 .hm-wrap{overflow-x:auto;padding:12px 14px 6px}
 .hm{display:grid;grid-template-rows:repeat(7,11px);grid-auto-flow:column;grid-auto-columns:11px;gap:3px;width:max-content}
 .hm i,.legend i{display:block;width:11px;height:11px;border-radius:2px;background:var(--hm0);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fg) 6%,transparent)}
@@ -223,6 +225,7 @@ Switched to branch 'taipei'
 
   <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</p>
 </div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 const DEPTS = {
@@ -255,7 +258,7 @@ const ICON = {
 };
 
 let db = null, me = null, admin = false, canWrite = false, sample = null;
-let issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
+let reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let view = { closed:false, open:new Set() };
 const PR_ICON = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.12v5.26a2.25 2.25 0 1 1-1.5 0V5.37A2.25 2.25 0 0 1 1.5 3.25Zm5.68-.53L9.4.5a.25.25 0 0 1 .43.18V2h1.25A2.5 2.5 0 0 1 13.58 4.5v6.13a2.25 2.25 0 1 1-1.5 0V4.5a1 1 0 0 0-1-1H9.83v1.32a.25.25 0 0 1-.43.18L7.18 2.78a.25.25 0 0 1 0-.36ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>';
 
@@ -265,17 +268,66 @@ const lbl = (text, color) => `<span class="lbl" style="color:${color};border-col
 const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
   return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
 
+let toastTimer;
+function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").textContent = "", 5000); }
+// A rejected write from a non-admin means the rules only give this viewer read access: drop to read-only.
+function fail(e) {
+  if (e && e.code === "invalid_argument" && canWrite && !admin) { canWrite = false; applyRole(); render(); return toast("你目前只能檢視"); }
+  toast(e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試");
+}
+function applyRole() {
+  $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
+  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin;
+  if (!canWrite) $("newBox").hidden = true;
+}
+// Disable a button while its write runs; always bring it back, and say so when the write fails.
+async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
+
+// Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
+function maskPII(s) {
+  // Match on an NFKC copy (full-width digits, @ and so on) but cut the original text, so other characters stay as typed.
+  let norm = "", at = [], end = [];
+  for (let i = 0; i < s.length;) {
+    const c = String.fromCodePoint(s.codePointAt(i)); // whole code point, so 𝐀𝟏… normalizes too
+    for (const ch of c.normalize("NFKC")) for (let k = 0; k < ch.length; k++) { norm += ch[k]; at.push(i); end.push(i + c.length); }
+    i += c.length;
+  }
+  const hits = [];
+  for (const re of [
+    /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,                                           // email
+    /(?<![A-Z0-9])[A-Z][12]\d{8}(?!\d)/gi,                                       // national ID
+    /(?<!\d)(?:\+?886[-.\s]?0?|0)9\d{2}[-.\s]{0,2}\d{3}[-.\s]{0,2}\d{3}(?!\d)/g, // mobile
+    /(?<!\d)\(?0[2-8]\d?\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}(?!\d)/g                // landline, 2- or 3-digit area code
+  ]) for (const m of norm.matchAll(re)) {
+    const a = at[m.index], b = end[m.index + m[0].length - 1];
+    if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);
+  }
+  let out = "", pos = 0;
+  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + "［已遮蔽］"; pos = b; }
+  return { text: out + s.slice(pos), count: hits.length };
+}
+
+// Every sample call gets a timeout; only a transient upstream error is retried, once. A timeout aborts as "cancelled" and is not retried.
+async function ask(prompt, opts, ms) {
+  for (let k = 0; ; k++) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+    try { return await sample.json(prompt, { ...opts, signal: ctl.signal }); }
+    catch (e) { if (k || !e || e.code !== "upstream_error") throw e; }
+    finally { clearTimeout(timer); }
+  }
+}
+
 $("newDistrict").innerHTML = `<option value="">行政區（可不選）</option>` + DISTRICTS.map(d => `<option>${d}</option>`).join("");
 
 function counts() {
   const c = {};
-  for (const v of votes) for (const id in (v.issues || {})) if (v.issues[id]) c[id] = (c[id] || 0) + 1;
+  for (const v of votes) if (isObj(v.issues)) for (const id in v.issues) if (v.issues[id] === true) c[id] = (c[id] || 0) + 1;
   return c;
 }
 
 // Issues seeded before the timeline existed have no events; derive the first two.
 const evs = i => i.events || [{ t:i.createdAt, type:"opened" }, { t:i.createdAt, type:"labeled", dept:i.dept, by:"taipei-bot" }];
-const nextN = () => Math.max(0, ...issues.map(i => i.n || 0), ...issues.flatMap(i => evs(i).filter(e => e.type === "pr").map(e => e.n))) + 1;
+const nextN = () => Math.max(0, ...all.map(i => i.n || 0), ...all.flatMap(i => evs(i).filter(e => e.type === "pr").map(e => e.n))) + 1;
 const dayKey = d => new Date(d).toLocaleDateString("sv-SE", { timeZone:"Asia/Taipei" });
 const lastAct = i => Math.max(...evs(i).map(e => +new Date(e.t)));
 // Stale is derived on read, so the bot needs no writes or schedule.
@@ -285,18 +337,82 @@ const prs = () => issues.flatMap(i => { const ev = evs(i), done = new Set(ev.fil
   return ev.filter(e => e.type === "pr").map(e => ({ ...e, issue:i, merged:done.has(e.n), mergedAt:(ev.find(m => m.type === "merged" && m.pr === e.n) || {}).t })); });
 const fmtDate = d => new Date(d).toLocaleDateString("zh-TW", { year:"numeric", month:"long", day:"numeric", timeZone:"Asia/Taipei" });
 
+// Reports and triage are written by other people: keep only well-formed data and drop the rest.
+const isStr = x => typeof x === "string", isObj = x => !!x && typeof x === "object" && !Array.isArray(x);
+const validDate = x => isStr(x) && Number.isFinite(+new Date(x));
+const deptOf = d => isStr(d) && Object.hasOwn(DEPTS, d) ? d : "1999 待分派";
+function cleanItem(key, it, docId) {
+  if (!/^[\w-]{1,64}$/.test(key) || !isObj(it)) return null;
+  const seed = docId === "demo-seed";
+  if (seed && (!Number.isInteger(it.n) || it.n < 1 || it.n >= 1e6)) return null; // citizen n is ignored, see build()
+  if (!isStr(it.title) || !isStr(it.body) || !validDate(it.createdAt)) return null;
+  const tags = it.tags ?? [];
+  if (!Array.isArray(tags) || !tags.every(isStr)) return null;
+  if (!seed && it.author !== docId) return null; // the doc id is the writer's user id; an item must be signed by it
+  const t = isObj(it.triage) ? it.triage : {};
+  return { seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
+    tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
+    createdAt:it.createdAt, author:isStr(it.author) ? it.author : "" };
+}
+const defined = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+function cleanTri(t) {
+  if (!isObj(t)) return {};
+  const events = Array.isArray(t.events) ? t.events.filter(e => isObj(e) && validDate(e.t) && isStr(e.type)).map(e => defined({ t:e.t, type:e.type,
+    by:isStr(e.by) ? e.by : undefined, dept:e.dept === undefined ? undefined : deptOf(e.dept), to:Object.hasOwn(STATUS, e.to) ? e.to : undefined,
+    pr:Number.isFinite(e.pr) ? e.pr : undefined, n:Number.isFinite(e.n) ? e.n : undefined, title:isStr(e.title) ? e.title : undefined })) : [];
+  return defined({ status:Object.hasOwn(STATUS, t.status) ? t.status : undefined, dept:isStr(t.dept) && Object.hasOwn(DEPTS, t.dept) ? t.dept : undefined,
+    milestone:isStr(t.milestone) ? t.milestone : undefined, hidden:typeof t.hidden === "boolean" ? t.hidden : undefined, events:events.length ? events : undefined });
+}
+
+// reports/<user> holds each citizen's own items; triage/<id> holds what departments decided. Merge by id.
+const hiddenFor = i => i.hidden === true || (!!i.flagged && i.hidden !== false);
+let gotReports = false, gotTriage = false, loadErr = false, mine = null;
+function build(checkMine) {
+  if (!gotReports || !gotTriage) return; // wait for a server-definitive snapshot of both, or a hidden case shows for a moment
+  // A citizen item's id is "<doc id>:<key>" so nobody can write another user's key; demo-seed keeps its plain keys.
+  const list = [];
+  for (const r of reports) for (const [key, it] of Object.entries(r.items)) {
+    const c = cleanItem(key, it, r.id);
+    if (c) list.push({ ...c, key, id:c.seed ? key : `${r.id}:${key}`, reporter:r.id });
+  }
+  // ponytail: citizen n is computed here, not trusted. Order is createdAt (a future date counts as now), then id, numbered after demo-seed's highest n.
+  // A citizen can backdate createdAt to take an earlier number; that only reorders numbers, and a PR event's number can later equal an issue's.
+  let n = Math.max(0, ...list.filter(x => x.seed).map(x => x.n)), now = Date.now();
+  const when = x => Math.min(+new Date(x.createdAt), now);
+  list.filter(x => !x.seed).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
+  all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events }; });
+  issues = all.filter(i => admin || !hiddenFor(i));
+  if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
+  if (checkMine) mine = null;
+  render();
+}
+
+// One holder per tab: another tab or admin is refused by the lease; this tab's own overlapping clicks are refused by `acting`.
+const holder = () => (holder.id ||= `${me}:${crypto.randomUUID()}`);
+let acting = false;
+// list and patch may be functions of the latest triage doc, so decisions use the state read after the lease is held.
 async function act(i, list, patch = {}) {
-  // ponytail: read-modify-write on the events array; two admins acting on one issue in the same instant can drop an event
-  const t = new Date().toISOString();
-  await db.collection("issues").doc(i.id).update({ ...patch, events: [...evs(i), ...list.map(ev => ({ t, by:i.dept, ...ev }))] });
+  // ponytail: read-modify-write on the events array; acquire() keeps two admins apart, but a lease that expires mid-write still loses
+  if (acting) { toast("上一個操作還在處理中"); return false; }
+  acting = true;
+  try {
+    const ref = db.doc("triage/" + i.id);
+    const lock = await ref.acquire({ holder: holder(), ttlMs: 10000 });
+    if (!lock.acquired) { toast("別人正在處理這件，請稍後再試"); return false; }
+    const snap = await ref.get(), cur = snap.exists ? snap.data() : {}, t = new Date().toISOString();
+    const add = typeof list === "function" ? list(cur) : list, p = typeof patch === "function" ? patch(cur) : patch;
+    const events = [...(cur.events || evs(i)), ...add.map(ev => ({ t, by:i.dept, ...ev }))];
+    await (snap.exists ? ref.update({ ...p, events }) : ref.set({ status:"open", ...p, events }));
+    return true;
+  } finally { acting = false; }
 }
 
 async function setVote(id, on) {
-  const next = { ...myVotes };
+  const prev = myVotes, next = { ...myVotes };
   if (on) next[id] = true; else delete next[id];
   myVotes = next; render();
   try { await db.collection("votes").doc(me).set({ issues: next }); }
-  catch { canWrite = false; render(); }
+  catch (e) { myVotes = prev; fail(e); render(); }
 }
 
 function heatmap() {
@@ -321,15 +437,15 @@ function timeline(i) {
     if (e.type === "opened") return `<div class="ev"><b>市民</b> 開立了這個案件${when}</div>`;
     if (e.type === "labeled") return `<div class="ev">${who} 加上標籤 ${lbl(e.dept, DEPTS[e.dept] || DEPTS["1999 待分派"])}${when}</div>`;
     if (e.type === "status") { const s = STATUS[e.to] || STATUS.open; return `<div class="ev">${who} 把狀態改成 ${lbl(s[0], s[1])}${when}</div>`; }
-    if (e.type === "merged") return `<div class="ev">${who} 合併了 #${e.pr}，這個案件自動關閉${when}</div>`;
+    if (e.type === "merged") return `<div class="ev">${who} 合併了 #${esc(e.pr)}，這個案件自動關閉${when}</div>`;
     if (e.type === "milestone") return `<div class="ev">${who} ${e.title ? `把案件加入里程碑 <b>${esc(e.title)}</b>` : "移除了里程碑"}${when}</div>`;
     if (e.type === "pr") { const m = merged.has(e.n);
       return `<div class="ev">${who} 開了修繕單${when}
         <div class="pr" style="color:${m ? "var(--merged)" : "var(--open)"}">${PR_ICON}
-          <b style="color:var(--fg)">${esc(e.title)}</b><span class="meta">#${e.n}</span>
+          <b style="color:var(--fg)">${esc(e.title)}</b><span class="meta">#${esc(e.n)}</span>
           <span class="pill" style="background:${m ? "var(--merged)" : "var(--accent)"}">${m ? "Merged" : "Open"}</span>
-          <span class="meta">Closes #${i.n}</span>
-          ${admin && !m ? `<button class="btn" data-merge="${e.n}" data-id="${i.id}">Merge pull request</button>` : ""}
+          <span class="meta">Closes #${esc(i.n)}</span>
+          ${admin && !m ? `<button class="btn" data-merge="${esc(e.n)}" data-id="${esc(i.id)}">Merge pull request</button>` : ""}
         </div></div>`; }
     return "";
   }).join("")}${isStale(i) ? `<div class="ev"><b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度 · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
@@ -366,6 +482,8 @@ function render() {
   rows.sort(sorts[$("sort").value]);
 
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
+  if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
+  if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
   if (!rows.length) { $("list").innerHTML = `<div class="empty">${issues.length ? "沒有符合條件的案件。" : "還沒有任何陳情。按右上角 New issue 送出第一筆。"}</div>`; return; }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
@@ -377,32 +495,34 @@ function render() {
     const labels = [lbl(i.dept, DEPTS[i.dept] || DEPTS["1999 待分派"])]
       .concat(i.status !== "open" ? [lbl(st[0], st[1])] : [])
       .concat((i.tags || []).map(t => lbl(t, "var(--muted)")))
-      .concat(isStale(i) ? [lbl("stale", "var(--muted)")] : []).join("");
+      .concat(isStale(i) ? [lbl("stale", "var(--muted)")] : [])
+      .concat(admin && hiddenFor(i) ? [lbl(i.hidden === true ? "已隱藏" : "待審", "var(--progress)")] : []).join("");
     const m = milestones.find(m => m.id === i.milestone);
     const t = i.triage || {};
     return `<div class="issue">
       ${ICON[i.status] || ICON.open}
       <div style="min-width:0">
-        <button class="title" data-open="${i.id}" aria-expanded="${view.open.has(i.id)}">${esc(i.title)}</button><span class="labels">${labels}</span>
-        <div class="meta">#${i.n} · ${esc(i.district || "未填行政區")} · ${ago(i.createdAt)}開立${m ? ` · 里程碑：${esc(m.title)}` : ""}</div>
+        <button class="title" data-open="${esc(i.id)}" aria-expanded="${view.open.has(i.id)}">${esc(i.title)}</button><span class="labels">${labels}</span>
+        <div class="meta">#${esc(i.n)} · ${esc(i.district || "未填行政區")} · ${ago(i.createdAt)}開立${m ? ` · 里程碑：${esc(m.title)}` : ""}</div>
       </div>
-      <div class="plus"><button class="vote" data-vote="${i.id}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
+      <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
         <div class="bot"><div class="h">taipei-bot 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
         ${admin && i.status !== "fixed" ? `<div class="admin">
-          <input id="pr-${i.id}" placeholder="修繕單標題，例：人行道全段重鋪" aria-label="修繕單標題" style="flex:1 1 220px;min-width:0">
-          <button class="btn" data-pr="${i.id}">Open pull request</button>
+          <input id="pr-${esc(i.id)}" placeholder="修繕單標題，例：人行道全段重鋪" aria-label="修繕單標題" style="flex:1 1 220px;min-width:0">
+          <button class="btn" data-pr="${esc(i.id)}">Open pull request</button>
         </div>` : ""}
         ${admin ? `<div class="admin">
           <span class="note">局處操作</span>
-          ${i.status !== "progress" ? `<button class="btn" data-status="progress" data-id="${i.id}">標記處理中</button>` : ""}
-          ${i.status !== "fixed" ? `<button class="btn" data-status="fixed" data-id="${i.id}">標記已修復</button>` : ""}
-          ${i.status !== "open" ? `<button class="btn" data-status="open" data-id="${i.id}">重新開啟</button>` : ""}
-          <select data-dept="${i.id}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>
-          <select data-ms="${i.id}" aria-label="里程碑"><option value="">無里程碑</option>${milestones.map(x => `<option value="${esc(x.id)}" ${x.id === i.milestone ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select>
+          ${i.status !== "progress" ? `<button class="btn" data-status="progress" data-id="${esc(i.id)}">標記處理中</button>` : ""}
+          ${i.status !== "fixed" ? `<button class="btn" data-status="fixed" data-id="${esc(i.id)}">標記已修復</button>` : ""}
+          ${i.status !== "open" ? `<button class="btn" data-status="open" data-id="${esc(i.id)}">重新開啟</button>` : ""}
+          <button class="btn" data-hide="${hiddenFor(i) ? "false" : "true"}" data-id="${esc(i.id)}">${hiddenFor(i) ? "放行" : "隱藏"}</button>
+          <select data-dept="${esc(i.id)}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>
+          <select data-ms="${esc(i.id)}" aria-label="里程碑"><option value="">無里程碑</option>${milestones.map(x => `<option value="${esc(x.id)}" ${x.id === i.milestone ? "selected" : ""}>${esc(x.title)}</option>`).join("")}</select>
         </div>` : ""}
       </div>` : ""}
     </div>`;
@@ -416,25 +536,26 @@ $("list").addEventListener("click", async e => {
   if (o) { const id = o.dataset.open; view.open.has(id) ? view.open.delete(id) : view.open.add(id); return render(); }
   const v = e.target.closest("[data-vote]");
   if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
-  const btn = e.target.closest("[data-status],[data-pr],[data-merge]");
-  if (!btn) return;
+  const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide]");
+  if (!btn || btn.disabled) return;
   const i = issues.find(x => x.id === (btn.dataset.id || btn.dataset.pr));
-  if (btn.dataset.status) { btn.disabled = true; return act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }); }
-  if (btn.dataset.merge) { btn.disabled = true; return act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }); }
+  if (btn.dataset.status) return run(btn, () => act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }));
+  if (btn.dataset.merge) return run(btn, () => act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }));
+  if (btn.dataset.hide) return run(btn, () => act(i, [], { hidden: btn.dataset.hide === "true" }));
   const title = $("pr-" + i.id).value.trim();
   if (!title) return $("pr-" + i.id).focus();
-  btn.disabled = true;
-  const list = [{ type:"pr", n:nextN(), title:title.slice(0, 80) }];
-  if (i.status === "open") list.push({ type:"status", to:"progress" });
-  act(i, list, { status: i.status === "open" ? "progress" : i.status });
+  const isOpen = cur => (cur.status || "open") === "open";
+  run(btn, () => act(i, cur => [{ type:"pr", n:nextN(), title:title.slice(0, 80) }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])],
+    cur => isOpen(cur) ? { status:"progress" } : {}));
 });
 $("list").addEventListener("change", e => {
   const d = e.target.closest("[data-dept]");
   const i = d && issues.find(x => x.id === d.dataset.dept);
-  if (i && d.value !== i.dept) act(i, [{ type:"labeled", dept:d.value, by:"1999 管理者" }], { dept:d.value });
+  const done = ok => ok || render(), bad = e => { fail(e); render(); };
+  if (i && d.value !== i.dept) act(i, [{ type:"labeled", dept:d.value, by:"1999 管理者" }], { dept:d.value }).then(done, bad);
   const s = e.target.closest("[data-ms]");
   const j = s && issues.find(x => x.id === s.dataset.ms);
-  if (j) act(j, [{ type:"milestone", title:(milestones.find(m => m.id === s.value) || {}).title || "", by:"1999 管理者" }], { milestone:s.value });
+  if (j) act(j, [{ type:"milestone", title:(milestones.find(m => m.id === s.value) || {}).title || "", by:"1999 管理者" }], { milestone:s.value }).then(done, bad);
 });
 ["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
 $("tabOpen").onclick = () => { view.closed = false; render(); };
@@ -443,53 +564,60 @@ $("newBtn").onclick = () => { show("issues"); $("newBox").hidden = false; $("new
 $("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; };
 
 async function triage(text, district) {
-  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, triage: { by: "fallback" } };
+  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
   if (!sample) return fallback;
   // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
   const open = issues.filter(i => i.status !== "fixed").sort((a, b) => b.n - a.n).slice(0, 60);
   try {
-    const r = await sample.json(
+    const r = await ask(
 `你是台北市 1999 陳情分派員。讀市民陳情，回傳 JSON，不要其他文字：
-{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "district": "行政區或空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": ""}
+{"title": "20 字內的案件標題", "dept": "負責單位", "tags": ["1-2 個分類"], "district": "行政區或空字串", "reason": "一句話說明為何轉給這個單位", "duplicate_of": null, "duplicate_reason": "", "spam": false}
 dept 只能是其中之一：${Object.keys(DEPTS).join("、")}（無法判斷用「1999 待分派」）
 tags 只能從這些選：${TAGS.join("、")}
 分派規則（CODEOWNERS，依 tag 決定 dept，跨類時選最主要的）：${TAGS.map(t => `${t}→${CODEOWNERS[t]}`).join("、")}
 district 只能是：${DISTRICTS.join("、")}，或空字串。使用者已選：${district || "未選"}
+spam：廣告、謾罵、或與市政無關的內容填 true，正常陳情填 false。
 duplicate_of：如果陳情和下列某個未結案件是同一地點的同一問題，填該案件編號（數字），並在 duplicate_reason 用一句話說明；不確定就填 null。
 未結案件：
 ${open.map(i => `#${i.n} ${i.title}（${i.district || "未填"}）`).join("\n") || "（無）"}
 陳情內容：
-${text}`, { modelTier: "quick", cache: false });
+${text}`, { modelTier: "quick", cache: false }, 30000);
     const dept = DEPTS[r.dept] ? r.dept : "1999 待分派";
     const dup = open.find(i => i.n === Number(r.duplicate_of));
     return {
       dup: dup ? { id: dup.id, n: dup.n, title: dup.title, reason: String(r.duplicate_reason || "").slice(0, 200) } : null,
       title: String(r.title || "").slice(0, 60) || fallback.title,
-      dept, tags: (r.tags || []).filter(t => TAGS.includes(t)).slice(0, 2),
+      dept, flagged: r.spam === true, tags: (r.tags || []).filter(t => TAGS.includes(t)).slice(0, 2),
       district: district || (DISTRICTS.includes(r.district) ? r.district : ""),
       triage: { by: "ai", reason: String(r.reason || "").slice(0, 200) }
     };
   } catch { return fallback; }
 }
 
+let maskedN = 0;
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const text = $("newText").value.trim();
-  if (!text || !db) return;
+  if (!db || !canWrite || $("submitBtn").disabled) return;
+  const m = maskPII($("newText").value.trim()), text = m.text;
+  if (!text) return;
+  maskedN = m.count;
+  $("newText").value = text;
   $("submitBtn").disabled = true;
-  $("newStatus").textContent = sample ? "taipei-bot 正在分類…" : "送出中…";
+  const note = m.count ? `已遮蔽 ${m.count} 項個資。` : "";
+  $("newStatus").textContent = note + (sample ? "taipei-bot 正在分類…" : "送出中…");
   const t = await triage(text, $("newDistrict").value);
-  $("submitBtn").disabled = false;
   if (t.dup) {
     pending = { t, text };
-    $("newStatus").textContent = "";
-    $("dupBox").innerHTML = `<div>這可能和 <b>#${t.dup.n} ${esc(t.dup.title)}</b> 重複。${esc(t.dup.reason)}</div>
-      <div class="row"><button class="btn primary" type="button" data-dup="vote">改成幫 #${t.dup.n} 按 +1</button>
+    $("newStatus").textContent = note;
+    $("dupBox").innerHTML = `<div>這可能和 <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b> 重複。${esc(t.dup.reason)}</div>
+      <div class="row"><button class="btn primary" type="button" data-dup="vote">改成幫 #${esc(t.dup.n)} 按 +1</button>
       <button class="btn" type="button" data-dup="new">仍要送出新案件</button></div>`;
     $("dupBox").hidden = false;
+    $("submitBtn").disabled = false;
     return;
   }
-  create(t, text);
+  await create(t, text);
+  $("submitBtn").disabled = false;
 });
 
 $("dupBox").addEventListener("click", e => {
@@ -505,16 +633,20 @@ $("dupBox").addEventListener("click", e => {
 
 async function create(t, text) {
   const { dup, ...fields } = t;
-  // ponytail: max+1 numbering can collide if two people submit in the same second; use a counter doc with acquire() if that matters
-  const n = nextN(), now = new Date().toISOString();
+  // n is ignored on read (build() numbers citizen items), kept only as a hint
+  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, body:text, createdAt:new Date().toISOString(), author:me };
+  const full = `${me}:${id}`;
+  const ref = db.doc("reports/" + me);
   try {
-    const ref = await db.collection("issues").add({ n, ...fields, body: text, status: "open", createdAt: now, author: me,
-      events: [{ t: now, type: "opened" }, { t: now, type: "labeled", dept: fields.dept, by: "taipei-bot" }] });
-    view.open.add(ref.id); view.closed = false;
+    const snap = await ref.get();
+    await (snap.exists ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
+    // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
+    if (!all.some(i => i.id === full)) mine = full;
+    view.open.add(full); view.closed = false;
     $("newText").value = ""; $("newBox").hidden = true; $("newStatus").textContent = "";
-  } catch {
-    $("newStatus").textContent = "無法送出：你目前只有檢視權限，請向擁有者要求 Contributor 權限。";
-  }
+    if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
+    else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
+  } catch (e) { mine = null; $("newStatus").textContent = ""; fail(e); }
 }
 
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
@@ -542,7 +674,7 @@ function renderViews(c) {
   $("prList").innerHTML = all.length ? all.sort((a, b) => b.n - a.n).map(p => `<div class="row-item">
       <span style="color:${p.merged ? "var(--merged)" : "var(--open)"};align-self:center;display:flex">${PR_ICON.replace("<svg", '<svg width="16" height="16"')}</span>
       <div class="grow"><b>${esc(p.title)}</b> <span class="pill" style="background:${p.merged ? "var(--merged)" : "var(--accent)"}">${p.merged ? "Merged" : "Open"}</span>
-        <div class="meta">#${p.n} · ${esc(p.by)} 開立於 ${ago(p.t)} · Closes #${p.issue.n} ${esc(p.issue.title)}</div></div></div>`).join("")
+        <div class="meta">#${esc(p.n)} · ${esc(p.by)} 開立於 ${ago(p.t)} · Closes #${esc(p.issue.n)} ${esc(p.issue.title)}</div></div></div>`).join("")
     : `<div class="empty">還沒有修繕單。局處在案件裡按 Open pull request 就會出現在這裡。</div>`;
 
   $("msList").innerHTML = milestones.length ? milestones.map(m => {
@@ -572,7 +704,7 @@ function renderViews(c) {
     const avg = fixed.length ? fixed.reduce((s, i) => s + (closedAt(i) - +new Date(i.createdAt)), 0) / fixed.length / DAY : null;
     const top = mine.filter(i => i.status !== "fixed").sort((a, b) => (c[b.id] || 0) - (c[a.id] || 0))[0];
     return `<tr><td>${lbl(d, DEPTS[d])}</td><td class="n">${mine.length - fixed.length}</td><td class="n">${fixed.length}</td>
-      <td class="n">${avg === null ? "—" : avg.toFixed(1)}</td><td>${top ? `#${top.n} ${esc(top.title)}（+${c[top.id] || 0}）` : "—"}</td>
+      <td class="n">${avg === null ? "—" : avg.toFixed(1)}</td><td>${top ? `#${esc(top.n)} ${esc(top.title)}（+${c[top.id] || 0}）` : "—"}</td>
       <td>${avg === null ? badge(null, "no data") : badge(avg <= 7, avg <= 7 ? "passing" : "failing")}</td></tr>`;
   }).join("");
 
@@ -601,9 +733,12 @@ function md(text) {
   return out + (list ? "</ul>" : "");
 }
 
-const isoWeek = d => { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), day = t.getUTCDay() || 7;
-  t.setUTCDate(t.getUTCDate() + 4 - day); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  return [t.getUTCFullYear(), Math.ceil(((t - y) / DAY + 1) / 7)]; };
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return [t.getUTCFullYear(), Math.ceil(((t - y) / DAY + 1) / 7)];
+}
 
 $("relBtn").onclick = async () => {
   const since = Date.now() - 7 * DAY;
@@ -615,18 +750,18 @@ $("relBtn").onclick = async () => {
   const items = done.map(i => `#${i.n} ${i.title}（${i.district || "未填"}，${i.dept}，${(prs().find(p => p.issue.id === i.id && p.merged) || {}).title || "直接修復"}）`);
   let r = { title: `台北市 ${tag}：本週修好 ${done.length} 件`, body: `## 本週修好的問題\n${items.map(x => "- " + x).join("\n")}` };
   if (sample) try {
-    const a = await sample.json(`你是台北市政府的工程師，用軟體版本更新紀錄（release notes）的口吻，替市民寫本週市政更新。回傳 JSON：{"title": "25 字內標題", "body": "內文"}
+    const a = await ask(`你是台北市政府的工程師，用軟體版本更新紀錄（release notes）的口吻，替市民寫本週市政更新。這一版的版本號是 ${tag}。回傳 JSON：{"title": "25 字內標題，以「台北市 ${tag}」開頭", "body": "內文"}
 內文用「## 」當小標、「- 」當條列，依局處或類型分組，每條寫出案件編號（#數字）與地點，語氣輕鬆、具體，不要誇大或宣傳，不要 emoji。最後加一段「## 下一版」列出還在處理中的重點。
 本週修好的案件：
 ${items.join("\n")}
 仍在處理中：
-${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false });
-    if (a && a.title && a.body) r = { title: String(a.title).slice(0, 80), body: String(a.body).slice(0, 4000) };
+${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false }, 60000);
+    if (a && a.title && a.body) { const ti = String(a.title); r = { title: (ti.includes(tag) ? ti : `台北市 ${tag}：${ti}`).slice(0, 80), body: String(a.body).slice(0, 4000) }; }
   } catch {}
   try {
     await db.collection("releases").doc(tag).set({ tag, ...r, createdAt: new Date().toISOString(), fixed: done.map(i => i.n) });
     $("relStatus").textContent = `已發布 ${tag}`;
-  } catch { $("relStatus").textContent = "無法發布：需要 Editor 權限。"; }
+  } catch (e) { $("relStatus").textContent = ""; fail(e); }
   $("relBtn").disabled = false;
 };
 
@@ -654,19 +789,19 @@ document.addEventListener("keydown", e => {
   if (!db) return render();
   me = user ? await user.id() : null;
   admin = user ? await user.canEdit() : false;
-  canWrite = !!me && (await user.can("data.write")) !== false;
-  $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
-  $("newBtn").hidden = !canWrite;
-  db.collection("issues").onSnapshot(s => { issues = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); },
-    () => { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; });
-  $("relBtn").hidden = !admin;
-  db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.due || "").localeCompare(b.due || "")); render(); });
-  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
+  canWrite = !!me;
+  applyRole();
+  const lost = () => { loadErr = true; render(); };
+  db.collection("reports").onSnapshot(s => { reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
+  // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
+  db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
+  db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.due || "").localeCompare(String(b.due || ""))); render(); });
+  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
   db.doc("stats/history").onSnapshot(s => { history = (s.exists && s.data().days) || {}; render(); });
   db.collection("votes").onSnapshot(s => {
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
-    myVotes = { ...(mine ? mine.data().issues : {}) };
+    myVotes = { ...(mine && isObj(mine.data().issues) ? mine.data().issues : {}) };
     render();
   });
 })();

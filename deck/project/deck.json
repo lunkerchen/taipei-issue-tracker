@@ -1,0 +1,18 @@
+{
+  "v": 4,
+  "createdOnFiles": {"v": 1, "at": "2026-10-23T10:00:00Z"},
+  "lists": "css",
+  "title": "git checkout taipei",
+  "order": ["cover", "problem", "mapping", "bot", "staff", "build", "close"],
+  "sections": {
+    "s1": {"description": "開場：如果台北市是一個 repo", "start": "cover"},
+    "s2": {"description": "概念：把 GitHub 的工作流程套到市政", "start": "mapping"},
+    "s3": {"description": "怎麼做的", "start": "build"},
+    "s4": {"description": "收尾", "start": "close"}
+  },
+  "faces": {
+    "noto-sans-tc": {"family": "Noto Sans TC", "href": "https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap"},
+    "jetbrains-mono": {"family": "JetBrains Mono", "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"}
+  },
+  "designSystems": []
+}
