@@ -43,7 +43,7 @@ const mainOf = name => FIX[name] || subMain.get(norm(name));
 // 中正區臺北市中正區龍福里007鄰南昌路一段３１巷… -> 南昌路一段. The road is what sits between the last district/village/
 // neighbourhood/number/punctuation mark and the first 路/街/大道. "參考地址：" (landmark cases) points at the real address.
 function road(addr) {
-  const a = addr.slice(3).split(/參考地址[：:]/).pop().replace(/[臺台]?北[市巿]|[臺台]北/g, "").replace(/[臺台]灣/g, " ").replace(/[东罗岛]/g, c => ({ 东:"東", 罗:"羅", 岛:"島" })[c]);
+  const a = addr.slice(3).split(/參考地址[：:]/).pop().replace(/[臺台]?北[市巿]|[臺台]北/g, "").replace(/[臺台][灣湾]省?/g, " ").replace(/[东罗岛]/g, c => ({ 东:"東", 罗:"羅", 岛:"島" })[c]);
   const m = /(路|街|大道)([一二三四五六七八九十]段)?/.exec(a);
   if (!m) return null;
   const head = a.slice(0, m.index), cut = Math.max(...[...head.matchAll(/[區区里裡鄰,，；;：:)）(（號\d０-９\s、\/／?？\-－]/g)].map(x => x.index), -1);

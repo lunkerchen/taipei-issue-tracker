@@ -1137,7 +1137,7 @@ function renderLive() {
     <div class="meta">${esc(new Date(i.createdAt).toLocaleString("zh-TW", { ...(dayKey(i.createdAt) === today ? {} : { month:"numeric", day:"numeric" }), hour:"2-digit", minute:"2-digit", timeZone:"Asia/Taipei" }))} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${esc(st[0])}${sub ? ` · 1999：${esc(sub.name)}` : ""}</div></button></li>`; }).join("");
 }
 $("liveBtn").onclick = () => {
-  if (histOn) { $("histOn").checked = false; setHist(false); } // Live is about today; leave the history view
+  if (histOn || $("histOn").checked) { $("histOn").checked = false; setHist(false); } // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
   if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
