@@ -192,6 +192,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
 .pin-wrap{background:none;border:0}
+.locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
+.locbtn[aria-busy="true"]{opacity:.6}
+.me{display:block;width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px rgba(26,115,232,.35)}
 .pin{display:block;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
@@ -298,11 +301,12 @@ Switched to branch 'taipei'
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+        <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
       <div class="mapact">
         <button class="btn" type="button" id="liveBtn" aria-pressed="false" aria-controls="liveBox"><span class="live-dot" aria-hidden="true"></span>Live</button>
         <button class="btn primary" type="button" id="reportBtn">回報</button>
-        <span class="note">或長按地圖，直接回報那個位置</span>
+        <span class="note" id="lpHint">或長按地圖，直接回報那個位置</span>
       </div>
       <section class="box livebox" id="liveBox" aria-label="今天最新的 1999 陳情" hidden>
         <div class="boxhead"><b>今天最新的陳情</b><span class="spacer"></span><span class="note" id="liveCount"></span></div>
@@ -911,15 +915,39 @@ function initMap() {
   mainLM = L.map("map", TAIPEI_VIEW);
   addBase(mainLM);
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
-  // Long-press on touch (right-click on desktop) fires contextmenu: open the form with that spot already picked
-  mainLM.on("contextmenu", e => {
-    const { lat, lng } = e.latlng;
-    if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
-    $("newBtn").click(); setPicked(lat, lng, "pin"); placePin(lat, lng);
-    setLoc("已標記你在地圖上長按的位置，可按「在地圖上標記位置」調整");
-    $("newBox").scrollIntoView({ block:"start" });
-  });
+  // Long-press on touch and right-click fire contextmenu; a mouse has no long-press event, so a 600 ms still hold is timed here
+  mainLM.on("contextmenu", e => reportAt(e.latlng));
+  let hold = null;
+  mainLM.on("mousedown", e => { if (e.originalEvent.button !== 0) return; clearTimeout(hold); const p0 = e.containerPoint;
+    hold = setTimeout(() => { hold = null; mainLM.dragging.disable(); mainLM.dragging.enable(); reportAt(e.latlng); }, 600);
+    hold.p0 = p0; });
+  mainLM.on("mousemove", e => { if (hold && hold.p0 && e.containerPoint.distanceTo(hold.p0) > 6) { clearTimeout(hold); hold = null; } });
+  mainLM.on("mouseup dragstart zoomstart", () => { clearTimeout(hold); hold = null; });
 }
+function reportAt({ lat, lng }, how = "長按") {
+  if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
+  $("newBtn").click(); setPicked(lat, lng, how === "定位" ? "gps" : "pin"); placePin(lat, lng);
+  setLoc(how === "定位" ? "已使用你的位置，可按「在地圖上標記位置」調整" : "已標記你在地圖上長按的位置，可按「在地圖上標記位置」調整");
+  $("newBox").scrollIntoView({ block:"start" });
+}
+// Locate button: blue dot + accuracy circle, popup offers to report right there
+let meM = null, meC = null;
+$("locBtn").onclick = () => {
+  if (!navigator.geolocation) return toast("這個瀏覽器不支援定位");
+  $("locBtn").setAttribute("aria-busy", "true");
+  navigator.geolocation.getCurrentPosition(p => {
+    $("locBtn").removeAttribute("aria-busy");
+    const { latitude:lat, longitude:lng, accuracy:acc } = p.coords, ll = [lat, lng];
+    if (!mainLM) return;
+    meM ? meM.setLatLng(ll) : meM = L.marker(ll, { keyboard:false, icon:L.divIcon({ className:"", html:'<span class="me"></span>', iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(mainLM);
+    meC ? meC.setLatLng(ll).setRadius(acc) : meC = L.circle(ll, { radius:acc, color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false }).addTo(mainLM);
+    const inside = inTaipei(lat, lng);
+    meM.bindPopup(`<b>你的位置</b><div class="meta">誤差約 ${Math.round(acc)} 公尺</div>` + (inside ? `<button class="btn primary" type="button" data-here>在這裡回報</button>` : `<div class="meta">不在台北市範圍內</div>`));
+    mainLM.setView(ll, inside ? Math.max(mainLM.getZoom(), 16) : 12); meM.openPopup();
+  }, e => { $("locBtn").removeAttribute("aria-busy"); toast(e && e.code === 1 ? "你拒絕了定位權限" : "無法取得位置，請稍後再試"); }, { timeout:8000, maximumAge:60000 });
+};
+$("map").addEventListener("click", e => { if (e.target.closest("[data-here]") && meM) { mainLM.closePopup(); reportAt(meM.getLatLng(), "定位"); } });
+if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖上按住滑鼠（或按右鍵），直接回報那個位置";
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
 function markerStyle(i, votes, key) {
