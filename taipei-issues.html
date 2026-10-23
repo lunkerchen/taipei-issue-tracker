@@ -1119,7 +1119,7 @@ $("histPrev").onclick = () => { stopPlay(); stepDay(-1); };
 $("histNext").onclick = () => { stopPlay(); stepDay(1); };
 $("histPlay").onclick = () => {
   if (histTimer) return stopPlay();
-  if (+$("histDay").value >= histDays.length - 1) $("histDay").value = 0;
+  if (+$("histDay").value >= histDays.length - 1) { $("histDay").value = 0; drawHist(); } // restart from 1/1 and show it before the first step
   $("histPlay").textContent = "暫停"; $("histPlay").setAttribute("aria-pressed", "true");
   histTimer = setInterval(() => { if (stepDay(1) >= histDays.length - 1) stopPlay(); }, 700);
 };

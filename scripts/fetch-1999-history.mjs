@@ -15,6 +15,9 @@ const CENTER = { "中正區":[25.0324,121.5198], "大同區":[25.0633,121.5130],
   "大安區":[25.0268,121.5435], "萬華區":[25.0286,121.4979], "信義區":[25.0330,121.5654], "士林區":[25.0922,121.5246],
   "北投區":[25.1321,121.5017], "內湖區":[25.0830,121.5887], "南港區":[25.0548,121.6066], "文山區":[24.9897,121.5701] };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// The page's own city boundary (TAIPEI_RING in taipei-issues.html), so a point the map would call "outside Taipei" never ships
+const RING = JSON.parse(/const TAIPEI_RING = (\[\[.*?\]\]);/.exec(readFileSync(fileURLToPath(new URL("../taipei-issues.html", import.meta.url)), "utf8"))[1]);
+const inRing = (la, ln) => { let c = false; for (let i = 0, j = RING.length - 1; i < RING.length; j = i++) { const [yi, xi] = RING[i], [yj, xj] = RING[j]; if ((yi > la) !== (yj > la) && ln < (xj - xi) * (la - yi) / (yj - yi) + xi) c = !c; } return c; };
 
 async function get(url, tries = 3) {
   for (let i = 1; ; i++) {
@@ -100,7 +103,9 @@ for (const r of inTaipei.sort((a, b) => (a.date + a.time).localeCompare(b.date +
 }
 const out = {
   source: "臺北市政府1999派工資料（data.taipei）", range: ["2026-01-01", "2026-09-30"],
-  roads: roadKeys.map(k => { const [d, rd] = k.split("|"); return [d, rd, known[k][0], known[k][1], known[k][2] === "road" ? 1 : 0]; }),
+  // a cached road hit outside the city boundary (e.g. 北新路三段 is in 新店) falls back to its district centre
+  roads: roadKeys.map(k => { const [d, rd] = k.split("|"), [la, ln, how] = known[k], ok = how === "road" && inRing(la, ln);
+    return ok ? [d, rd, la, ln, 1] : [d, rd, ...CENTER[d], 0]; }),
   items: itemNames.map(n => [n, mainOf(n) || ""]), days,
 };
 
@@ -109,7 +114,7 @@ const total = Object.values(days).reduce((s, d) => s + d.length, 0);
 assert.equal(total, inTaipei.length);
 for (let t = Date.UTC(2026, 0, 1); t <= Date.UTC(2026, 8, 30); t += 864e5) assert.ok(days[new Date(t).toISOString().slice(0, 10)], "day " + new Date(t).toISOString().slice(0, 10));
 for (const [n, c] of out.items) assert.ok(c, "unmapped item " + n);
-for (const [, , la, ln] of out.roads) assert.ok(la > 24.95 && la < 25.22 && ln > 121.45 && ln < 121.67);
+for (const [, , la, ln] of out.roads) assert.ok(inRing(la, ln), "inside the Taipei boundary");
 const json = JSON.stringify(out);
 assert.ok(!/號|樓|巷|弄/.test(JSON.stringify(out.roads)), "no house-level detail");
 if (!DRY || DRY.endsWith(".json")) writeFileSync(DRY || at("history-2026.json"), json); // DRY=/path/x.json writes there for inspection
