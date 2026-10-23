@@ -223,6 +223,15 @@ Switched to branch 'taipei'
     <div id="relList"></div>
   </div>
 
+  <section class="box" id="demoTools" hidden>
+    <div class="boxhead"><b>展示工具</b><span class="spacer"></span><span class="note">只有局處管理者看得到</span></div>
+    <div class="new"><div class="row">
+      <button class="btn" id="snapBtn" type="button">儲存展示快照</button>
+      <button class="btn" id="resetBtn" type="button">重設到快照</button>
+      <span class="status" id="snapStatus" role="status"></span>
+    </div></div>
+  </section>
+
   <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</p>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -277,7 +286,7 @@ function fail(e) {
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
-  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin;
+  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin;
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -764,6 +773,41 @@ ${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).joi
   } catch (e) { $("relStatus").textContent = ""; fail(e); }
   $("relBtn").disabled = false;
 };
+
+// ---- Demo tools: snapshot the pre-demo state, put it back after a rehearsal ----
+// demo/snapshot keeps every triage doc and the admin's own +1, plus which releases and reports existed. Audience +1 is never touched.
+const SNAP = "demo/snapshot", COLS = ["triage", "releases", "reports"];
+const readCols = () => Promise.all(COLS.map(c => db.collection(c).get().then(s => s.docs)));
+$("snapBtn").onclick = () => run($("snapBtn"), async () => {
+  const [[t, r, p], v] = await Promise.all([readCols(), db.doc("votes/" + me).get()]);
+  await db.doc(SNAP).set({ at:new Date().toISOString(), triage:Object.fromEntries(t.map(d => [d.id, d.data()])),
+    releases:r.map(d => d.id), reports:p.map(d => d.id), votes:v.exists ? { [me]:v.data() } : {} });
+  $("snapStatus").textContent = `已儲存快照：${t.length} 份局處狀態、${r.length} 個 release、${p.length} 份陳情`;
+});
+let resetArmed = 0;
+$("resetBtn").onclick = () => run($("resetBtn"), async () => {
+  const s = await db.doc(SNAP).get();
+  if (!s.exists) { $("snapStatus").textContent = "還沒有快照，先按「儲存展示快照」。"; return; }
+  const snap = s.data(), [t, r, p] = await readCols();
+  const extra = [["triage", t.filter(d => !Object.hasOwn(snap.triage, d.id))], ["releases", r.filter(d => !snap.releases.includes(d.id))],
+    ["reports", p.filter(d => !snap.reports.includes(d.id))]];
+  // Two clicks instead of confirm(): the artifact frame may block modal dialogs
+  if (Date.now() - resetArmed > 10000) {
+    resetArmed = Date.now(); $("resetBtn").textContent = "確定重設（10 秒內再按一次）";
+    $("snapStatus").textContent = `會還原到 ${new Date(snap.at).toLocaleString("zh-TW", { timeZone:"Asia/Taipei" })} 的快照：刪掉之後新增的 ${extra[2][1].length} 份陳情、${extra[1][1].length} 個 release，還原局處狀態與你自己的 +1；觀眾的 +1 保留。`;
+    setTimeout(() => { if (Date.now() - resetArmed >= 10000) $("resetBtn").textContent = "重設到快照"; }, 10000);
+    return;
+  }
+  resetArmed = 0; $("resetBtn").textContent = "重設到快照"; $("snapStatus").textContent = "重設中…";
+  // ponytail: one write at a time; a failure midway leaves a partial reset, and pressing reset again finishes it
+  const cur = Object.fromEntries(t.map(d => [d.id, JSON.stringify(d.data())]));
+  for (const [id, data] of Object.entries(snap.triage)) if (cur[id] !== JSON.stringify(data)) await db.doc("triage/" + id).set(data);
+  for (const [c, docs] of extra) for (const d of docs) await db.doc(`${c}/${d.id}`).delete();
+  const mv = (snap.votes || {})[me];
+  await (mv ? db.doc("votes/" + me).set(mv) : db.doc("votes/" + me).delete());
+  view.open.clear(); view.closed = false;
+  $("snapStatus").textContent = "已重設到快照";
+});
 
 // Issue templates fill the textarea with the fields 1999 needs.
 $("tpls").insertAdjacentHTML("beforeend", Object.keys(TEMPLATES).map(k => `<button class="btn" type="button" data-tpl="${k}">${k}</button>`).join(""));
