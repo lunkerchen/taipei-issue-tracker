@@ -128,9 +128,10 @@ export class Hub extends DurableObject {
       const again = this.cacheGet(key);
       if (again) return again;
       await sleep(Math.max(0, this.lastGeo + 1100 - Date.now()));
-      this.lastGeo = Date.now();
       const u = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "tw", viewbox: TAIPEI_VIEWBOX, bounded: "1", q });
-      const r = (await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" }, 1100)).json())[0];
+      // lastGeo is stamped after the last attempt (retries included) ends, so the next query always waits a full gap
+      let r;
+      try { r = (await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" }, 1100)).json())[0]; } finally { this.lastGeo = Date.now(); }
       const out = r ? { lat: +r.lat, lng: +r.lon } : { lat: null };
       this.cachePut(key, out, 7 * 864e5);
       return out;

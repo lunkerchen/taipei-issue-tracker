@@ -43,15 +43,18 @@ const visitor = (async () => {
   return t;
 })();
 
-// seq: the Hub numbers every write. A path only takes data newer than what this tab already has,
-// so a slow snapshot or write reply can never roll back a live update that arrived first.
+// seq: the Hub numbers every write. baseSeq is the seq of the snapshot DATA came from; pathSeq holds paths updated
+// after it. Anything at or below max(baseSeq, pathSeq[path]) is already reflected, so late replies, late socket
+// messages and older snapshots can never roll data back.
 const pathSeq = {};
+let baseSeq = -1;
 const put = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; };
-const apply = (path, d, seq) => { if (!(seq > (pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
+const apply = (path, d, seq) => { if (!(seq > Math.max(baseSeq, pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
 const load = async () => {
   const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status);
   const { _seq = 0, ...fresh } = await r.json(), old = DATA;
-  DATA = fresh;
+  if (_seq < baseSeq) return; // an older snapshot finished after a newer one
+  DATA = fresh; baseSeq = _seq;
   for (const [path, s] of Object.entries(pathSeq)) {
     if (s > _seq) { const [c, id] = path.split("/"); put(path, old[c]?.[id] ?? null); } else delete pathSeq[path];
   }

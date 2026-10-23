@@ -322,6 +322,7 @@ const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
   "建管處":        "#9a6700", "衛生局":       "#cf222e", "動保處":       "#d4741c",
+  "教育局":        "#2f6f4f", "文化局":       "#a0522d", "體育局":       "#1b7c83",
   "台電/路燈管理": "#8250df", "1999 待分派":  "#6e7781"
 };
 const DISTRICTS = ["中正區","大同區","中山區","松山區","大安區","萬華區","信義區","士林區","北投區","內湖區","南港區","文山區"];
@@ -339,7 +340,8 @@ const LAYERS = [["TYPEA-AC0100","#6f7f00"],["TYPEA-AC0200","#0969da"],["TYPEA-AC
 const CODEOWNERS = {
   "路面坑洞":"工務局新工處", "人行道":"工務局新工處", "路燈":"台電/路燈管理", "違規停車":"交通局",
   "交通號誌":"交通局", "噪音":"環保局", "垃圾":"環保局", "公園設施":"工務局公園處",
-  "排水淤積":"工務局水利處", "流浪動物":"動保處", "違建":"建管處", "食安":"衛生局"
+  "排水淤積":"工務局水利處", "流浪動物":"動保處", "違建":"建管處", "食安":"衛生局",
+  "校園":"教育局", "文化設施":"文化局", "運動設施":"體育局"
 };
 const TAGS = Object.keys(CODEOWNERS);
 // Citizen-picked broad aspect (食住行育樂醫療), sent to taipei-bot as a hint only; the complaint text still wins.
@@ -347,8 +349,8 @@ const ASPECTS = {
   "食": "飲食：食品衛生、餐廳與攤販、餐飲油煙；多屬【衛福…】或【垃圾、噪音、污染…】，常見單位衛生局、環保局",
   "住": "居住：住家周邊噪音、垃圾、違建、公寓大廈、漏水；多屬【垃圾、噪音、污染…】或【都市發展、建管…】，常見單位環保局、建管處",
   "行": "交通：道路、人行道、號誌、路燈、停車、公車、YouBike；多屬【道路…】或【交通運輸】，常見單位工務局新工處、交通局、台電/路燈管理",
-  "育": "教育：學校、圖書館、托育、通學安全；多屬【文教、體育…】或【衛福、勞動…】",
-  "樂": "休閒：公園、遊具、運動中心、文化設施、觀光景點；多屬【公園…】或【文教、體育…】，常見單位工務局公園處",
+  "育": "教育：學校、圖書館、托育、通學安全；多屬【文教、體育…】或【衛福、勞動…】，常見單位教育局",
+  "樂": "休閒：公園、遊具、運動中心、文化設施、觀光景點；多屬【公園…】或【文教、體育…】，常見單位工務局公園處、體育局、文化局",
   "醫療": "醫療：醫院診所、藥品、長照、防疫、病媒；多屬【衛福、勞動…】，常見單位衛生局"
 };
 const TEMPLATES = {
@@ -1166,9 +1168,9 @@ document.addEventListener("keydown", e => {
   canWrite = !!me;
   applyRole();
   const lost = () => { loadErr = true; render(); };
-  db.collection("reports").onSnapshot(s => { reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
+  db.collection("reports").onSnapshot(s => { loadErr = false; reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
-  db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
+  db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; loadErr = false; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
   db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.due || "").localeCompare(String(b.due || ""))); render(); });
   db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
   db.collection("categories").onSnapshot(s => {
