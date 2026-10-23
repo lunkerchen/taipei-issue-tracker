@@ -100,7 +100,7 @@
 4. WebSocket 廣播：寫入成功後 1 秒內推給所有連線；用 DO hibernation API。
 5. `build.mjs` 的 shim 改成：啟動時 `POST /api/visitor`（存 localStorage，讀寫包 try/catch），`GET /api/db` 載入，`/api/ws` 收更新並觸發 onSnapshot；斷線 2 秒後重連並重新 `GET /api/db`。`?admin=<token>` 時帶 `x-admin`，`canEdit()` 回 true。`acquire()` 回 `{acquired:true}`（ponytail 註明上限）。
 6. `/api/geocode`：Nominatim（`countrycodes=tw`、`viewbox` 台北市、`bounded=1`、User-Agent 帶專案名與 email `labanchen@gmail.com`），逾時 8 秒、重試 1 次，結果用 Cache API 快取 7 天；全域節流 1 req/s（DO 內排隊或拒絕）。
-7. `/api/news`：Google News RSS（`https://news.google.com/rss/search?q=臺北&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`）+ PTT Taipei 板（`https://www.ptt.cc/bbs/Taipei/index.html` 標題）合併，各取最新 15 則；逾時 8 秒、重試 1 次；快取 10 分鐘；任一來源失敗仍回另一個；標題做 HTML 實體解碼、長度 ≤ 120。
+7. `/api/news`：Bing News RSS（`https://www.bing.com/news/search?q=臺北&format=rss`；Google News 會以 503 擋 Cloudflare 出口 IP，2026-10-24 改用 Bing）+ PTT Taipei 板（`https://www.ptt.cc/bbs/Taipei/index.html` 標題）合併，各取最新 15 則；逾時 8 秒、重試 1 次；快取 10 分鐘；任一來源失敗仍回另一個；標題做 HTML 實體解碼、長度 ≤ 120。
 8. 本機 `wrangler dev` 實測：兩個 WebSocket 客戶端，A 寫入 B 收得到；偽造 visitor → 403；visitor 寫 `triage/x` → 403；admin 寫成功。附上測試腳本 `worker/test/smoke.mjs`（node 跑，對 dev server），印 OK。
 
 ### T7 驗收（示範資料補分類與座標）

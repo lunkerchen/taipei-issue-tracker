@@ -7,7 +7,8 @@ import seed from "../data.json";
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
 const TAIPEI_VIEWBOX = "121.45,25.22,121.67,24.95"; // left,top,right,bottom
 const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
-const GOOGLE_NEWS = "https://news.google.com/rss/search?q=" + encodeURIComponent("臺北") + "&hl=zh-TW&gl=TW&ceid=TW:zh-Hant";
+// Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
+const BING_NEWS = "https://www.bing.com/news/search?q=" + encodeURIComponent("臺北") + "&format=rss&setlang=zh-TW&cc=TW";
 const PTT = "https://www.ptt.cc/bbs/Taipei/index.html";
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -37,13 +38,15 @@ const ent = s => s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) =
 const clean = (s, n = 120) => ent(s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "")).trim().slice(0, n);
 const tag = (x, t) => (new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`).exec(x) || [])[1] || "";
 
-async function googleNews() {
-  const xml = await (await get(GOOGLE_NEWS)).text();
+// Bing wraps each link in apiclick.aspx?url=<article>; unwrap it so the ticker links straight to the article.
+const unwrap = u => { try { return new URL(u).searchParams.get("url") || u; } catch { return u; } };
+async function bingNews() {
+  const xml = await (await get(BING_NEWS, { "user-agent": NOMINATIM_UA })).text();
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, x]) => {
-    const source = clean(tag(x, "source")) || "Google News";
-    const title = clean(tag(x, "title")).replace(new RegExp(" - " + source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$"), "");
+    const source = clean(tag(x, "News:Source")) || "Bing News";
+    const title = clean(tag(x, "title"));
     const t = Date.parse(tag(x, "pubDate"));
-    return { title, url: clean(tag(x, "link"), 2000), source, time: t ? new Date(t).toISOString() : "", t: t || 0 };
+    return { title, url: unwrap(clean(tag(x, "link"), 2000)), source, time: t ? new Date(t).toISOString() : "", t: t || 0 };
   }).filter(i => i.title && /^https?:\/\//.test(i.url)).sort((a, b) => b.t - a.t).slice(0, 15).map(({ t, ...i }) => i);
 }
 
@@ -143,10 +146,12 @@ export class Hub extends DurableObject {
   async news() {
     const hit = this.cacheGet("news");
     if (hit) return hit;
-    const [g, p] = await Promise.allSettled([googleNews(), pttNews()]);
-    if (g.status === "rejected" && p.status === "rejected") return { error: "upstream_error", status: 502 };
+    const [g, p] = await Promise.allSettled([bingNews(), pttNews()]);
     const out = { items: [...(g.value || []), ...(p.value || [])] };
-    this.cachePut("news", out, g.status === p.status ? 10 * 60e3 : 60e3); // one source down: retry sooner than 10 min
+    if (!out.items.length) return { error: "upstream_error", status: 502 };
+    // A source that failed or came back empty (bot page, changed markup) counts as down: retry in 1 min, not 10
+    const up = r => r.status === "fulfilled" && r.value.length > 0;
+    this.cachePut("news", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
     return out;
   }
 }
