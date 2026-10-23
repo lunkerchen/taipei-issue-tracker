@@ -43,14 +43,27 @@ const visitor = (async () => {
   return t;
 })();
 
-const load = async () => { const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status); DATA = await r.json(); };
-const ready = load(); ready.catch(() => {});
-const apply = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; fire(); };
+// seq: the Hub numbers every write. A path only takes data newer than what this tab already has,
+// so a slow snapshot or write reply can never roll back a live update that arrived first.
+const pathSeq = {};
+const put = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; };
+const apply = (path, d, seq) => { if (!(seq > (pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
+const load = async () => {
+  const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status);
+  const { _seq = 0, ...fresh } = await r.json(), old = DATA;
+  DATA = fresh;
+  for (const [path, s] of Object.entries(pathSeq)) {
+    if (s > _seq) { const [c, id] = path.split("/"); put(path, old[c]?.[id] ?? null); } else delete pathSeq[path];
+  }
+};
+// ready is replaced on every reload, so a failed first load recovers once the socket reconnects
+let ready = load(); ready.catch(() => {});
 const connect = () => {
   const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws");
-  ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data); } catch {} };
-  // Dropped: wait 2 s, reconnect, and refetch everything that was missed meanwhile
-  ws.onclose = () => setTimeout(() => { connect(); load().then(fire, () => {}); }, 2000);
+  ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
+  // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
+  ws.onopen = () => { ready = load(); ready.then(fire, () => {}); };
+  ws.onclose = () => setTimeout(connect, 2000);
 };
 connect();
 
@@ -61,7 +74,7 @@ const write = async (op, path, data) => {
   const v = await visitor; if (v) h["x-visitor"] = v;
   const r = await req("/api/db", { method: "POST", headers: h, body: JSON.stringify({ op, path, data }) });
   if (!r.ok) throw new Error("write " + r.status);
-  apply(path, (await r.json()).data); // own write shows at once; the broadcast echo is idempotent
+  const j = await r.json(); apply(path, j.data, j.seq); // own write shows at once; the broadcast echo is ignored by seq
 };
 const ref = (c, id) => ({
   get: async () => { await ready; return docSnap(id, (DATA[c] || {})[id]); },
@@ -73,6 +86,7 @@ const ref = (c, id) => ({
   onSnapshot(cb, err) { subs.push({ run: () => cb(docSnap(id, (DATA[c] || {})[id])) }); ready.then(fire, () => err && err(new Error("db unavailable"))); },
 });
 const db = {
+  updateCreates: true, // the Hub's update() creates a missing doc
   doc: p => { const [c, id] = p.split("/"); return ref(c, id); },
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
 };

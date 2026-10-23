@@ -65,6 +65,12 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .new{display:flex;flex-direction:column;gap:10px;padding:14px}
 .new textarea{min-height:96px;resize:vertical;width:100%;box-sizing:border-box}
 .new .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.aspects{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.aspects legend{float:left;margin-right:4px;padding:0}
+.aspects input{position:absolute;opacity:0;width:1px;height:1px}
+.aspects label{padding:5px 12px;border:1px solid var(--border);border-radius:999px;cursor:pointer;font-size:14px}
+.aspects input:checked+label{background:var(--accent,#0969da);border-color:transparent;color:#fff}
+.aspects input:focus-visible+label{outline:2px solid var(--accent,#0969da);outline-offset:2px}
 .status{font-size:13px;color:var(--muted)}
 .toast{position:fixed;left:16px;right:16px;bottom:16px;margin:0 auto;width:fit-content;max-width:480px;background:var(--term);color:var(--term-fg);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:10}
 .toast:empty{opacity:0;pointer-events:none}
@@ -214,6 +220,7 @@ Switched to branch 'taipei'
   <section class="box" id="newBox" hidden>
     <form class="new" id="newForm">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
+      <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <textarea id="newText" required maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
       <div class="dup" id="dupBox" hidden></div>
@@ -335,6 +342,15 @@ const CODEOWNERS = {
   "排水淤積":"工務局水利處", "流浪動物":"動保處", "違建":"建管處", "食安":"衛生局"
 };
 const TAGS = Object.keys(CODEOWNERS);
+// Citizen-picked broad aspect (食住行育樂醫療), sent to taipei-bot as a hint only; the complaint text still wins.
+const ASPECTS = {
+  "食": "飲食：食品衛生、餐廳與攤販、餐飲油煙；多屬【衛福…】或【垃圾、噪音、污染…】，常見單位衛生局、環保局",
+  "住": "居住：住家周邊噪音、垃圾、違建、公寓大廈、漏水；多屬【垃圾、噪音、污染…】或【都市發展、建管…】，常見單位環保局、建管處",
+  "行": "交通：道路、人行道、號誌、路燈、停車、公車、YouBike；多屬【道路…】或【交通運輸】，常見單位工務局新工處、交通局、台電/路燈管理",
+  "育": "教育：學校、圖書館、托育、通學安全；多屬【文教、體育…】或【衛福、勞動…】",
+  "樂": "休閒：公園、遊具、運動中心、文化設施、觀光景點；多屬【公園…】或【文教、體育…】，常見單位工務局公園處",
+  "醫療": "醫療：醫院診所、藥品、長照、防疫、病媒；多屬【衛福、勞動…】，常見單位衛生局"
+};
 const TEMPLATES = {
   "路面或人行道": "地點（路名、門牌或地標）：\n狀況（坑洞大小、磚塊鬆動…）：\n影響（有人跌倒、機車打滑…）：",
   "噪音": "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：",
@@ -662,7 +678,7 @@ $("tabClosed").onclick = () => { view.closed = true; render(); };
 $("newBtn").onclick = () => { show("issues"); $("newBox").hidden = false; $("newText").focus(); };
 $("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); };
 
-async function triage(text, district) {
+async function triage(text, district, aspect) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
   if (!sample) return fallback;
   // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
@@ -676,6 +692,7 @@ tags 只能從這些選：${TAGS.join("、")}
 category：從下列 1999 官方子分類選最符合的一個，填代碼（例如 AC0501）；都不符合就填該大類的「其他事項」，完全無法判斷填空字串。
 ${cats.map(c => `【${c.name}】` + c.subs.map(s => `${s.id.replace("TYPEA-", "")} ${s.name}`).join("；")).join("\n")}
 分派規則（CODEOWNERS，依 tag 決定 dept，跨類時選最主要的）：${TAGS.map(t => `${t}→${CODEOWNERS[t]}`).join("、")}
+市民選的大方向：${aspect ? ASPECTS[aspect] : "未選"}（只是參考，與內文衝突時以內文為準）
 district 只能是：${DISTRICTS.join("、")}，或空字串。使用者已選：${district || "未選"}
 address：只抄內文裡出現的地址或地標，不要猜；沒有就填空字串。
 spam：廣告、謾罵、或與市政無關的內容填 true，正常陳情填 false。
@@ -709,7 +726,7 @@ $("newForm").addEventListener("submit", async e => {
   $("submitBtn").disabled = true;
   const note = m.count ? `已遮蔽 ${m.count} 項個資。` : "";
   $("newStatus").textContent = note + (sample ? "taipei-bot 正在分類…" : "送出中…");
-  const t = await triage(text, $("newDistrict").value);
+  const t = await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
   if (t.dup) {
     pending = { t, text };
     $("newStatus").textContent = note;
@@ -732,7 +749,7 @@ $("dupBox").addEventListener("click", e => {
   if (b.dataset.dup === "new") return create({ ...t, dup: null }, text);
   setVote(t.dup.id, true);
   view.open.add(t.dup.id); view.closed = false;
-  $("newText").value = ""; $("newBox").hidden = true; render();
+  $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; render();
 });
 
 // Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.
@@ -756,11 +773,12 @@ async function create(t, text) {
   const ref = db.doc("reports/" + me);
   try {
     const snap = await ref.get();
-    await (snap.exists ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
+    // db.updateCreates (Worker): update creates the doc atomically, so two tabs of one visitor cannot both set() it
+    await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
     view.open.add(full); view.closed = false;
-    $("newText").value = ""; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
+    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
   } catch (e) { mine = null; $("newStatus").textContent = ""; fail(e); }
@@ -838,7 +856,7 @@ function syncMap() {
     let r = markers.get(i.id);
     if (!r) {
       r = { m:L.circleMarker([i.lat, i.lng], st), key, sig, votes, i };
-      r.m.bindPopup(() => popupHtml(i.id));
+      r.m.bindPopup(""); r.m.on("popupopen", () => r.m.setPopupContent(popupHtml(i.id)));
       markers.set(i.id, r); groups[key].addLayer(r.m);
       if (now - (fresh.get(i.id) || 0) < 3000) pulse(r.m);
       continue;
@@ -1118,6 +1136,7 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
 });
 
 // Issue templates fill the textarea with the fields 1999 needs.
+$("aspects").insertAdjacentHTML("beforeend", ["不確定", ...Object.keys(ASPECTS)].map((k, i) => `<input type="radio" name="aspect" id="asp${i}" value="${i ? k : ""}"${i ? "" : " checked"}><label for="asp${i}">${k}</label>`).join(""));
 $("tpls").insertAdjacentHTML("beforeend", Object.keys(TEMPLATES).map(k => `<button class="btn" type="button" data-tpl="${k}">${k}</button>`).join(""));
 $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (b) { $("newText").value = TEMPLATES[b.dataset.tpl]; $("newText").focus(); } });
 

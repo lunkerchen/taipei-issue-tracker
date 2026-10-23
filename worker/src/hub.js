@@ -15,7 +15,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = isObj(v) && isObj(o[k]) ? { ...o[k], ...v } : v; return o; };
 
 // Every outbound fetch: 8 s timeout, one retry on network error / 5xx / 429
-async function get(url, headers) {
+async function get(url, headers, gap = 500) {
   let last;
   for (let k = 0; k < 2; k++) {
     try {
@@ -24,7 +24,7 @@ async function get(url, headers) {
       last = new Error("upstream " + r.status);
       if (r.status < 500 && r.status !== 429) break;
     } catch (e) { last = e; }
-    await sleep(500);
+    await sleep(gap);
   }
   throw last;
 }
@@ -64,6 +64,8 @@ export class Hub extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS docs (path TEXT PRIMARY KEY, data TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT NOT NULL, exp INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY)");
+      this.sql.exec("CREATE TABLE IF NOT EXISTS counter (k TEXT PRIMARY KEY, v INTEGER NOT NULL)");
+      this.seq = this.sql.exec("SELECT v FROM counter WHERE k = 'seq'").toArray()[0]?.v || 0;
       // Seed once; the meta row stops an emptied database from reseeding itself
       if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'seeded'").toArray().length) {
         for (const [c, docs] of Object.entries(seed)) for (const [id, d] of Object.entries(docs)) this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", `${c}/${id}`, JSON.stringify(d));
@@ -72,8 +74,9 @@ export class Hub extends DurableObject {
     });
   }
 
+  // seq orders writes so clients can drop stale data; the snapshot carries the seq it reflects
   snapshot() {
-    const out = {};
+    const out = { _seq: this.seq };
     for (const { path, data } of this.sql.exec("SELECT path, data FROM docs")) { const [c, id] = path.split("/"); (out[c] ||= {})[id] = JSON.parse(data); }
     return out;
   }
@@ -92,9 +95,10 @@ export class Hub extends DurableObject {
       }
       this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
     } else this.sql.exec("DELETE FROM docs WHERE path = ?", path);
-    const msg = JSON.stringify({ path, data: doc });
+    this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
+    const msg = JSON.stringify({ path, data: doc, seq: this.seq });
     for (const ws of this.ctx.getWebSockets()) try { ws.send(msg); } catch {}
-    return { status: 200, data: doc };
+    return { status: 200, data: doc, seq: this.seq };
   }
 
   fetch(req) {
@@ -126,7 +130,7 @@ export class Hub extends DurableObject {
       await sleep(Math.max(0, this.lastGeo + 1100 - Date.now()));
       this.lastGeo = Date.now();
       const u = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "tw", viewbox: TAIPEI_VIEWBOX, bounded: "1", q });
-      const r = (await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" })).json())[0];
+      const r = (await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" }, 1100)).json())[0];
       const out = r ? { lat: +r.lat, lng: +r.lon } : { lat: null };
       this.cachePut(key, out, 7 * 864e5);
       return out;

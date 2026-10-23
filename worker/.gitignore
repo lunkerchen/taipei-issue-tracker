@@ -1,3 +1,4 @@
 public/
 .wrangler/
 .dev.vars
+.prod-admin-token
