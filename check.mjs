@@ -77,5 +77,6 @@ const withoutTemplate = new Function(["TEMPLATES","TPL_LINES","withoutTemplate"]
 assert.equal(withoutTemplate("地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）："), "");
 assert.equal(withoutTemplate("地點：  \n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始："), "");
 assert.notEqual(withoutTemplate("地點：民生東路三段\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）："), "");
+assert.equal(withoutTemplate("地點:\n狀況（不亮、閃爍、白天也亮）:\n從什麼時候開始:"), "");
 assert.notEqual(withoutTemplate("敦化南路紅綠燈一直閃黃燈"), "");
 console.log("OK");

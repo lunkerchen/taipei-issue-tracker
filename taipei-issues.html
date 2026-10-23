@@ -206,7 +206,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
-@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:260px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:160px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
@@ -435,7 +435,7 @@ const TEMPLATES = {
 };
 const TPL_LINES = Object.values(TEMPLATES).flatMap(t => t.split("\n")).filter(Boolean);
 // What the user actually wrote once template labels are removed; empty means only a template was submitted
-const withoutTemplate = text => text.split("\n").map(l => { l = l.trim(); const t = TPL_LINES.find(t => l.startsWith(t)); return t ? l.slice(t.length).trim() : l; }).join("").trim();
+const withoutTemplate = text => text.split("\n").map(l => { l = l.trim().replace(/:/g, "："); const t = TPL_LINES.find(t => l.startsWith(t)); return t ? l.slice(t.length).trim() : l; }).join("").trim();
 const STALE_DAYS = 7, DAY = 864e5;
 const VIEWS = ["code","issues","map","pulls","milestones","insights","releases","admin"];
 const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
