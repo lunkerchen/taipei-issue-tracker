@@ -1076,7 +1076,7 @@ function goIssue(e) {
 // The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
 let histFn = null, hist = null, histDays = [], histGroups = {}, histR = null, histTimer = null;
 const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
-const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(k + "T12:00:00+08:00").getDay()]}）`; };
+const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(Date.UTC(+y, m - 1, +d)).getUTCDay()]}）`; };
 async function setHist(on) {
   stopPlay();
   if (on && !hist) {
@@ -1085,6 +1085,7 @@ async function setHist(on) {
     if (!hist || !hist.days) { hist = null; $("histOn").checked = false; $("histCount").textContent = "歷史資料載入失敗，請稍後再試"; return; }
     histDays = Object.keys(hist.days).sort();
     $("histDay").max = histDays.length - 1; $("histDay").value = histDays.length - 1;
+    if (!$("histOn").checked) { $("histCount").textContent = ""; return; } // unticked (or Live pressed) while the file was loading
   }
   histOn = on;
   for (const l of LAYERS) {
@@ -1112,7 +1113,7 @@ function drawHist() {
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
 const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
-$("histOn").onchange = () => mainLM && setHist($("histOn").checked);
+$("histOn").onchange = () => mainLM ? setHist($("histOn").checked) : ($("histOn").checked = false);
 $("histDay").addEventListener("input", () => { stopPlay(); drawHist(); });
 $("histPrev").onclick = () => { stopPlay(); stepDay(-1); };
 $("histNext").onclick = () => { stopPlay(); stepDay(1); };
