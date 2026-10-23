@@ -162,6 +162,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapcol .mapbox{flex:1}
 .mapact{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mapact .btn{min-height:48px;font-size:16px;font-weight:600;justify-content:center}
+.mapact .note{grid-column:1/-1;text-align:center;margin:-2px 0 0}
 .mapact .btn[aria-pressed="true"]{background:var(--hover);border-color:var(--fg)}
 .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#cf222e;margin-right:6px;vertical-align:middle}
 .livebox{max-height:40%;overflow:auto;flex:none}
@@ -301,6 +302,7 @@ Switched to branch 'taipei'
       <div class="mapact">
         <button class="btn" type="button" id="liveBtn" aria-pressed="false" aria-controls="liveBox"><span class="live-dot" aria-hidden="true"></span>Live</button>
         <button class="btn primary" type="button" id="reportBtn">回報</button>
+        <span class="note">或長按地圖，直接回報那個位置</span>
       </div>
       <section class="box livebox" id="liveBox" aria-label="今天最新的 1999 陳情" hidden>
         <div class="boxhead"><b>今天最新的陳情</b><span class="spacer"></span><span class="note" id="liveCount"></span></div>
@@ -909,6 +911,14 @@ function initMap() {
   mainLM = L.map("map", TAIPEI_VIEW);
   addBase(mainLM);
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
+  // Long-press on touch (right-click on desktop) fires contextmenu: open the form with that spot already picked
+  mainLM.on("contextmenu", e => {
+    const { lat, lng } = e.latlng;
+    if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
+    $("newBtn").click(); setPicked(lat, lng, "pin"); placePin(lat, lng);
+    setLoc("已標記你在地圖上長按的位置，可按「在地圖上標記位置」調整");
+    $("newBox").scrollIntoView({ block:"start" });
+  });
 }
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
