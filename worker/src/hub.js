@@ -121,8 +121,22 @@ export class Hub extends DurableObject {
 
   // Nominatim allows 1 req/s: cache misses queue behind one chain and wait out the gap; more than 5 waiting are refused.
   // ponytail: cached in DO storage, not the Cache API, because caches.default is a no-op on *.workers.dev.
-  async geocode(q) {
-    const key = "geo:" + q.toLowerCase();
+  geocode(q) {
+    const u = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "tw", viewbox: TAIPEI_VIEWBOX, bounded: "1", q });
+    return this.nominatim("geo:" + q.toLowerCase(), u, j => j[0] ? { lat: +j[0].lat, lng: +j[0].lon } : { lat: null });
+  }
+  // Reverse lookup for a long-pressed spot. Rounded to ~10 m so nearby presses share one cache entry.
+  reverse(lat, lng) {
+    const la = lat.toFixed(4), ln = lng.toFixed(4);
+    const u = "https://nominatim.openstreetmap.org/reverse?" + new URLSearchParams({ format: "jsonv2", lat: la, lon: ln, zoom: "18", addressdetails: "1" });
+    return this.nominatim(`rev:${la},${ln}`, u, j => {
+      const a = j.address || {}, district = a.suburb || a.city_district || "";
+      const street = a.road ? a.road + (a.house_number ? a.house_number.replace(/號?$/, "號") : "") : "";
+      const address = (a.city || "") + district + (street || j.name || "");
+      return { address: address.slice(0, 100) || null, district };
+    });
+  }
+  async nominatim(key, u, shape) {
     const hit = this.cacheGet(key);
     if (hit) return hit;
     if (this.pending >= 5) return { error: "busy", status: 429 };
@@ -131,11 +145,10 @@ export class Hub extends DurableObject {
       const again = this.cacheGet(key);
       if (again) return again;
       await sleep(Math.max(0, this.lastGeo + 1100 - Date.now()));
-      const u = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({ format: "jsonv2", limit: "1", countrycodes: "tw", viewbox: TAIPEI_VIEWBOX, bounded: "1", q });
       // lastGeo is stamped after the last attempt (retries included) ends, so the next query always waits a full gap
-      let r;
-      try { r = (await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" }, 1100)).json())[0]; } finally { this.lastGeo = Date.now(); }
-      const out = r ? { lat: +r.lat, lng: +r.lon } : { lat: null };
+      let j;
+      try { j = await (await get(u, { "user-agent": NOMINATIM_UA, "accept-language": "zh-TW" }, 1100)).json(); } finally { this.lastGeo = Date.now(); }
+      const out = shape(j);
       this.cachePut(key, out, 7 * 864e5);
       return out;
     });

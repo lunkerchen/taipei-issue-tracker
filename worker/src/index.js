@@ -68,6 +68,9 @@ export default {
       return Response.json({ id: `${id}.${await sign(env.VISITOR_SECRET, id)}` });
     }
     if (pathname === "/api/geocode") {
+      const lat = +searchParams.get("lat"), lng = +searchParams.get("lng");
+      // Reverse lookup only inside the Taipei box, so the cache cannot be filled with arbitrary points
+      if (searchParams.has("lat")) return lat >= 24.95 && lat <= 25.22 && lng >= 121.45 && lng <= 121.67 ? reply(await hub(env).reverse(lat, lng)) : err(400, "bad_request");
       const q = (searchParams.get("q") || "").trim();
       if (!q || q.length > 100) return err(400, "bad_request");
       return reply(await hub(env).geocode(q));

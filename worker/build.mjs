@@ -113,7 +113,8 @@ const sample = { async json(prompt, { modelTier, signal } = {}) {
 const geocode = async q => { try { const j = await (await req("/api/geocode?q=" + encodeURIComponent(q))).json(); return j.lat == null ? null : { lat: j.lat, lng: j.lng }; } catch { return null; } };
 const news = async () => { try { return (await (await req("/api/news")).json()).items || []; } catch { return []; } };
 const ai = fetch("/api/health", { signal: AbortSignal.timeout(5000) }).then(r => r.json()).then(j => j.ai).catch(() => false);
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, news })[n] ?? null };
+const revgeo = async (lat, lng) => { try { const j = await (await req("/api/geocode?lat=" + lat + "&lng=" + lng)).json(); return j.address ? j : null; } catch { return null; } };
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news })[n] ?? null };
 })();
 </script>`;
 

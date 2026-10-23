@@ -425,7 +425,7 @@ const ICON = {
   fixed:'<svg class="ico" viewBox="0 0 16 16" fill="var(--fixed)"><path d="M10.28 6.28 7.03 9.53a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.22 1.22 2.72-2.72a.75.75 0 0 1 1.06 1.06Z"/><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm1.5 0a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>'
 };
 
-let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, newsFn = null;
+let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -500,6 +500,7 @@ function counts() {
 // Issues seeded before the timeline existed have no events; derive the first two.
 const evs = i => i.events || [{ t:i.createdAt, type:"opened" }, { t:i.createdAt, type:"labeled", dept:i.dept, by:"taipei-bot" }];
 const nextN = () => Math.max(0, ...all.map(i => i.n || 0), ...all.flatMap(i => evs(i).filter(e => e.type === "pr").map(e => e.n))) + 1;
+const coordText = (lat, lng) => `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 const dayKey = d => new Date(d).toLocaleDateString("sv-SE", { timeZone:"Asia/Taipei" });
 const lastAct = i => Math.max(...evs(i).map(e => +new Date(e.t)));
 // Stale is derived on read, so the bot needs no writes or schedule.
@@ -684,6 +685,7 @@ function render() {
       <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
+        ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}</div>` : ""}
         <div class="bot"><div class="h">taipei-bot 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
@@ -768,7 +770,7 @@ duplicate_of：如果陳情和下列某個未結案件是同一地點的同一�
 未結案件：
 ${open.map(i => `#${i.n} ${i.title}（${i.district || "未填"}）`).join("\n") || "（無）"}
 陳情內容：
-${text}`, { modelTier: "quick", cache: false }, 30000);
+${text}${picked && picked.address ? `\n市民在地圖上標記的位置：${picked.address}` : ""}`, { modelTier: "quick", cache: false }, 30000);
     const dept = DEPTS[r.dept] ? r.dept : "1999 待分派";
     const dup = open.find(i => i.n === Number(r.duplicate_of));
     const cat = "TYPEA-" + String(r.category || "").replace(/^TYPEA-/, "");
@@ -850,9 +852,10 @@ async function locate(address, district) {
 
 async function create(t, text) {
   const { dup, address, outside, vague, ...fields } = t;
+  const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
   const where = await locate(address, fields.district);
   // n is ignored on read (build() numbers citizen items), kept only as a hint
-  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(address ? { address } : {}), body:text, createdAt:new Date().toISOString(), author:me };
+  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), body:text, createdAt:new Date().toISOString(), author:me };
   const full = `${me}:${id}`;
   const ref = db.doc("reports/" + me);
   try {
@@ -916,19 +919,38 @@ function initMap() {
   addBase(mainLM);
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click fire contextmenu; a mouse has no long-press event, so a 600 ms still hold is timed here
-  mainLM.on("contextmenu", e => reportAt(e.latlng));
+  mainLM.on("contextmenu", e => askReport(e.latlng));
   let hold = null;
   mainLM.on("mousedown", e => { if (e.originalEvent.button !== 0) return; clearTimeout(hold); const p0 = e.containerPoint;
-    hold = setTimeout(() => { hold = null; mainLM.dragging.disable(); mainLM.dragging.enable(); reportAt(e.latlng); }, 600);
+    hold = setTimeout(() => { hold = null; mainLM.dragging.disable(); mainLM.dragging.enable(); askReport(e.latlng); }, 600);
     hold.p0 = p0; });
   mainLM.on("mousemove", e => { if (hold && hold.p0 && e.containerPoint.distanceTo(hold.p0) > 6) { clearTimeout(hold); hold = null; } });
   mainLM.on("mouseup dragstart zoomstart", () => { clearTimeout(hold); hold = null; });
 }
-function reportAt({ lat, lng }, how = "長按") {
+// Long-press drops a pin and asks first; the address is looked up while the citizen decides
+const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
+  <div class="meta">座標 ${coordText(lat, lng)}</div>${ok ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" type="button" data-askok>確認通報</button><button class="btn" type="button" data-askno>取消</button></div>` : ""}`;
+const lookup = (lat, lng) => revgeo ? tryTwice(() => revgeo(lat, lng), 10000).catch(() => null) : Promise.resolve(null);
+let askM = null;
+function askReport({ lat, lng }) {
+  if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
+  if (askM) askM.remove();
+  const m = askM = L.marker([lat, lng], { keyboard:false, icon:L.divIcon({ className:"pin-wrap", html:'<span class="pin"></span>', iconSize:[22,22], iconAnchor:[11,22] }) }).addTo(mainLM);
+  m.bindPopup(askHtml("要在這裡通報嗎？", undefined, lat, lng, true), { offset:[0, -16] }).openPopup();
+  m.on("popupclose", () => { m.remove(); if (askM === m) askM = null; });
+  lookup(lat, lng).then(g => { m.geo = g; if (m.isPopupOpen()) m.setPopupContent(askHtml("要在這裡通報嗎？", g, lat, lng, true));
+    else if (m.confirmed && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo(g, lat, lng); }); // confirmed before the lookup came back
+}
+function reportAt({ lat, lng }, how, geo) {
   if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
   $("newBtn").click(); setPicked(lat, lng, how === "定位" ? "gps" : "pin"); placePin(lat, lng);
-  setLoc(how === "定位" ? "已使用你的位置，可按「在地圖上標記位置」調整" : "已標記你在地圖上長按的位置，可按「在地圖上標記位置」調整");
+  applyGeo(geo, lat, lng);
   $("newBox").scrollIntoView({ block:"start" });
+}
+function applyGeo(geo, lat, lng) {
+  if (geo && geo.address) picked.address = geo.address.slice(0, 100);
+  if (geo && DISTRICTS.includes(geo.district) && !$("newDistrict").value) $("newDistrict").value = geo.district;
+  setLoc(`位置：${geo && geo.address ? `${geo.address}（${coordText(lat, lng)}）` : geo === undefined ? `${coordText(lat, lng)}，地址查詢中…` : coordText(lat, lng)}，可按「在地圖上標記位置」調整`);
 }
 // Locate button: blue dot + accuracy circle, popup offers to report right there
 let meM = null, meC = null;
@@ -942,11 +964,17 @@ $("locBtn").onclick = () => {
     meM ? meM.setLatLng(ll) : meM = L.marker(ll, { keyboard:false, icon:L.divIcon({ className:"", html:'<span class="me"></span>', iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(mainLM);
     meC ? meC.setLatLng(ll).setRadius(acc) : meC = L.circle(ll, { radius:acc, color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false }).addTo(mainLM);
     const inside = inTaipei(lat, lng);
-    meM.bindPopup(`<b>你的位置</b><div class="meta">誤差約 ${Math.round(acc)} 公尺</div>` + (inside ? `<button class="btn primary" type="button" data-here>在這裡回報</button>` : `<div class="meta">不在台北市範圍內</div>`));
+    const pop = g => `<b>你的位置</b><div class="meta">${g ? esc(g.address) + " · " : ""}誤差約 ${Math.round(acc)} 公尺</div><div class="meta">座標 ${coordText(lat, lng)}</div>` + (inside ? `<button class="btn primary" type="button" data-here style="margin-top:8px">在這裡回報</button>` : `<div class="meta">不在台北市範圍內</div>`);
+    meM.geo = null; meM.bindPopup(pop());
+    if (inside) lookup(lat, lng).then(g => { meM.geo = g; meM.setPopupContent(pop(g)); });
     mainLM.setView(ll, inside ? Math.max(mainLM.getZoom(), 16) : 12); meM.openPopup();
   }, e => { $("locBtn").removeAttribute("aria-busy"); toast(e && e.code === 1 ? "你拒絕了定位權限" : "無法取得位置，請稍後再試"); }, { timeout:8000, maximumAge:60000 });
 };
-$("map").addEventListener("click", e => { if (e.target.closest("[data-here]") && meM) { mainLM.closePopup(); reportAt(meM.getLatLng(), "定位"); } });
+$("map").addEventListener("click", e => {
+  if (e.target.closest("[data-here]") && meM) { mainLM.closePopup(); reportAt(meM.getLatLng(), "定位", meM.geo); }
+  if (e.target.closest("[data-askno]")) mainLM.closePopup();
+  if (e.target.closest("[data-askok]") && askM) { const m = askM; m.confirmed = true; mainLM.closePopup(); reportAt(m.getLatLng(), "長按", m.geo); }
+});
 if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖上按住滑鼠（或按右鍵），直接回報那個位置";
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
@@ -1344,7 +1372,8 @@ document.addEventListener("keydown", e => {
 
 (async () => {
   const opt = n => Promise.resolve().then(() => claude.use(n)).catch(() => null); // geocode/news exist only on the Worker host
-  [db, sample, geocode, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("news")]);
+  [db, sample, geocode, revgeo, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("revgeo"), opt("news")]);
+  if (typeof revgeo !== "function") revgeo = null;
   if (typeof geocode !== "function") geocode = null;
   if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
   const user = await claude.use("user");
