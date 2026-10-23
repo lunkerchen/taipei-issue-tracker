@@ -146,6 +146,21 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
+.mapcol{display:flex;flex-direction:column;gap:10px;min-height:0}
+.mapcol .mapbox{flex:1}
+.mapact{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mapact .btn{min-height:48px;font-size:16px;font-weight:600;justify-content:center}
+.mapact .btn[aria-pressed="true"]{background:var(--hover);border-color:var(--fg)}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#cf222e;margin-right:6px;vertical-align:middle}
+.livebox{max-height:40%;overflow:auto;flex:none}
+.livebox ol{list-style:none;margin:0;padding:0}
+.livebox li{border-top:1px solid var(--line)}
+.livebox li:first-child{border-top:0}
+.livebox li button{all:unset;box-sizing:border-box;display:block;width:100%;padding:10px 14px;cursor:pointer}
+.livebox li button:hover,.livebox li button:focus-visible{background:var(--hover)}
+.livebox li button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.livebox .t{font-weight:600}
+.livebox .meta{font-size:13px;color:var(--muted);margin-top:2px}
 .lyr{display:flex;gap:8px;align-items:center;padding:7px 14px;border-top:1px solid var(--line);cursor:pointer;font-size:14px}
 .lyr:first-child{border-top:0}
 .lyr:hover{background:var(--hover)}
@@ -168,7 +183,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
-@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:60vh;min-height:320px}.mapside{overflow:visible}}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:60vh;min-height:320px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
@@ -264,10 +279,20 @@ Switched to branch 'taipei'
 
   <div class="view" id="v-map" hidden>
     <div class="mapgrid">
+      <div class="mapcol">
       <div class="mapbox">
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+      </div>
+      <div class="mapact">
+        <button class="btn" type="button" id="liveBtn" aria-pressed="false" aria-controls="liveBox"><span class="live-dot" aria-hidden="true"></span>Live</button>
+        <button class="btn primary" type="button" id="reportBtn">回報</button>
+      </div>
+      <section class="box livebox" id="liveBox" aria-label="今天最新的 1999 陳情" hidden>
+        <div class="boxhead"><b>今天最新的陳情</b><span class="spacer"></span><span class="note" id="liveCount"></span></div>
+        <ol id="liveList"></ol>
+      </section>
       </div>
       <aside class="box mapside" aria-label="圖層">
         <div class="boxhead"><b>圖層</b><span class="spacer"></span><span class="note">1999 九大類</span></div>
@@ -588,7 +613,7 @@ function render() {
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
   renderViews(c);
-  trackNew(); syncMap();
+  trackNew(); syncMap(); renderLive();
 
   let rows = issues.filter(i => (i.status === "fixed") === view.closed)
     .filter(i => !dept || i.dept === dept)
@@ -911,6 +936,33 @@ $("map").addEventListener("click", e => {
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
 });
 
+// ---- Live: today's newest reports (Asia/Taipei day), newest first. Tap one to fly the map to it. ----
+function renderLive() {
+  if ($("liveBox").hidden) return;
+  const today = dayKey(Date.now()), byNew = [...issues].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const todays = byNew.filter(i => dayKey(i.createdAt) === today);
+  // ponytail: an empty "today" falls back to the 5 newest so the panel is never blank on a quiet day
+  const list = todays.length ? todays.slice(0, 30) : byNew.slice(0, 5);
+  $("liveCount").textContent = todays.length ? `今天 ${todays.length} 件` : "今天還沒有新陳情，以下為最近陳情";
+  $("liveList").innerHTML = list.map(i => { const sub = SUBS[i.category], st = STATUS[i.status] || STATUS.open; return `<li><button type="button" data-live="${esc(i.id)}">
+    <div class="t">${esc(i.title)}</div>
+    <div class="meta">${esc(new Date(i.createdAt).toLocaleString("zh-TW", { ...(dayKey(i.createdAt) === today ? {} : { month:"numeric", day:"numeric" }), hour:"2-digit", minute:"2-digit", timeZone:"Asia/Taipei" }))} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${esc(st[0])}${sub ? ` · 1999：${esc(sub.name)}` : ""}</div></button></li>`; }).join("");
+}
+$("liveBtn").onclick = () => {
+  const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
+  renderLive(); if (mainLM) mainLM.invalidateSize();
+  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
+};
+$("liveList").addEventListener("click", e => {
+  const b = e.target.closest("[data-live]"); if (!b) return;
+  const r = markers.get(b.dataset.live);
+  if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
+  if (!mainLM.hasLayer(groups[r.key])) { layerOn[r.key] = true; mainLM.addLayer(groups[r.key]); const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; }
+  $("map").scrollIntoView({ block:"center", behavior:"smooth" });
+  mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
+});
+$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:"smooth" }); };
+
 // ---- Location picker on the New issue form ----
 let picked = null, pickLM = null, pinM = null;
 const setLoc = msg => $("locStatus").textContent = msg;
@@ -995,7 +1047,8 @@ function show(v) {
   if (v === "map") openMap();
 }
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
-show(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "issues");
+// Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
+show(VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues");
 
 const coLines = ["# .github/CODEOWNERS", "# 每類陳情的負責局處。taipei-bot 依這份規則分派，跨類時選最主要的。", "",
   ...TAGS.map(t => `/${t}/`.padEnd(10, "\u3000") + " @" + CODEOWNERS[t]), "", "# 判斷不出來的，先交給 1999 人工分派", "*".padEnd(10, "\u3000") + " @1999-待分派"];
