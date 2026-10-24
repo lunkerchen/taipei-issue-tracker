@@ -9,7 +9,13 @@ const DOC_MAX = 32 * 1024, ITEMS_MAX = 20, ADMIN_DOC_MAX = 256 * 1024;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
-export const validEmail = e => e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); // shared with index.js; the page uses the same rule
+export const validEmail = e => {
+  if (e.length > 254) return false;
+  const at = e.indexOf("@");
+  if (at < 1 || at !== e.lastIndexOf("@") || /\s/.test(e)) return false;
+  const domain = e.slice(at + 1); // shared with index.js; the page uses the same rule
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+};
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
 const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;

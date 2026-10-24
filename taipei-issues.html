@@ -764,6 +764,15 @@ function applyRole() {
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
 async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
 
+// Same domain rule as the Worker: one @, a dot, and no empty or hyphen-edged domain label.
+function validEmail(s) {
+  if (s.length > 254) return false;
+  const at = s.indexOf("@");
+  if (at < 1 || at !== s.lastIndexOf("@") || /\s/.test(s)) return false;
+  const domain = s.slice(at + 1);
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+}
+
 // Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
 const MASKED_MARK = "［已遮蔽］";
 function maskPII(s) {
@@ -1413,7 +1422,7 @@ $("newForm").addEventListener("submit", async e => {
       if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { fieldError($("cPhone"), "請填寫手機號碼（09 開頭共 10 碼）"); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { fieldError($("cEmail"), "請填寫有效的 Email（本站不會寄送通知）"); return; }
+      if (!validEmail(mail)) { fieldError($("cEmail"), "請填寫有效的 Email（本站不會寄送通知）"); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
