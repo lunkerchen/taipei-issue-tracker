@@ -218,6 +218,17 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
 .pin-wrap{background:none;border:0}
+/* District blocks: a hovered district lifts (shadow + slight raise); labels sit in the middle of each district */
+.mapbox .leaflet-container:has(.leaflet-districts-pane path){background:var(--hover)}
+.leaflet-districts-pane path{cursor:pointer;transition:transform .15s,filter .15s}
+.leaflet-districts-pane path.hot{transform:translateY(-4px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.35)) brightness(1.06);stroke-width:3}
+@media (prefers-reduced-motion:reduce){.leaflet-districts-pane path{transition:none}.leaflet-districts-pane path.hot{transform:none}}
+.leaflet-dlabels-pane{pointer-events:none}
+.leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:#1f2328;font-weight:700;font-size:14px;text-shadow:0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+.leaflet-tooltip.dlabel::before{display:none}
+.leaflet-tooltip.dlabel.hot{background:#1f2328;color:#fff;text-shadow:none;padding:4px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:1}
+.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
+.distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
 .locbtn[aria-busy="true"]{opacity:.6}
 .me{display:block;width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px rgba(26,115,232,.35)}
@@ -356,6 +367,7 @@ Switched to branch 'taipei'
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+        <button class="btn distback" type="button" id="distBack" hidden></button>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
       <div class="tline" id="tline" hidden>
@@ -1151,12 +1163,53 @@ async function openMap() {
 }
 function initMap() {
   if (mainLM) return;
-  mainLM = L.map("map", TAIPEI_VIEW);
-  addBase(mainLM);
+  mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25 });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
+  drawDistricts();
 }
+
+// City map: the 12 districts as flat colour blocks instead of a street basemap. Five colours, no two neighbours alike.
+// The districts pane sits under the overlay pane, so a raised (bringToFront) district never covers the report markers.
+const DIST_COLOR = { 北投區:"#ff8cc6", 士林區:"#ff9e1b", 內湖區:"#5bd8f5", 中山區:"#d9e35b", 大同區:"#5bd8f5", 松山區:"#ff8cc6",
+  信義區:"#d9e35b", 南港區:"#fff4c8", 大安區:"#ff9e1b", 中正區:"#ff8cc6", 萬華區:"#ff9e1b", 文山區:"#5bd8f5" };
+const DIST_STYLE = { weight:1.5, color:"#ffffff", opacity:1, fillOpacity:.9 };
+let distLayers = {}, curDist = "", cityBounds = null;
+async function drawDistricts() {
+  let gj;
+  try { gj = await tryTwice(async () => { const r = await fetch("districts.geojson"); if (!r.ok) throw new Error("districts " + r.status); return r.json(); }, 10000); }
+  catch { addBase(mainLM); return; } // the artifact build has no boundary file: fall back to the street map
+  mainLM.createPane("districts").style.zIndex = 350;
+  mainLM.createPane("dlabels").style.zIndex = 360; // own pane: inside "districts" the labels sat under the fills
+  L.geoJSON(gj, { pane:"districts", style: f => ({ ...DIST_STYLE, fillColor:DIST_COLOR[f.properties.district] || "#ddd" }),
+    onEachFeature: (f, l) => {
+      const d = f.properties.district;
+      distLayers[d] = l;
+      l.bindTooltip(d, { permanent:true, direction:"center", className:"dlabel", pane:"dlabels", opacity:1 });
+      l.on("mouseover", () => { if (curDist) return; l.getElement()?.classList.add("hot"); l.bringToFront(); l.setTooltipContent(`${d}・點擊查看各里`); l.getTooltip().getElement()?.classList.add("hot"); });
+      l.on("mouseout", () => { l.getElement()?.classList.remove("hot"); l.setTooltipContent(d); l.getTooltip().getElement()?.classList.remove("hot"); });
+      l.on("click", () => openDistrict(d));
+    } }).addTo(mainLM);
+  cityBounds = L.geoJSON(gj).getBounds(); mainLM.fitBounds(cityBounds, { padding:[12, 12] });
+  mainLM.attributionControl.addAttribution("里界 © 臺北市政府民政局");
+}
+function openDistrict(d) {
+  const l = distLayers[d]; if (!l) return;
+  curDist = d;
+  for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
+  l.bringToFront();
+  mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
+  $("distBack").hidden = false; $("distBack").textContent = "← 全市";
+}
+function closeDistrict() {
+  curDist = "";
+  for (const x of Object.values(distLayers)) x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity });
+  cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
+  $("distBack").hidden = true;
+}
+$("distBack").addEventListener("click", closeDistrict);
+
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
   <div class="meta">座標 ${coordText(lat, lng)}</div>${ok ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" type="button" data-askok>確認通報</button><button class="btn" type="button" data-askno>取消</button></div>` : ""}`;
