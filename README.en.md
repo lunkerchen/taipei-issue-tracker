@@ -68,6 +68,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Case numbers**: A case gets a number when the Worker creates it. The number is permanent. Citizens and staff see the same number. The number does not change when other cases are hidden or released. A reload or a new snapshot keeps the same number. Case numbers and PR numbers never have the same value. An old case that has no stored number still shows a number on the page.
 - **Case links**: Each case has a stable link from its data ID, not its number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
+- **Long text**: Titles, report text, additions, addresses, timeline entries and queue titles wrap at any character when a word or URL is longer than the available width. The text does not cover the +1 button or the department selector, and it stays inside the page.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
@@ -266,6 +267,10 @@ The short viewport test uses 320×568, 640×400, 512×384 and 390×844 viewports
 
 ```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
+```
+
+```bash
+BASE=http://localhost:8788 node worker/test/long-token-wrap.mjs
 ```
 
 ```bash
