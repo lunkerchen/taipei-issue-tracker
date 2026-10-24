@@ -2036,7 +2036,7 @@ const contactRow = (role, name, phone, party) => `<div class="ldrow"><div class=
 // Key events = every report in the 里: unfinished first, then most +1, then status (處理中 before 已受理), then newest.
 function liEvents(x) {
   const c = counts(), rank = { progress:0, open:1, fixed:2 };
-  return issues.filter(i => inTaipei(i.lat, i.lng) && liAt(i.lat, i.lng) === x)
+  return issues.filter(i => inTaipei(i.lat, i.lng) && liAt(i.lat, i.lng) === x && (!curAspect || aspectOf(i) === curAspect))
     .map(i => ({ i, v:c[i.id] || 0 }))
     .sort((a, b) => (a.i.status === "fixed") - (b.i.status === "fixed") || b.v - a.v || (rank[a.i.status] ?? 1) - (rank[b.i.status] ?? 1) || String(b.i.createdAt).localeCompare(String(a.i.createdAt)));
 }
@@ -2072,7 +2072,9 @@ $("ldReport").onclick = () => {
 // Unfinished = not fixed. Reports without a point, or outside every 里, are left out of the 里 counts.
 function liOpen(d) {
   const by = {};
-  for (const i of issues) if (i.status !== "fixed" && inTaipei(i.lat, i.lng)) { const x = liAt(i.lat, i.lng); if (x && x.district === d) (by[x.li] ||= []).push(i); }
+  for (const i of issues) if (i.status !== "fixed" && (!curAspect || aspectOf(i) === curAspect) && inTaipei(i.lat, i.lng)) {
+    const x = liAt(i.lat, i.lng); if (x && x.district === d) (by[x.li] ||= []).push(i);
+  }
   return by;
 }
 function renderLiList() {
@@ -2083,7 +2085,7 @@ function renderLiList() {
   const total = rows.reduce((n, x) => n + by[x.li].length, 0);
   $("liSum").textContent = `${all.length} 里・未完成 ${total} 件`;
   $("liList").innerHTML = rows.map(x => `<li><button type="button" data-li="${esc(x.li)}" aria-current="${x.li === curLi}"><span class="nm">${esc(x.li)}</span><span class="cnt">${by[x.li].length}</span><span class="chev" aria-hidden="true">›</span></button></li>`).join("");
-  $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有未完成陳情` : "";
+  $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有${curAspect ? "這類" : ""}未完成陳情` : "";
 }
 $("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
 // District page: 大方向 filter (list and pins), and the 5 most +1'd unfinished reports. Not gated on li.geojson.
@@ -2096,7 +2098,7 @@ function setAspect(a) {
   curAspect = a;
   for (const b of $("distAspects").querySelectorAll("[data-asp]")) b.setAttribute("aria-pressed", b.dataset.asp === a);
 }
-$("distAspects").addEventListener("click", e => { const b = e.target.closest("[data-asp]"); if (!b) return; setAspect(b.dataset.asp); renderHot(); setPins(); });
+$("distAspects").addEventListener("click", e => { const b = e.target.closest("[data-asp]"); if (!b) return; setAspect(b.dataset.asp); renderHot(); setPins(); renderLiList(); });
 function renderHot() {
   if (!curDist) return;
   const c = counts(), distOf = i => (markers.get(i.id) || {}).dist || i.district;
