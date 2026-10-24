@@ -135,7 +135,27 @@ const photo = async blob => {
   throw last;
 };
 photo.url = key => "/api/photo/" + key;
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo })[n] ?? null };
+// Reporter contact: save(item, {name, phone, realName}) for your own report; get(id) works for the admin only
+const contactReq = async (url, init = {}) => {
+  const h = { ...(init.headers || {}) };
+  if (adminToken) h["x-admin"] = adminToken;
+  const v = await visitor; if (v) h["x-visitor"] = v;
+  let last;
+  for (let k = 0; k < 2; k++) {
+    try {
+      const r = await fetch(url, { ...init, headers: h, signal: AbortSignal.timeout(8000) });
+      if (r.ok) return await r.json();
+      last = Object.assign(new Error("contact " + r.status), { status: r.status });
+      if (r.status < 500) break;
+    } catch (e) { last = e; }
+  }
+  throw last;
+};
+const contact = {
+  save: (item, c) => contactReq("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item, ...c }) }),
+  get: async id => (await contactReq("/api/contact?id=" + encodeURIComponent(id))).contact
+};
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact })[n] ?? null };
 })();
 </script>`;
 

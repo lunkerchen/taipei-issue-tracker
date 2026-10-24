@@ -35,6 +35,28 @@ async function writeDb(req, env) {
   return reply(await hub(env).write(op, path, data, admin));
 }
 
+// Reporter contact (private): a signed visitor saves name/phone for one of its own reports; only the admin reads it back.
+const ITEM = /^[\w-]{1,64}$/, NAME_MAX = 30;
+async function contact(req, env, searchParams) {
+  const h = req.headers, adminHdr = h.get("x-admin");
+  const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+  if (req.method === "GET") {
+    const k = searchParams.get("id") || "";
+    if (!admin) return err(403, "forbidden");
+    if (!/^[\w-]{1,80}:[\w-]{1,64}$/.test(k)) return err(400, "bad_request");
+    return Response.json(await hub(env).contactGet(k), { headers: { "cache-control": "no-store" } });
+  }
+  if (req.method !== "POST") return err(405, "method_not_allowed");
+  const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
+  if (!id) return err(403, "forbidden");
+  if (!admin && !(await env.WRITE_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+  let b;
+  try { const t = await req.text(); if (t.length > 1000) return err(413, "too_large"); b = JSON.parse(t); } catch { return err(400, "bad_json"); }
+  const name = typeof b?.name === "string" ? b.name.trim() : "", phone = typeof b?.phone === "string" ? b.phone.replace(/[\s-]/g, "") : "";
+  if (!ITEM.test(b?.item || "") || !name || name.length > NAME_MAX || !/^09\d{8}$/.test(phone) || typeof b.realName !== "boolean") return err(400, "bad_request");
+  return reply(await hub(env).contactPut(`${id}:${b.item}`, { name, phone, realName: b.realName, t: new Date().toISOString() }));
+}
+
 // Photos: upload by a signed visitor or the admin, read by anyone. JPEG only; the browser already resized and re-encoded it,
 // and stripJpeg() drops metadata segments again so a direct API upload cannot publish EXIF/GPS either.
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/, PHOTO_MAX = 700 * 1024;
@@ -152,6 +174,7 @@ export default {
       return reply(await hub(env).geocode(q));
     }
     if (pathname === "/api/news") return reply(await hub(env).news());
+    if (pathname === "/api/contact") return contact(req, env, searchParams);
     if (pathname === "/api/photo" || pathname.startsWith("/api/photo/")) return photo(req, env, pathname.slice(11));
     if (pathname !== "/api/sample") return err(404, "not_found");
     if (req.method !== "POST") return err(405, "method_not_allowed");
