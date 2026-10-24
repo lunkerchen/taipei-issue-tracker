@@ -38,18 +38,20 @@ const adminToken = (() => {
 let visitorStorageBlocked = false;
 const visitorToken = /^[\\da-f]{16}\\.[\\da-f]{64}$/;
 const getVisitor = async () => {
-  let t = store.get("tit-visitor");
-  if (!visitorToken.test(t || "")) {
-    try {
-      const response = await req("/api/visitor", { method: "POST" });
-      if (!response.ok) return null;
-      t = (await response.json()).id;
-      if (!visitorToken.test(t || "")) return null;
-      store.set("tit-visitor", t);
-      if (store.get("tit-visitor") !== t) { visitorStorageBlocked = true; t = null; }
-    } catch { t = null; }
-  }
-  return t;
+  const t = store.get("tit-visitor"), valid = visitorToken.test(t || "");
+  // Confirm the stored token with the Worker: an unsigned or forged token looks valid but every write returns 403.
+  // If the Worker cannot answer, keep a well-formed stored token so an offline reload stays usable.
+  try {
+    const response = await req("/api/visitor", { method: "POST", headers: valid ? { "x-visitor": t } : {} });
+    if (!response.ok) return valid ? t : null;
+    const next = (await response.json()).id;
+    if (!visitorToken.test(next || "")) return valid ? t : null;
+    if (next !== t) {
+      store.set("tit-visitor", next);
+      if (store.get("tit-visitor") !== next) { visitorStorageBlocked = true; return null; }
+    }
+    return next;
+  } catch { return valid ? t : null; }
 };
 // Serialize first use across tabs, then re-read storage under the lock so all tabs keep the same identity.
 const visitor = navigator.locks?.request ? navigator.locks.request("tit-visitor", getVisitor) : getVisitor();
@@ -123,7 +125,12 @@ const db = {
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
 };
 const user = { id: async () => ((await visitor) || "").split(".")[0] || null, canEdit: async () => !!adminToken,
-  storageBlocked: async () => { await visitor; return visitorStorageBlocked; } };
+  storageBlocked: async () => { await visitor; return visitorStorageBlocked; },
+  // Hidden cases stay out of the public snapshot; this owner-only count lets 我的陳情 explain an empty list.
+  hiddenMine: async () => {
+    const v = await visitor; if (!v) return 0;
+    try { const r = await req("/api/mine", { headers: { "x-visitor": v } }); return r.ok ? (await r.json()).hidden || 0 : 0; } catch { return 0; }
+  } };
 const sample = { async json(prompt, { modelTier, signal } = {}) {
   const r = await fetch("/api/sample", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, tier: modelTier || "default" }), signal });
   if (r.ok) return r.json();
@@ -178,7 +185,11 @@ const contact = {
 const seedReset = async () => {
   const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
-  const out = await r.json(); ready = load(); await ready; fire(); return out;
+  const out = await r.json();
+  // The reset already succeeded; a failed reload must not turn it into a reported failure.
+  ready = load();
+  try { await ready; fire(); } catch {}
+  return out;
 };
 window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();
