@@ -177,7 +177,8 @@ export class Hub extends DurableObject {
 
   // The Worker has already checked who may write where; this checks the data and applies it.
   // New report items in a visitor write: at most one per write, fresh createdAt, not a copy of a recent report, within quota.
-  floodCheck(path, oldDoc, doc, ip) {
+  // needContact is false only for create-report, which saves the contact in the same transaction.
+  floodCheck(path, oldDoc, doc, ip, needContact = true) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
     const fresh = Object.keys(items).filter(k => !Object.hasOwn(old, k));
@@ -195,6 +196,7 @@ export class Hub extends DurableObject {
     if (body.length >= 4) for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'reports/%'").toArray())
       for (const x of Object.values(JSON.parse(r.data).items || {}))
         if (x && x !== it && now - Date.parse(x.createdAt) < DUP_WINDOW && norm(x.body) === body) return { status: 409, error: "duplicate_report" };
+    if (needContact && !this.sql.exec("SELECT 1 FROM contacts WHERE k = ?", `${who}:${fresh[0]}`).toArray().length) return { status: 400, error: "bad_contact" };
     this.sql.exec("INSERT INTO quota VALUES (?, ?, ?)", who, ip, now);
     return null;
   }
@@ -209,8 +211,7 @@ export class Hub extends DurableObject {
       const current = row ? JSON.parse(row.data) : {};
       if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
       // Contact is required: a missing or null contact is a bad_contact, so every new case has a reachable reporter.
-      // ponytail: visitors can still add items with a plain update to reports/<self> (artifact fallback, demo tests);
-      // make create-report the only way to add a visitor item if contact must be guaranteed.
+      // Plain update/set writes skip this check because floodCheck requires an already saved contact for fresh items.
       const c = data.contact;
       const name = typeof c?.name === "string" ? c.name.trim() : "";
       const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
@@ -270,7 +271,7 @@ export class Hub extends DurableObject {
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
       }
       const failure = this.ctx.storage.transactionSync(() => {
-        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f; }
+        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip, !reportContact); if (f) return f; }
         this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
         if (reportContact) this.contactPut(contactKey, reportContact);
         return null;
