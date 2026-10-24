@@ -31,7 +31,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides telephone numbers, email addresses and ID numbers before it sends the report. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
-- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**.
+- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**. Purple dashed lines show the boundaries of the 12 districts.
 - **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. Each point shows only the road section. It does not show the house number.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
@@ -168,6 +168,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 | 1999 case categories | [Taipei 1999 Citizen Hotline](https://1999.gov.taipei/) |
 | Base map | Taiwan e-Map, National Land Surveying and Mapping Center |
 | Addresses and coordinates | © OpenStreetMap contributors (Nominatim) |
+| District boundaries | © OpenStreetMap contributors (district relations, simplified to approximately 30 m by Nominatim) |
 | News ticker | Bing News, PTT Taipei board |
 | Demo photos | Made by GPT Image. They do not show real locations. |
 
