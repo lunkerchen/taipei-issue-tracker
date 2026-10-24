@@ -73,6 +73,10 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
+- **Long contact data**: Long contact data, such as a 233-character email address, wraps inside the case details. It does not go past the right edge of the block.
+- **Admin tabs on phones**: The topic bar moves the active tab into view. This occurs when the page opens and when the view changes. The page does not move up or down. The bottom citizen navigation does not change.
+- **Counts**: The number in the Open tab and the 未結案件 number in the back office are the same. Both include cases that the admin hides or flags. Hidden cases stay out of the work queues.
+- **Search hint**: The search field shows 搜尋標題或內容. It does not show the unsupported `is:issue` filter.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
@@ -279,6 +283,12 @@ BASE=http://localhost:8788 node worker/test/admin-queue.mjs
 ```
 
 The admin queue test uses a desktop viewport and administrator mode. It creates 22 cases without a department and 2 cases for review. It checks that each queue shows all its cases after 顯示更多, and that a quick second click does not change the next case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/admin-small-ux.mjs
+```
+
+The admin small UX test uses 390px and 1280px viewports. It checks that the active admin tab stays in view, that a long contact email wraps inside the case details, that the Open tab and the 未結案件 KPI agree, and that the search hint has no `is:issue`. It creates hidden and flagged cases. Use a separate local Worker persistence directory because the test resets the local demo data to remove its private contact row.
 
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
