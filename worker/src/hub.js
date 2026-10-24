@@ -5,6 +5,8 @@ import { DurableObject } from "cloudflare:workers";
 import seed from "../data.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
+const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
 const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;
@@ -107,7 +109,7 @@ export class Hub extends DurableObject {
   floodCheck(path, oldDoc, doc, ip) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
-    const fresh = Object.keys(items).filter(k => !(k in old));
+    const fresh = Object.keys(items).filter(k => !Object.hasOwn(old, k));
     if (!fresh.length) return null;
     if (fresh.length > 1) return { status: 400, error: "one_report_per_write" };
     const it = items[fresh[0]], now = Date.now(), t = Date.parse(it?.createdAt);
@@ -128,8 +130,32 @@ export class Hub extends DurableObject {
 
   write(op, path, data, admin, ip = "") {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
+    const creating = op === "create-report";
+    if (creating) {
+      if (admin || !path.startsWith("reports/") || !isObj(data) || !REPORT_ITEM.test(data.key || "") || !isObj(data.item) || data.item.author !== path.slice(8))
+        return { status: 400, error: "bad_request" };
+      const current = row ? JSON.parse(row.data) : {};
+      if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
+      data = { items: { [data.key]: data.item } }; op = "update";
+    }
     let doc = null;
-    if (op !== "delete") {
+    if (op === "append-note") {
+      if (admin || !path.startsWith("reports/") || !isObj(data) || !REPORT_ITEM.test(data.key || "") || !NOTE_ID.test(data.id || "")) return { status: 400, error: "bad_request" };
+      if (!row) return { status: 404, error: "not_found" };
+      const owner = path.slice(8), current = JSON.parse(row.data), item = current.items?.[data.key];
+      if (!isObj(current.items) || !isObj(item) || item.author !== owner) return { status: 404, error: "not_found" };
+      if (item.notes !== undefined && !Array.isArray(item.notes)) return { status: 400, error: "bad_data" };
+      const notes = item.notes || [];
+      if (notes.some(n => isObj(n) && n.id === data.id)) return { status: 200, data: current, seq: this.seq };
+      const text = typeof data.text === "string" ? data.text.trim() : "", photos = data.photos;
+      if (typeof data.text !== "string" || data.text.length > 500 || !Array.isArray(photos) || photos.length > 3 ||
+          photos.some(k => typeof k !== "string" || !PHOTO_KEY.test(k) || !k.startsWith(owner + "/")) || (!text && !photos.length))
+        return { status: 400, error: "bad_note" };
+      if (notes.length >= 10) return { status: 400, error: "note_limit" };
+      doc = { ...current, items: { ...current.items, [data.key]: { ...item, notes: [...notes, { id: data.id, t: new Date().toISOString(), text, photos }] } } };
+      if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
+      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+    } else if (op !== "delete") {
       if (!isObj(data)) return { status: 400, error: "bad_data" };
       doc = op === "update" ? merge(row ? JSON.parse(row.data) : {}, data) : data;
       // ponytail: admin skips the size caps so seeding big demo docs works; visitors are capped.
@@ -143,7 +169,7 @@ export class Hub extends DurableObject {
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
     const msg = JSON.stringify({ path, data: doc, seq: this.seq });
     for (const ws of this.ctx.getWebSockets()) try { ws.send(msg); } catch {}
-    return { status: 200, data: doc, seq: this.seq };
+    return { status: 200, data: doc, seq: this.seq, ...(creating ? { created: true } : {}) };
   }
 
   fetch(req) {
