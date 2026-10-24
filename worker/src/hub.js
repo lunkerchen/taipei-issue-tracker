@@ -3,6 +3,7 @@
 // ponytail: a single instance serves every visitor; fine for a demo room, shard by collection before thousands of live sockets.
 import { DurableObject } from "cloudflare:workers";
 import seed from "../data.json";
+import offices from "../../data/offices.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -88,6 +89,16 @@ export class Hub extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS contacts (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS counter (k TEXT PRIMARY KEY, v INTEGER NOT NULL)");
       this.seq = this.sql.exec("SELECT v FROM counter WHERE k = 'seq'").toArray()[0]?.v || 0;
+      // Councilor and 里辦公處 phone book (data/offices.json); not in docs, so snapshot() and the socket never send it.
+      // Reloaded whenever the file's updated date changes. ponytail: no route reads it yet; add an admin one when a feature needs it.
+      this.sql.exec("CREATE TABLE IF NOT EXISTS offices (id TEXT PRIMARY KEY, kind TEXT NOT NULL, district TEXT NOT NULL, area TEXT NOT NULL, data TEXT NOT NULL)");
+      const stamp = "offices:" + offices.updated;
+      if (!this.sql.exec("SELECT 1 FROM meta WHERE k = ?", stamp).toArray().length) {
+        this.sql.exec("DELETE FROM offices");
+        for (const o of offices.offices) this.sql.exec("INSERT INTO offices VALUES (?, ?, ?, ?, ?)", o.id, o.kind, o.district, o.area, JSON.stringify(o));
+        this.sql.exec("DELETE FROM meta WHERE k LIKE 'offices:%'");
+        this.sql.exec("INSERT INTO meta VALUES (?)", stamp);
+      }
       // Seed once; the meta row stops an emptied database from reseeding itself
       if (!this.sql.exec("SELECT 1 FROM meta WHERE k = 'seeded'").toArray().length) {
         for (const [c, docs] of Object.entries(seed)) for (const [id, d] of Object.entries(docs)) this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", `${c}/${id}`, JSON.stringify(d));
