@@ -173,6 +173,12 @@ export default {
       return req.method === "POST" ? writeDb(req, env) : err(405, "method_not_allowed");
     }
     if (pathname === "/api/ws") return hub(env).fetch(req);
+    if (pathname === "/api/reset") { // admin only: put the demo database back to worker/data.json
+      if (req.method !== "POST") return err(405, "method_not_allowed");
+      if (!req.headers.get("x-admin")) return err(403, "forbidden");
+      if (!(await limited(env, req, true))) return err(429, "rate_limited");
+      return Response.json(await hub(env).resetSeed());
+    }
     if (pathname === "/api/visitor") {
       if (req.method !== "POST") return err(405, "method_not_allowed");
       if (!env.VISITOR_SECRET) return err(503, "no_secret");

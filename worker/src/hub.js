@@ -120,6 +120,25 @@ export class Hub extends DurableObject {
     return out;
   }
 
+  // Admin "重設模擬資料": every doc, contact and quota row goes back to worker/data.json. Open pages get each change
+  // (null for a removed doc) with one new seq. ponytail: citizen photos stay in R2 as orphans; sweep R2 if storage matters.
+  resetSeed() {
+    const old = this.sql.exec("SELECT path FROM docs").toArray().map(r => r.path);
+    this.sql.exec("DELETE FROM docs"); this.sql.exec("DELETE FROM contacts"); this.sql.exec("DELETE FROM quota");
+    const docs = Object.entries(seed).flatMap(([c, ds]) => Object.entries(ds).map(([id, d]) => [`${c}/${id}`, d]));
+    for (const [path, d] of docs) this.sql.exec("INSERT INTO docs VALUES (?, ?)", path, JSON.stringify(d));
+    this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
+    const kept = new Set(docs.map(([path]) => path));
+    for (const ws of this.ctx.getWebSockets()) {
+      const admin = ws.deserializeAttachment()?.admin === true;
+      try {
+        for (const path of old) if (!kept.has(path)) ws.send(JSON.stringify({ path, data: null, seq: this.seq }));
+        for (const [path, d] of docs) ws.send(JSON.stringify({ path, data: admin ? d : this.publicDoc(path, d), seq: this.seq }));
+      } catch {}
+    }
+    return { ok: true, docs: docs.length, removed: old.filter(p => !kept.has(p)).length, seq: this.seq };
+  }
+
   contactPut(k, v) { this.sql.exec("INSERT OR REPLACE INTO contacts VALUES (?, ?)", k, JSON.stringify(v)); return { ok: true }; }
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
