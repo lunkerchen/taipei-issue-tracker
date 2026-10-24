@@ -1,0 +1,179 @@
+# Taipei Issue Tracker
+
+[繁體中文](README.md) | English
+
+<!-- Written in ASD-STE100 Simplified Technical English. README.md is the Traditional Chinese translation of this file. -->
+
+This website shows Taipei City as a GitHub repository. A 1999 citizen report is an issue. A repair by a city department is a pull request. Each monthly dispatch summary is a release.
+
+This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately.
+
+- Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
+- Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
+
+> The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
+
+## Functions
+
+**Citizens (mobile phone first)**
+
+- **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
+- **Contact data**: Your name and mobile number are necessary. The Worker keeps them in a private table. Only the administrator can read them. The website does not show them to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. The website makes the case only after you push "Confirm and send". You can also go back and change the text.
+- **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
+  - "Add to #N": The website adds your text and photos to that case and gives it +1.
+  - "Only +1 for #N".
+  - Send a new case. If the text is exactly the same, this choice changes to "Change the text".
+
+  The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
+- **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Each case can have a maximum of 10 additions.
+- **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm.
+- **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
+- **Personal data mask**: The website hides telephone numbers, email addresses and ID numbers before it sends the report. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
+- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**.
+- **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. Each point shows only the road section. It does not show the house number.
+- **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
+- **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected.
+
+**Department administrators** (add `?admin=<token>` to the URL. After you open the page, the website removes the token from the address bar.)
+
+- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
+- **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
+- **Releases**: AI writes a draft of the weekly summary of closed cases. There are also monthly 1999 dispatch reports for January to September 2026.
+- **Insights**: The website shows the SLA (average number of days to repair) for each department. If a department is more than the limit, the website shows "failing".
+- **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
+
+## Architecture
+
+```
+Browser (taipei-issues.html)
+  │  window.claude interface: db / user / sample / geocode / news / history / photo / contact
+  ▼
+Cloudflare Worker (worker/src/index.js)
+  ├─ Static page (worker/public/, made by build.mjs)
+  ├─ /api/db, /api/ws ── Hub Durable Object (SQLite): shared database and live updates
+  ├─ /api/sample ─────── Claude API (Haiku for sorting, Sonnet for releases)
+  ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
+  ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
+  ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
+  ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, only the administrator can read)
+  └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
+```
+
+The same `taipei-issues.html` page can also operate as a claude.ai artifact. `worker/build.mjs` puts a small adapter script before the page. This script connects `window.claude` to the Worker API above.
+
+**Security and limits**
+
+- A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. The Worker compares the administrator token in constant time.
+- Protection against a flood of reports. The server examines each new report:
+  - Each request can add only one report.
+  - The creation time must be the current time. A report with an earlier time is not accepted.
+  - Each visitor can send a maximum of 3 reports in 10 minutes and 10 reports in one day.
+  - One IP address can send a maximum of 60 reports in 10 minutes. This permits many persons on one Wi-Fi network at an event.
+  - If the text is the same as a different report from the last 30 minutes, the server stops the report. Spaces and punctuation are not compared. The website then tells you to give +1.
+  - These limits do not apply to the administrator.
+- Rate limits: AI, 10 requests for each IP address in one minute. Writes, 20 for each visitor in one minute. Photos, 10 for each visitor in one minute. New visitor IDs, 150 for each IP address in one minute.
+- Photos: The server accepts only a standard baseline JPEG of 700 KB or less. The server removes the metadata again. Each photo response uses `image/jpeg`, `nosniff` and CSP `default-src 'none'`.
+- All external requests have a timeout and a retry limit.
+
+## Directories
+
+| Path | Contents |
+|---|---|
+| `taipei-issues.html` | All of the front end (one file) |
+| `check.mjs` | Front-end logic checks: personal data mask, data cleanup, Taipei boundary, templates, photo keys |
+| `worker/` | Cloudflare Worker: `src/index.js` (routes), `src/hub.js` (Durable Object), `build.mjs`, `data.json` (seed data), `test/` |
+| `data/1999-categories.json` | Official 1999 case categories (9 main categories, 136 subcategories) |
+| `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
+| `data/history-roads.json` | Cache of road coordinates |
+| `scripts/` | Data scripts. Refer to the table below. |
+| `deck/` | Slides and product screenshots |
+| `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
+| `PLAN.md` | Tasks and acceptance records for each phase |
+
+| Script | Purpose |
+|---|---|
+| `scripts/fetch-1999-history.mjs` | Downloads the data.taipei 1999 dispatch CSV files, gets the road sections, finds the coordinates, and makes `data/history-2026.json` |
+| `scripts/history-releases.mjs` | Makes the monthly dispatch reports from the history data (`--write` writes them to the live database) |
+| `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
+| `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
+| `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data |
+
+## Local development
+
+You must have Node.js 22 or later and Wrangler.
+
+```bash
+cd worker
+npm install -g wrangler   # if it is not installed
+```
+
+Make the file `worker/.dev.vars`. Do not put this file in git.
+
+```
+VISITOR_SECRET=<a long random string>
+ADMIN_TOKEN=<local administrator token>
+ANTHROPIC_API_KEY=<optional; if it is empty, AI sorting sets "1999 待分派">
+AI_PROXY_URL=<optional; use Codex CLI for local sorting: http://127.0.0.1:8799>
+```
+
+**Use Codex CLI for local AI sorting** (a Claude API key is not necessary):
+
+1. Start the proxy.
+2. In `.dev.vars`, set `AI_PROXY_URL=http://127.0.0.1:8799`.
+
+The proxy runs `codex exec` one time for each request. The default model is `gpt-6-luna` with low reasoning effort in a read-only sandbox. To use a different model, set `CODEX_MODEL`. Each sort takes approximately 10 seconds. Use the proxy only on a local computer. The live website continues to use the Claude API.
+
+```bash
+node scripts/codex-proxy.mjs
+```
+
+Start the server and do the tests:
+
+```bash
+cd worker && npx wrangler dev --port 8788
+```
+
+```bash
+node check.mjs
+```
+
+```bash
+cd worker && BASE=http://localhost:8788 node test/smoke.mjs
+```
+
+```bash
+cd worker && node test/sync.mjs
+```
+
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin=<ADMIN_TOKEN>`.
+
+## Deployment
+
+```bash
+cd worker && npx wrangler deploy
+```
+
+The production environment must have three secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ADMIN_TOKEN`, `ANTHROPIC_API_KEY`. You must also have the R2 bucket `taipei-issue-photos`.
+
+CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
+
+## Data sources
+
+| Data | Source |
+|---|---|
+| 1999 dispatches (January to September 2026) | [Taipei City Open Data Platform](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed). The source data has only the case date. It does not have the close status. |
+| 1999 case categories | [Taipei 1999 Citizen Hotline](https://1999.gov.taipei/) |
+| Base map | Taiwan e-Map, National Land Surveying and Mapping Center |
+| Addresses and coordinates | © OpenStreetMap contributors (Nominatim) |
+| News ticker | Bing News, PTT Taipei board |
+| Demo photos | Made by GPT Image. They do not show real locations. |
+
+## Known limits
+
+- Administrator access applies only to the browser tab that you opened with the token.
+- Case numbers can be the same if many persons send reports at the same time. If two administrators change one case at the same time, one change can replace the other change.
+- AI sorting and the personal data mask operate in the browser. The Worker checks the prompt prefix and the length limit.
+- If you upload a photo and do not send the report, the photo stays in R2. The system does not remove it automatically.
+- Each history point shows only the road section. For approximately 6% of cases, the road section was not found. These points show near the center of the district.

@@ -1,37 +1,48 @@
 # 台北市 Issue Tracker
 
-把台北市當成一個 GitHub repo：市民的 1999 陳情是 issue，局處的修繕是 pull request，每月的派工成果是 release。手機優先的 1999 快速通報網站，陳情送出後由 AI 分類、分派給負責局處，並即時出現在地圖上。
+繁體中文 | [English](README.en.md)
+
+<!-- 本檔是 README.en.md（ASD-STE100 簡化技術英文）的繁體中文翻譯。修改時兩份一起改。 -->
+
+這個網站把台北市呈現成一個 GitHub repo。市民的 1999 陳情是 issue。局處的修繕是 pull request。每月的派工摘要是 release。
+
+這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。
 
 - 線上網站：<https://taipei-issue-tracker.labanchen.workers.dev>
 - 黑客松題目：[puma.taipei/hackathon](https://puma.taipei/hackathon)「你看見的市政 bug」
 
-> 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料（見〈資料來源〉）。
+> 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料。請參閱〈資料來源〉。
 
 ## 功能
 
-**市民（手機為主）**
+**市民（手機優先）**
 
-- **快速通報**：先選大方向（食、住、行、育、樂、醫療，可略過），描述問題。每個大方向有 3–7 個範本（共 33 個）；只套範本、冒號後沒填會被擋下。可用語音輸入（中文，瀏覽器支援時才顯示），可附上最多 3 張照片。
-- **聯絡資料**：姓名與手機必填，只存在 Worker 的私有資料表，只有管理者能讀，不會公開。內容涉及檢舉（違停、噪音、違建等）時可勾選「實名檢舉」。
-- **送出前預覽**：AI 分類完成後先顯示標題、負責局處、1999 分類、行政區、地點與分派理由，市民按「確認送出」才建立案件，也可回去修改。
-- **相同或類似的陳情**：AI 判斷可能重複，或伺服器發現 30 分鐘內有內容相同的陳情時，會詢問要「補充到 #N」（描述與照片加到那件，並 +1）、「只幫 #N 按 +1」，或仍送出新案件（內容完全相同時改為修改內容）。補充存在 `addenda/<訪客 ID>`，顯示為「其他市民補充」。
-- **我的陳情與補充**：「我的陳情」列出自己送出的案件；可在自己的案件上新增補充（文字與最多 3 張照片，每件最多 10 則）。
-- **定位**：使用 GPS、在小地圖拖曳大頭針，或直接在地圖上長按（電腦版按右鍵）。長按會先顯示地址與座標，確認後才開表單。
-- **AI 分派（taipei-bot）**：Claude 判斷負責局處、1999 官方分類（9 大類、136 子類）與行政區；偵測重複陳情（建議改按 +1）、非台北市地點、內容太模糊或垃圾訊息。
-- **個資遮蔽**：電話、Email、身分證字號在送出前自動遮蔽；照片在瀏覽器縮小並重新編碼，移除 EXIF 與拍攝位置。
-- **地圖**：依 1999 九大類分圖層，新通報即時出現（WebSocket）。地圖下方有 **Live**（今天最新陳情）與 **回報** 兩個按鈕。
-- **歷史派工時間軸**：2026 年 1–9 月、共 128,640 件真實 1999 派工，可逐日查看或播放。點位只到路段，不含門牌。
-- **照片**：案件詳情與地圖彈窗顯示照片，點擊以燈箱放大。詳情另有小地圖標出位置。
-- **深色／淺色模式**：頁首按鈕切換，預設跟隨系統；選擇記在瀏覽器，地圖底圖跟著變色。
-- **跑馬燈**：頁面底部顯示 Bing News、PTT Taipei 板（排除交易、徵求等分類）的台北新聞，以及人工挑選的 Threads 貼文。
+- **快速通報**：先選大方向：食、住、行、育、樂或醫療。這一步可以略過。然後描述問題。每個大方向有 3 到 7 個範本（共 33 個）。如果套用範本，但冒號後面沒有填內容，網站會擋下這筆陳情。可以用中文語音輸入，瀏覽器支援時才會顯示語音按鈕。最多可以附上 3 張照片。
+- **聯絡資料**：姓名與手機必填。Worker 把它們存在私有資料表，只有管理者能讀，網站不會公開。如果陳情內容和某人或某個店家有關（例如違規停車、噪音或違建），可以勾選「實名檢舉」。
+- **送出前預覽**：AI 分類完成後，網站先顯示標題、負責局處、1999 分類、行政區、地點與分派理由。按下「確認送出」後，網站才建立案件。也可以回去修改內容。
+- **相同或類似的陳情**：AI 可能判斷出重複的陳情。伺服器也可能找到 30 分鐘內內容相同的陳情。這時網站提供三個選擇：
+  - 「補充到 #N」：網站把你的描述和照片加到那件案件，並幫它 +1。
+  - 「只幫 #N 按 +1」。
+  - 送出新案件。如果內容完全相同，這個選項會改成「修改內容」。
 
-**局處管理者**（網址加 `?admin=<token>` 進入，token 進入後會從網址列移除）
+  網站把每則補充存在 `addenda/<訪客 ID>`，並顯示為「其他市民補充」。
+- **我的陳情與補充**：「我的陳情」列出你送出的案件。你可以在自己的案件新增文字和最多 3 張照片。每件案件最多 10 則補充。
+- **定位**：使用 GPS、在小地圖拖曳大頭針，或在地圖上長按。在電腦上，對地圖按右鍵。長按後，網站先顯示地址與座標，確認後才開啟通報表單。
+- **AI 分派（taipei-bot）**：Claude 判斷負責局處、1999 官方分類（9 大類、136 子類）與行政區。它也會找出重複的陳情、台北市以外的地點、內容不清楚的陳情與垃圾訊息。
+- **個資遮蔽**：送出陳情前，網站會遮蔽電話、Email 與身分證字號。瀏覽器會把每張照片縮小並重新編碼，這樣會移除 EXIF 資料與拍攝位置。
+- **地圖**：地圖依 1999 九大類各分一個圖層。新通報會立即出現（WebSocket）。地圖下方有兩個按鈕：**Live**（今天最新的陳情）與 **回報**。
+- **歷史派工時間軸**：時間軸顯示 2026 年 1 月到 9 月共 128,640 件真實 1999 派工。可以一次看一天，也可以依序播放。每個點位只到路段，不顯示門牌。
+- **照片**：案件詳情與地圖彈窗會顯示照片。點照片會在燈箱中放大。案件詳情另有一張小地圖標出位置。
+- **深色／淺色模式**：用頁首的按鈕切換。一開始網站跟隨系統設定。瀏覽器會記住你的選擇。地圖顏色也會跟著改變。
+- **跑馬燈**：頁面底部顯示 Bing News 與 PTT Taipei 板的台北新聞，不顯示交易或徵求類貼文。另外也顯示人工挑選的 Threads 貼文。
 
-- **後台**：今日通報、未結、待審核、待分派、逾期等指標；三個待辦佇列可直接放行、隱藏、改派、標記處理中或已修復。
-- **案件操作**：開修繕單（PR）、Merge 結案、改派局處、設定里程碑、查看陳情者聯絡資料。
-- **Releases**：AI 草擬每週結案說明；另有 2026 年 1–9 月的 1999 派工月報。
-- **Insights**：各局處 SLA（平均修復天數），超過門檻顯示 failing。
-- **展示工具**：儲存與重設展示快照，彩排後一鍵還原。
+**局處管理者**（在網址加上 `?admin=<token>`。開啟頁面後，網站會把 token 從網址列移除。）
+
+- **後台**：後台顯示今日通報、未結案件、待審核、待分派與逾期案件。三個待辦佇列可以放行、隱藏、改派，或把案件設為「處理中」或「已修復」。
+- **案件操作**：開修繕單（PR）、Merge 以結案、改派局處、設定里程碑，以及查看市民的聯絡資料。
+- **Releases**：AI 草擬每週結案摘要。另有 2026 年 1 月到 9 月的 1999 派工月報。
+- **Insights**：網站顯示各局處的 SLA（平均修復天數）。局處超過門檻時，網站顯示「failing」。
+- **展示工具**：儲存與重設展示快照。彩排後按一下就能還原資料。
 
 ## 架構
 
@@ -41,23 +52,29 @@
   ▼
 Cloudflare Worker（worker/src/index.js）
   ├─ 靜態頁面（worker/public/，由 build.mjs 產生）
-  ├─ /api/db、/api/ws ── Hub Durable Object（SQLite）：共享資料庫與即時推播
+  ├─ /api/db、/api/ws ── Hub Durable Object（SQLite）：共享資料庫與即時更新
   ├─ /api/sample ─────── Claude API（分類用 Haiku，release 用 Sonnet）
-  ├─ /api/geocode ────── OpenStreetMap Nominatim（正查與反查，快取 7 天）
+  ├─ /api/geocode ────── OpenStreetMap Nominatim（地址轉座標與座標轉地址，快取 7 天）
   ├─ /api/news ───────── Bing News RSS、PTT Taipei 板（快取 10 分鐘）
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
-  ├─ /api/contact ────── 陳情者姓名與手機（DO 私有資料表，只有管理者能讀）
+  ├─ /api/contact ────── 市民姓名與手機（DO 私有資料表，只有管理者能讀）
   └─ /api/visitor ────── 簽發訪客 ID（HMAC 簽章）
 ```
 
-`taipei-issues.html` 同一份頁面也能在 claude.ai artifact 執行；`worker/build.mjs` 會在頁面前面插入一段替身程式，把 `window.claude` 接到上面的 Worker API。
+同一份 `taipei-issues.html` 也能當成 claude.ai artifact 執行。`worker/build.mjs` 會在頁面前面放一小段轉接程式，把 `window.claude` 接到上面的 Worker API。
 
 **安全與限制**
 
-- 訪客只能寫自己的陳情與 +1（`reports/<id>`、`votes/<id>`），身分由 Worker 簽章驗證；管理者 token 以常數時間比對。
-- 防止大量洗版（伺服器端檢查新陳情）：每件陳情要分開送、建立時間須是當下（不可回填）；每位訪客每 10 分鐘最多 3 件、每天 10 件；同一 IP 每 10 分鐘最多 60 件（展示會場共用 Wi-Fi）；30 分鐘內與其他陳情內容相同（忽略空白與標點）會被拒絕，提示改按 +1。管理者不受限。
-- 限流：AI 每 IP 每分鐘 10 次、寫入每位訪客每分鐘 20 次、照片每位訪客每分鐘 10 張、新訪客 ID 每 IP 每分鐘 150 個。
-- 照片：只收結構標準的 baseline JPEG，上限 700KB，伺服器再移除中繼資料；讀取時固定 `image/jpeg`、`nosniff`、CSP `default-src 'none'`。
+- 訪客只能寫自己的陳情與 +1（`reports/<id>`、`votes/<id>`）。Worker 用簽章檢查身分，並以常數時間比對管理者 token。
+- 防止大量洗版。伺服器檢查每一筆新陳情：
+  - 每次請求只能新增一筆陳情。
+  - 建立時間必須是當下時間，不接受較早的時間。
+  - 每位訪客每 10 分鐘最多 3 筆、每天最多 10 筆。
+  - 同一個 IP 每 10 分鐘最多 60 筆，讓活動現場共用 Wi-Fi 的多人也能使用。
+  - 內容和 30 分鐘內的其他陳情相同時，伺服器會擋下。比對時不看空白與標點。網站會提示改按 +1。
+  - 這些限制不適用於管理者。
+- 限流：AI 每個 IP 每分鐘 10 次。寫入每位訪客每分鐘 20 次。照片每位訪客每分鐘 10 張。新訪客 ID 每個 IP 每分鐘 150 個。
+- 照片：伺服器只接受 700 KB 以下的標準 baseline JPEG，並再次移除中繼資料。每張照片的回應都使用 `image/jpeg`、`nosniff` 與 CSP `default-src 'none'`。
 - 所有外部請求都有逾時與重試上限。
 
 ## 目錄
@@ -65,49 +82,54 @@ Cloudflare Worker（worker/src/index.js）
 | 路徑 | 內容 |
 |---|---|
 | `taipei-issues.html` | 整個前端（單一檔案） |
-| `check.mjs` | 前端邏輯檢查：個資遮蔽、資料清理、台北市界、範本判斷、照片 key |
+| `check.mjs` | 前端邏輯檢查：個資遮蔽、資料清理、台北市界、範本、照片 key |
 | `worker/` | Cloudflare Worker：`src/index.js`（路由）、`src/hub.js`（Durable Object）、`build.mjs`、`data.json`（種子資料）、`test/` |
 | `data/1999-categories.json` | 1999 官方案件分類（9 大類、136 子類） |
-| `data/history-2026.json` | 2026 年 1–9 月 1999 派工（路段層級） |
-| `data/history-roads.json` | 路名座標快取 |
-| `scripts/` | 資料腳本，見下表 |
+| `data/history-2026.json` | 2026 年 1 月到 9 月的 1999 派工（路段層級） |
+| `data/history-roads.json` | 路段座標快取 |
+| `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
-| `DEMO.md`、`SCRIPT.md` | 上台展示流程與口說文字稿 |
+| `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
 | `PLAN.md` | 各階段任務與驗收紀錄 |
 
 | 腳本 | 用途 |
 |---|---|
-| `scripts/fetch-1999-history.mjs` | 下載 data.taipei 1999 派工 CSV，取路段、查座標，產生 `data/history-2026.json` |
+| `scripts/fetch-1999-history.mjs` | 下載 data.taipei 的 1999 派工 CSV，取出路段、查詢座標，並產生 `data/history-2026.json` |
 | `scripts/history-releases.mjs` | 由歷史資料產生每月派工報告（`--write` 寫入線上資料庫） |
-| `scripts/enrich-seed.mjs` | 幫示範案件補 1999 分類與座標 |
-| `scripts/codex-proxy.mjs` | 本機開發用：把 AI 分類請求轉給 Codex CLI |
-| `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳 R2，並加進示範資料 |
+| `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
+| `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
+| `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料 |
 
 ## 本機開發
 
-需要 Node.js 22 以上與 Wrangler。
+需要 Node.js 22 以上版本與 Wrangler。
 
 ```bash
 cd worker
 npm install -g wrangler   # 若尚未安裝
 ```
 
-建立 `worker/.dev.vars`（不進 git）：
+建立 `worker/.dev.vars` 檔案。不要把這個檔案放進 git。
 
 ```
-VISITOR_SECRET=<任意長字串>
+VISITOR_SECRET=<一段夠長的隨機字串>
 ADMIN_TOKEN=<本機管理者 token>
-ANTHROPIC_API_KEY=<選填，沒有時 AI 分類改為「1999 待分派」>
-AI_PROXY_URL=<選填，本機改用 Codex CLI 分類：http://127.0.0.1:8799>
+ANTHROPIC_API_KEY=<選填；留空時 AI 分類設為「1999 待分派」>
+AI_PROXY_URL=<選填；本機改用 Codex CLI 分類：http://127.0.0.1:8799>
 ```
 
-**本機用 Codex CLI 做 AI 分類**（不需要 Claude API key）：先啟動代理，再在 `.dev.vars` 設 `AI_PROXY_URL=http://127.0.0.1:8799`。代理對每次請求執行一次 `codex exec`（預設 `gpt-6-luna`、低推理強度、唯讀沙箱，可用 `CODEX_MODEL` 換模型），分類約 10 秒。只在本機使用，線上仍用 Claude API。
+**本機用 Codex CLI 做 AI 分類**（不需要 Claude API key）：
+
+1. 啟動代理。
+2. 在 `.dev.vars` 設定 `AI_PROXY_URL=http://127.0.0.1:8799`。
+
+代理對每次請求執行一次 `codex exec`。預設模型是 `gpt-6-luna`，使用低推理強度與唯讀沙箱。要換模型，請設定 `CODEX_MODEL`。每次分類約需 10 秒。代理只在本機使用，線上網站仍使用 Claude API。
 
 ```bash
 node scripts/codex-proxy.mjs
 ```
 
-啟動並測試：
+啟動伺服器並執行測試：
 
 ```bash
 cd worker && npx wrangler dev --port 8788
@@ -125,7 +147,7 @@ cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 cd worker && node test/sync.mjs
 ```
 
-本機網址：<http://localhost:8788>，管理者模式：`http://localhost:8788/?admin=<ADMIN_TOKEN>`。
+本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin=<ADMIN_TOKEN>`。
 
 ## 部署
 
@@ -133,25 +155,25 @@ cd worker && node test/sync.mjs
 cd worker && npx wrangler deploy
 ```
 
-正式環境需要三個 secret（用 `wrangler secret put <名稱>` 設定）：`VISITOR_SECRET`、`ADMIN_TOKEN`、`ANTHROPIC_API_KEY`。另需 R2 bucket `taipei-issue-photos`。
+正式環境需要三個 secret。用 `wrangler secret put <名稱>` 設定每一個：`VISITOR_SECRET`、`ADMIN_TOKEN`、`ANTHROPIC_API_KEY`。另外也需要 R2 bucket `taipei-issue-photos`。
 
-注意：線上資料庫只在第一次啟動時從 `worker/data.json` 載入。之後修改種子資料，要用管理者權限另外寫入（腳本的 `--write` 或 `ADMIN`／`BASE` 環境變數）。
+注意：線上資料庫只在第一次啟動時載入 `worker/data.json`。之後如果修改種子資料，要用管理者權限寫入。請使用腳本的 `--write` 選項，或 `ADMIN` 與 `BASE` 環境變數。
 
 ## 資料來源
 
 | 資料 | 來源 |
 |---|---|
-| 1999 派工（2026 年 1–9 月） | [臺北市政府資料開放平台](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed)；原始資料只有立案日期，沒有結案狀態 |
+| 1999 派工（2026 年 1 月到 9 月） | [臺北市政府資料開放平台](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed)。原始資料只有立案日期，沒有結案狀態。 |
 | 1999 案件分類 | [臺北市 1999 市民當家熱線](https://1999.gov.taipei/) |
 | 底圖 | 內政部國土測繪中心臺灣通用電子地圖 |
 | 地址與座標 | © OpenStreetMap contributors（Nominatim） |
 | 跑馬燈 | Bing News、PTT Taipei 板 |
-| 示範照片 | GPT Image 生成，非真實現場 |
+| 示範照片 | GPT Image 生成，不是真實現場 |
 
 ## 已知限制
 
-- 管理者權限只在開啟的那個瀏覽器分頁有效。
-- 案件編號在高併發下可能重複；兩位管理者同時編輯同一案件可能互相覆蓋。
-- AI 分類與遮蔽在瀏覽器執行，提示內容由 Worker 檢查前綴與長度上限。
-- 上傳後未送出的照片會留在 R2，沒有自動清理。
-- 歷史派工點位只到路段；約 6% 查不到路段的案件放在行政區中心附近。
+- 管理者權限只在用 token 開啟的那個瀏覽器分頁有效。
+- 很多人同時送出陳情時，案件編號可能重複。兩位管理者同時修改同一件案件時，其中一方的修改可能被覆蓋。
+- AI 分類與個資遮蔽在瀏覽器執行。Worker 會檢查提示的開頭與長度上限。
+- 上傳了照片卻沒有送出陳情時，照片會留在 R2，系統不會自動刪除。
+- 每個歷史點位只到路段。約 6% 的案件找不到路段，這些點位放在行政區中心附近。
