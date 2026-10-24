@@ -57,7 +57,10 @@ assert.equal((await write({ "x-visitor": A.token }, "set", `reports/${A.id}`, { 
 // anti-flood on new reports: one per write, fresh createdAt, 3 per visitor per 10 min, no copy of a recent report
 const F = await visitor(), G = await visitor(), tag = Date.now().toString(36), now = () => new Date().toISOString();
 const R = await visitor(), reportKey = "retry-case", originalReport = { title: "原始通報", body: `重試建案 ${tag}`, createdAt: now(), author: R.id };
-const createReport = (headers, item = originalReport) => write(headers, "create-report", `reports/${R.id}`, { key: reportKey, item });
+const reporter = { name: "測試員", phone: "0912000111", email: "smoke@example.com", realName: false };
+const createReport = (headers, item = originalReport, contact = reporter) => write(headers, "create-report", `reports/${R.id}`, { key: reportKey, item, contact });
+assert.equal((await write({ "x-visitor": R.token }, "create-report", `reports/${R.id}`, { key: reportKey, item: originalReport })).status, 400, "create-report without contact is refused");
+assert.equal((await createReport({ "x-visitor": R.token }, originalReport, null)).status, 400, "create-report with a null contact is refused");
 assert.equal((await createReport({ "x-visitor": F.token })).status, 403, "another visitor cannot create in this report document");
 assert.equal((await createReport({ "x-admin": admin })).status, 403, "create-report requires the citizen identity");
 assert.equal((await createReport({ "x-visitor": R.token }, { ...originalReport, author: F.id })).status, 400, "report author must match the visitor");
@@ -77,7 +80,7 @@ assert.equal(retryResult.data.items[reportKey].notes[0].text, retryNote.text, "r
 assert.equal((await write({ "x-admin": admin }, "delete", `reports/${R.id}`)).status, 200);
 const K = await visitor();
 const createKey = (key, createdAt = now()) => write({ "x-visitor": K.token }, "create-report", `reports/${K.id}`, {
-  key, item: { author: K.id, title: "邊界測試", body: `繼承屬性測試 ${tag} ${key}`, createdAt }
+  key, item: { author: K.id, title: "邊界測試", body: `繼承屬性測試 ${tag} ${key}`, createdAt }, contact: reporter
 });
 assert.equal((await createKey("constructor", "2020-01-01T00:00:00Z")).status, 400, "inherited property names do not bypass creation time checks");
 for (const key of ["constructor", "__proto__", "toString"]) assert.equal((await createKey(key)).status, 200, "fresh inherited-name report " + key);

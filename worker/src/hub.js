@@ -207,17 +207,18 @@ export class Hub extends DurableObject {
         return { status: 400, error: "bad_request" };
       const current = row ? JSON.parse(row.data) : {};
       if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
-      if (data.contact !== undefined && data.contact !== null) {
-        const c = data.contact;
-        const name = typeof c?.name === "string" ? c.name.trim() : "";
-        const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
-        const email = typeof c?.email === "string" ? c.email.trim() : "";
-        if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
-          return { status: 400, error: "bad_contact" };
-        // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
-        reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
-        contactKey = `${path.slice(8)}:${data.key}`;
-      }
+      // Contact is required: a missing or null contact is a bad_contact, so every new case has a reachable reporter.
+      // ponytail: visitors can still add items with a plain update to reports/<self> (artifact fallback, demo tests);
+      // make create-report the only way to add a visitor item if contact must be guaranteed.
+      const c = data.contact;
+      const name = typeof c?.name === "string" ? c.name.trim() : "";
+      const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
+      const email = typeof c?.email === "string" ? c.email.trim() : "";
+      if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
+        return { status: 400, error: "bad_contact" };
+      // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
+      reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
+      contactKey = `${path.slice(8)}:${data.key}`;
       data = { items: { [data.key]: data.item } }; op = "update";
     }
     let doc = null;
