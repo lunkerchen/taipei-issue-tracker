@@ -143,7 +143,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
 | `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料。JPEG 超過 650 KB 時，腳本會降低品質重做。50 筆示範案件都有照片。 |
-| `promo/render.mjs` | 產生影片。`node promo/render.mjs promo` 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），這是預設值。`node promo/render.mjs intro` 產生 `promo/out/taipei-intro.mp4`（1920×1080、30 fps、59.3 秒）。介紹片在 `render.mjs` 有一張速度表（`retime`），把 90 秒的動畫壓在 59.3 秒內播完。配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）、支援 libx264 的 ffmpeg，以及繁體中文字型（Source Han Sans TC 或 Noto Sans CJK TC）；找不到字型時，腳本會報錯停止。在名稱後給秒數（例如 `node promo/render.mjs intro 4.5 18`）時，只輸出影片中那幾秒的畫格到 `promo/out/<名稱>/sample/`。加 `--encode` 會直接用 `promo/out/<名稱>/frames/` 的現有畫格重新編碼，不重新擷取。 |
+| `promo/render.mjs` | 產生影片。`node promo/render.mjs promo` 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），這是預設值。`node promo/render.mjs intro` 產生 `promo/out/taipei-intro.mp4`（1920×1080、30 fps、59.15 秒）。介紹片在 `render.mjs` 有一張速度表（`retime`），把 90 秒的動畫壓在 59.15 秒內播完。接著用拍點表（`beats`）把每個場景切點和重音移到 128 BPM 的拍子上，每段音樂都從小節線開始。切點或重音沒有落在拍子上時，腳本會停止。配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）、支援 libx264 的 ffmpeg，以及繁體中文字型（Source Han Sans TC 或 Noto Sans CJK TC）；找不到字型時，腳本會報錯停止。在名稱後給秒數（例如 `node promo/render.mjs intro 4.5 18`）時，只輸出影片中那幾秒的畫格到 `promo/out/<名稱>/sample/`。加 `--encode` 會直接用 `promo/out/<名稱>/frames/` 的現有畫格重新編碼，不重新擷取。 |
 
 ## 本機開發
 
