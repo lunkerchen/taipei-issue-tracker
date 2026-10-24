@@ -86,7 +86,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .phprev{display:flex;flex-wrap:wrap;gap:8px}
 .phprev figure{position:relative;margin:0}
 .phprev img{display:block;width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
-.phprev button{position:absolute;top:2px;right:2px;min-width:28px;min-height:28px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.phprev button{position:absolute;top:2px;right:2px;min-width:44px;min-height:44px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+#photoLbl{display:inline-flex;align-items:center;min-height:44px}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #photoIn:focus-visible+#photoLbl,.btn:has(> input.vh:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
@@ -232,11 +233,13 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .pop b{display:block;margin-bottom:2px}
-.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:14px}
+.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
 .pop .asp{flex:none;width:32px;height:32px;margin:0;aspect-ratio:auto;border-radius:50%}
 .pop .addr{display:block;margin-top:2px;color:var(--link)}
-.pop .btn{margin-top:8px}
+.pop .btn{margin-top:8px;min-height:44px;padding:7px 16px}
+.mapbox .leaflet-control-container .leaflet-bar a,.pickbox .leaflet-control-container .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:22px}
+.mapbox .leaflet-container a.leaflet-popup-close-button,.pickbox .leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;line-height:44px;font-size:24px;padding:0}
 .pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
@@ -298,7 +301,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 #ldEvents .meta{grid-column:1/-1;font-size:13px;color:var(--muted)}
 #ldEvents .chip{align-self:start;border:1.5px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:12px;white-space:nowrap}
 .ldreport{width:100%;min-height:44px;font-size:15px;font-weight:600}
-.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
+.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600;display:inline-flex;align-items:center;min-height:44px}
 .distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
 .locbtn[aria-busy="true"]{opacity:.6}
@@ -308,7 +311,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}.rpin.mk-new{animation:pinbounce .5s ease-out 6}}
 @keyframes pinbounce{0%,100%{translate:0 0}50%{translate:0 -8px}}
 .rpin{background:none;border:0}
-.boxhead .btn.sm{padding:2px 10px;min-height:0;font-size:13px}
+.boxhead .btn.sm{padding:2px 10px;min-height:44px;min-width:44px;font-size:13px}
 .rpin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
 .rpin.fixed{opacity:.5}
 .rpin.mk-new svg path{stroke:#000;stroke-width:2.5}
