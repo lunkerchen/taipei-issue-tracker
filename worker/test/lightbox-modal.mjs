@@ -17,6 +17,8 @@ const [visitorId] = visitor.id.split(".");
 const runId = crypto.randomUUID().slice(0, 8), key = "lightbox";
 const id = `${visitorId}:${key}`, title = `燈箱焦點測試 ${runId}`;
 const photos = [1, 2, 3].map(n => `${visitorId}/lightbox-${n}.jpg`);
+assert.equal((await post("/api/contact", { "x-visitor":visitor.id }, { item:key, name:"回歸測試", phone:"0912000000",
+  email:"test@example.com", realName:false })).status, 200, "save contact before creating a case");
 assert.equal((await write({ "x-visitor":visitor.id }, `reports/${visitorId}`, { items:{ [key]:{
   title, body:`燈箱 modal 回歸 ${runId}`, createdAt:new Date().toISOString(), author:visitorId,
   dept:"1999 待分派", tags:[], photos, notes:[]
