@@ -736,6 +736,7 @@ function applyRole() {
 async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
 
 // Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
+const MASKED_MARK = "［已遮蔽］";
 function maskPII(s) {
   // Match on an NFKC copy (full-width digits, @ and so on) but cut the original text, so other characters stay as typed.
   let norm = "", at = [], end = [];
@@ -758,8 +759,17 @@ function maskPII(s) {
     if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);
   }
   let out = "", pos = 0;
-  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + "［已遮蔽］"; pos = b; }
+  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + MASKED_MARK; pos = b; }
   return { text: out + s.slice(pos), count: hits.length };
+}
+// Cut by code point so an emoji is not split, and never end inside the mask marker.
+function titleFromText(text, max = 40) {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  let cut = chars.slice(0, max).join("");
+  for (let n = MASKED_MARK.length - 1; n > 0; n--)
+    if (cut.endsWith(MASKED_MARK.slice(0, n))) { cut = cut.slice(0, -n); break; }
+  return cut.trim();
 }
 
 // Every sample call gets a timeout; only a transient upstream error is retried, once. A timeout aborts as "cancelled" and is not retried.
@@ -1155,7 +1165,7 @@ $("cancelBtn").onclick = () => {
 };
 
 async function triage(text, district, aspect) {
-  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
+  const fallback = { title: titleFromText(text), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
   if (!sample) return fallback;
   // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
   const open = issues.filter(i => i.status !== "fixed").sort((a, b) => b.n - a.n).slice(0, 60);
