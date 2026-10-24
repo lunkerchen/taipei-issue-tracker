@@ -18,7 +18,7 @@ const fire = () => setTimeout(() => subs.forEach(s => s.run()));
 const req = async (url, init = {}) => {
   let last;
   for (let k = 0; k < 2; k++) {
-    try { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) }); if (r.status < 500) return r; last = new Error(url + " " + r.status); }
+    try { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) }); if (r.status < 500) return r; last = Object.assign(new Error(url + " " + r.status), { status: r.status }); }
     catch (e) { last = e; }
     await new Promise(r => setTimeout(r, 500));
   }
@@ -35,13 +35,24 @@ const adminToken = (() => {
 })();
 
 // Visitor identity: "<id>.<signature>" from the Worker, kept in localStorage; the page only sees the id.
-const visitor = (async () => {
+let visitorStorageBlocked = false;
+const visitorToken = /^[\\da-f]{16}\\.[\\da-f]{64}$/;
+const getVisitor = async () => {
   let t = store.get("tit-visitor");
-  if (!/^[\\da-f]{16}\\.[\\da-f]{64}$/.test(t || "")) {
-    try { t = (await (await req("/api/visitor", { method: "POST" })).json()).id; store.set("tit-visitor", t); } catch { t = null; }
+  if (!visitorToken.test(t || "")) {
+    try {
+      const response = await req("/api/visitor", { method: "POST" });
+      if (!response.ok) return null;
+      t = (await response.json()).id;
+      if (!visitorToken.test(t || "")) return null;
+      store.set("tit-visitor", t);
+      if (store.get("tit-visitor") !== t) { visitorStorageBlocked = true; t = null; }
+    } catch { t = null; }
   }
   return t;
-})();
+};
+// Serialize first use across tabs, then re-read storage under the lock so all tabs keep the same identity.
+const visitor = navigator.locks?.request ? navigator.locks.request("tit-visitor", getVisitor) : getVisitor();
 
 // seq: the Hub numbers every write. baseSeq is the seq of the snapshot DATA came from; pathSeq holds paths updated
 // after it. Anything at or below max(baseSeq, pathSeq[path]) is already reflected, so late replies, late socket
@@ -81,14 +92,15 @@ const connect = () => {
 };
 connect();
 
-const write = async (op, path, data) => {
+const write = async (op, path, data, visitorOnly = false) => {
   await ready;
   const h = { "content-type": "application/json" };
-  if (adminToken) h["x-admin"] = adminToken;
+  if (adminToken && !visitorOnly) h["x-admin"] = adminToken;
   const v = await visitor; if (v) h["x-visitor"] = v;
   const r = await req("/api/db", { method: "POST", headers: h, body: JSON.stringify({ op, path, data }) });
   if (!r.ok) throw Object.assign(new Error("write " + r.status), { status: r.status, error: (await r.json().catch(() => ({}))).error });
   const j = await r.json(); apply(path, j.data, j.seq); // own write shows at once; the broadcast echo is ignored by seq
+  return j;
 };
 const ref = (c, id) => ({
   get: async () => { await ready; return docSnap(id, (DATA[c] || {})[id]); },
@@ -101,10 +113,13 @@ const ref = (c, id) => ({
 });
 const db = {
   updateCreates: true, // the Hub's update() creates a missing doc
+  appendNote: (path, key, note) => write("append-note", path, { key, ...clone(note) }, true),
+  createReport: (path, key, item) => write("create-report", path, { key, item: clone(item) }, true),
   doc: p => { const [c, id] = p.split("/"); return ref(c, id); },
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
 };
-const user = { id: async () => ((await visitor) || "").split(".")[0] || null, canEdit: async () => !!adminToken };
+const user = { id: async () => ((await visitor) || "").split(".")[0] || null, canEdit: async () => !!adminToken,
+  storageBlocked: async () => { await visitor; return visitorStorageBlocked; } };
 const sample = { async json(prompt, { modelTier, signal } = {}) {
   const r = await fetch("/api/sample", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, tier: modelTier || "default" }), signal });
   if (r.ok) return r.json();
@@ -118,9 +133,9 @@ const revgeo = async (lat, lng) => { try { const j = await (await req("/api/geoc
 let histP = null;
 const hist = () => histP ||= (async () => { for (let i = 0; i < 2; i++) try { const r = await fetch("/history-2026.json", { signal: AbortSignal.timeout(30000) }); if (r.ok) return await r.json(); } catch {} histP = null; return null; })();
 // Report photos: one JPEG/WebP blob in, its R2 key out (20 s timeout, one retry on network error / 5xx)
-const photo = async blob => {
+const photo = async (blob, visitorOnly = false) => {
   const h = { "content-type": blob.type || "image/jpeg" };
-  if (adminToken) h["x-admin"] = adminToken;
+  if (adminToken && !visitorOnly) h["x-admin"] = adminToken;
   const v = await visitor; if (v) h["x-visitor"] = v;
   let last;
   for (let k = 0; k < 2; k++) {
@@ -136,9 +151,9 @@ const photo = async blob => {
 };
 photo.url = key => "/api/photo/" + key;
 // Reporter contact: save(item, {name, phone, realName}) for your own report; get(id) works for the admin only
-const contactReq = async (url, init = {}) => {
+const contactReq = async (url, init = {}, visitorOnly = false) => {
   const h = { ...(init.headers || {}) };
-  if (adminToken) h["x-admin"] = adminToken;
+  if (adminToken && !visitorOnly) h["x-admin"] = adminToken;
   const v = await visitor; if (v) h["x-visitor"] = v;
   let last;
   for (let k = 0; k < 2; k++) {
@@ -152,7 +167,7 @@ const contactReq = async (url, init = {}) => {
   throw last;
 };
 const contact = {
-  save: (item, c) => contactReq("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item, ...c }) }),
+  save: (item, c) => contactReq("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item, ...c }) }, true),
   get: async id => (await contactReq("/api/contact?id=" + encodeURIComponent(id))).contact
 };
 window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact })[n] ?? null };
