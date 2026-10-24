@@ -230,6 +230,20 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.tk-track{animation:tkmove linear infinite}.ticker:hover .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}}
 @keyframes tkmove{to{transform:translateX(-50%)}}
 .has-tk .wrap{padding-bottom:104px}
+/* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
+.cz,.cz-only,.nav .ni,.mine-h{display:none!important}
+#v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
+.citizen .gh,.citizen .term{display:none!important}.citizen .cz{display:inline!important}.citizen .cz-only{display:inline-flex!important}
+.citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
+@media (max-width:760px){
+.citizen .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;margin:0;gap:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
+.citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-bottom:0;border-top:2px solid transparent;border-radius:0}
+.citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
+.citizen .nav .ni{display:block!important}.citizen .nav .cnt,.citizen #newBtn{display:none}
+.citizen .wrap{padding-bottom:80px}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:112px}
+.citizen .ticker{bottom:calc(57px + env(safe-area-inset-bottom))}
+.citizen .toast,.citizen.has-tk .toast{bottom:104px}
+.citizen .mapbox{height:calc(100vh - var(--hdr,170px) - 222px);height:calc(100svh - var(--hdr,170px) - 222px)}}
 .has-tk .wrap.wide{padding-bottom:48px}
 .has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
 .has-tk .toast{bottom:48px}
@@ -238,17 +252,19 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 
 <div class="wrap" id="wrap">
   <header class="repo">
-    <h1>taipei-city / <b>1999</b><span class="vis">Public</span></h1>
-    <button class="btn primary" id="newBtn" type="button">New issue</button>
+    <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北 1999 <b>快速通報</b></span></h1>
+    <button class="btn primary" id="newBtn" type="button"><span class="gh">New issue</span><span class="cz">我要通報</span></button>
   </header>
 
   <nav class="nav" id="nav" aria-label="專案分頁">
     <button type="button" data-view="code">Code</button>
-    <button type="button" data-view="issues" aria-current="page">Issues <span class="cnt" id="cIssues"></span></button>
-    <button type="button" data-view="map">Map</button>
+    <button type="button" data-view="issues" aria-current="page"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="gh">Issues</span><span class="cz">陳情列表</span> <span class="cnt" id="cIssues"></span></button>
+    <button type="button" data-view="map"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="gh">Map</span><span class="cz">地圖</span></button>
+    <button type="button" id="navReport" class="cz-only"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>通報</button>
+    <button type="button" data-view="mine" class="cz-only"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>我的陳情</button>
     <button type="button" data-view="pulls">Pull requests <span class="cnt" id="cPulls"></span></button>
     <button type="button" data-view="milestones">Milestones</button>
-    <button type="button" data-view="insights">Insights</button>
+    <button type="button" data-view="insights"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="gh">Insights</span><span class="cz">成效</span></button>
     <button type="button" data-view="releases">Releases</button>
     <button type="button" data-view="admin" id="navAdmin" hidden>後台</button>
   </nav>
@@ -305,8 +321,9 @@ Switched to branch 'taipei'
     </select>
   </div>
 
-  <section class="box">
+  <section class="box listbox">
     <div class="boxhead">
+      <b class="mine-h">我送出的陳情</b>
       <button class="tab" id="tabOpen" aria-pressed="true" type="button"></button>
       <button class="tab" id="tabClosed" aria-pressed="false" type="button"></button>
       <span class="spacer"></span>
@@ -403,6 +420,7 @@ Switched to branch 'taipei'
 <div class="toast" id="toast" role="status"></div>
 
 <script>
+document.documentElement.classList.add("citizen"); // applyRole drops it for admins
 const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
@@ -452,7 +470,7 @@ const TPL_LINES = Object.values(TEMPLATES).flatMap(t => t.split("\n")).filter(Bo
 // What the user actually wrote once template labels are removed; empty means only a template was submitted
 const withoutTemplate = text => text.split("\n").map(l => { l = l.trim().replace(/:/g, "："); const t = TPL_LINES.find(t => l.startsWith(t)); return t ? l.slice(t.length).trim() : l; }).join("").trim();
 const STALE_DAYS = 7, DAY = 864e5;
-const VIEWS = ["code","issues","map","pulls","milestones","insights","releases","admin"];
+const VIEWS = ["code","issues","map","pulls","milestones","insights","releases","admin","mine"]; // "mine" is the Issues page filtered to your own reports
 const STATUS = { open:["Open","var(--open)"], progress:["處理中","var(--progress)"], fixed:["已修復","var(--fixed)"] };
 const ICON = {
   open:'<svg class="ico" viewBox="0 0 16 16" fill="var(--open)"><path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/></svg>',
@@ -484,6 +502,7 @@ function fail(e) {
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
+  document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
   $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
   if (!canWrite) $("newBox").hidden = true;
 }
@@ -671,7 +690,7 @@ function render() {
   const q = $("q").value.trim().toLowerCase();
   const dept = $("deptFilter").value;
   const openN = issues.filter(i => i.status !== "fixed").length;
-  $("tabOpen").innerHTML = ICON.open + `${openN} Open`;
+  $("tabOpen").innerHTML = ICON.open + `${openN} ${admin ? "Open" : "處理中"}`;
   $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
   $("tabClosed").setAttribute("aria-pressed", view.closed);
@@ -688,7 +707,7 @@ function render() {
   renderViews(c); if (admin) renderAdmin(c);
   trackNew(); syncMap(); renderLive();
 
-  let rows = issues.filter(i => (i.status === "fixed") === view.closed)
+  let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
     .filter(i => !dept || i.dept === dept)
     .filter(i => !ms || i.milestone === ms)
     .filter(i => !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q));
@@ -699,7 +718,7 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
-  if (!rows.length) { $("list").innerHTML = `<div class="empty">${issues.length ? "沒有符合條件的案件。" : "還沒有任何陳情。按右上角 New issue 送出第一筆。"}</div>`; return; }
+  if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
   const typed = {}, focused = document.activeElement && document.activeElement.id;
@@ -725,7 +744,7 @@ function render() {
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}</div>` : ""}
-        <div class="bot"><div class="h">taipei-bot 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
+        <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
         ${admin && i.status !== "fixed" ? `<div class="admin">
@@ -786,7 +805,7 @@ let formFrom = "issues";
 $("newBtn").onclick = () => {
   if ($("newBox").hidden) formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
   if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
-  show("issues"); $("newBox").hidden = false; $("newText").focus();
+  show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
 };
 $("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); clearShots(); if (formFrom === "map") show("map"); };
 
@@ -949,6 +968,7 @@ async function create(t, text) {
     await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
+    if (!admin) show("mine"); // phones land on 我的陳情, not the 20th row of the list
     view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
     $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
     render();
@@ -1301,14 +1321,16 @@ const wantAdmin = location.hash === "#admin";
 function show(v, replace) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
   if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
-  curView = v;
+  const wasMine = view.mine; curView = v; view.mine = v === "mine"; const page = view.mine ? "issues" : v;
   if (v !== "map") stopPlay();
   $("wrap").classList.toggle("wide", v === "map");
-  VIEWS.forEach(x => $("v-" + x).hidden = x !== v);
+  VIEWS.forEach(x => { const el = $("v-" + x); if (el) el.hidden = x !== page; });
+  $("v-issues").classList.toggle("mine", view.mine); if (wasMine !== view.mine && db) render();
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (v === "map") openMap();
 }
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
+$("navReport").onclick = () => $("newBtn").click();
 // Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
 const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
 show(homeView(), true);
