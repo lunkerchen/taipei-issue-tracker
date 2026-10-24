@@ -96,14 +96,20 @@ addEventListener("offline", () => offline(true));
 // A short network drop can leave the socket open; clear the banner when the network returns.
 let live = null;
 addEventListener("online", () => { if (live && live.readyState === WebSocket.OPEN) offline(false); });
+let lastMsgAt = Date.now();
 const connect = () => {
   const ws = live = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin" : "")); // the socket's admin view holds no contacts, so the token stays out of the URL
-  ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
+  ws.onmessage = e => { lastMsgAt = Date.now(); try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
-  ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
+  ws.onopen = () => { lastMsgAt = Date.now(); offline(false); ready = load(); ready.then(fire, () => {}); };
   ws.onclose = () => { offline(true); setTimeout(connect, 2000); };
 };
 connect();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - lastMsgAt > 15000) {
+    if (live) try { live.close(); } catch {} else connect();
+  }
+});
 
 const write = async (op, path, data, visitorOnly = false) => {
   await ready;
