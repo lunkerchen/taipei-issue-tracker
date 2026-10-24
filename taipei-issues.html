@@ -854,10 +854,13 @@ async function setVote(id, on) {
     const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
     if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
     else await ref.set(patch);
+    // The Worker shim publishes the acknowledged write on the next task; let sorting see it before a redirect scrolls.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    return true;
   }
   catch (e) {
     if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
-    fail(e); render();
+    fail(e); render(); return false;
   }
 }
 
@@ -1289,10 +1292,21 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   $("dupBox").hidden = false;
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
-function doneReport(openId) {
+function doneReport(openId, { publicTarget = false } = {}) {
   clearReportFlow();
-  supplementAttempts.clear(); view.open.add(openId); view.closed = false;
-  $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
+  supplementAttempts.clear();
+  view.open.add(openId);
+  if (publicTarget) {
+    const target = issues.find(i => i.id === openId);
+    view.closed = target?.status === "fixed";
+    $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
+  } else view.closed = false;
+  $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
+  if (publicTarget) {
+    scrollTo = openId; setTimeout(() => { if (scrollTo === openId) scrollTo = null; }, 10000);
+    show("issues");
+  }
+  render();
   restoreFormFocus();
 }
 // A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
@@ -1344,7 +1358,7 @@ async function supplement(t, text, photos, signature) {
     }
     if (!myVotes[attempt.target]) setVote(attempt.target, true);
     supplementAttempts.delete(attemptKey);
-    if (unchanged()) doneReport(attempt.target);
+    if (unchanged()) doneReport(attempt.target, { publicTarget:true });
     else { $("newStatus").textContent = "補充已送出；目前修改中的內容已保留"; render(); }
     toast(`已補充到 #${t.dup.n}`);
   } catch (e) { $("newStatus").textContent = ""; fail(e); }
@@ -1352,10 +1366,11 @@ async function supplement(t, text, photos, signature) {
     supplementBusy = false; reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false;
   }
 }
-$("dupBox").addEventListener("click", e => {
+$("dupBox").addEventListener("click", async e => {
   const b = e.target.closest("[data-dup]");
   if (!b || !pending) return;
-  const { t, text, photos, signature } = pending;
+  const intent = pending;
+  const { t, text, photos, signature } = intent;
   if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
   const restoreOnFailure = b.dataset.dup === "new" && document.activeElement === b;
   pending = null; $("dupBox").hidden = true;
@@ -1369,8 +1384,20 @@ $("dupBox").addEventListener("click", e => {
     }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
   }
   if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
-  setVote(t.dup.id, true);
-  doneReport(t.dup.id);
+  if (b.dataset.dup !== "vote") return;
+  const voteRevision = reportRevision, votePreviewRun = previewRun;
+  if (!await setVote(t.dup.id, true)) return;
+  const reportUnchanged = reportRevision === voteRevision && previewRun === votePreviewRun &&
+    signature === reportInputStamp() && !pending && !$("newBox").hidden &&
+    intent.signature === signature && intent.t.dup.id === t.dup.id;
+  if (!reportUnchanged) {
+    toast($("newBox").hidden
+      ? `已幫 #${t.dup.n} 按 +1；通報表單已取消`
+      : `已幫 #${t.dup.n} 按 +1；目前通報內容已保留`);
+    return;
+  }
+  doneReport(t.dup.id, { publicTarget:true });
+  toast(`已幫 #${t.dup.n} 按 +1`);
 });
 
 // Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.

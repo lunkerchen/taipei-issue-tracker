@@ -26,6 +26,9 @@
   - 「只幫 #N 按 +1」。
   - 送出新案件。如果內容完全相同，這個選項會改成「修改內容」。
 
+  補充或 +1 成功後，網站會開啟公開案件列表，展開並定位該案件。
+  +1 儲存期間，網站會確認原通報預覽仍有效。市民若修改草稿、取消表單或開啟新通報，網站會保留目前狀態並提示 +1 已儲存。
+
   網站把每則補充存在 `addenda/<訪客 ID>`，並顯示為「其他市民補充」。
 - **我的陳情與補充**：「我的陳情」列出你送出的案件。你可以在自己的案件新增文字和最多 3 張照片；請等照片上傳完成再送出補充。上傳失敗時，文字與已上傳的照片會留在表單。每件案件最多 10 則補充。Worker 網站會用一次寫入追加每則補充，同時送出的補充也會分別保留。
 - **定位**：使用 GPS、在小地圖拖曳大頭針，或在地圖上長按。在電腦上，對地圖按右鍵。長按後，網站先顯示地址與座標，確認後才開啟通報表單。較早發出的 GPS 結果晚到時，不會取代你手動選取或清除的位置。
@@ -165,6 +168,7 @@ node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
 BASE=http://localhost:8808 node worker/test/location-request-race.mjs
+node worker/test/duplicate-target-navigation.mjs
 ```
 
 歷史地圖載入測試使用合成派工資料，檢查 Leaflet 延遲載入、取消操作與失敗重試：
@@ -174,6 +178,8 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 ```
 
 定位測試使用合成訪客身分，在瀏覽器中延遲 GPS 與地址查詢結果，並攔截資料庫寫入。
+重複案導向回歸測試使用 `DUPLICATE_NAV_BASE`（預設為 `http://localhost:8809`）；需要 Playwright 或指定 Chrome 時，可設定 `PLAYWRIGHT_MODULE` 與 `CHROME_EXECUTABLE_PATH`。`DUPLICATE_NAV_ADMIN_TOKEN` 要與本機 Worker 的 `ADMIN_TOKEN` 相同。測試只會寫入本機 Worker 的隨機合成案件，結束時會刪除。請為此測試使用獨立的本機 Worker 持久化目錄。
+瀏覽器測試也會延遲 +1 與補充寫入，確認改稿、取消或重開通報表單時不會覆蓋目前流程。
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
