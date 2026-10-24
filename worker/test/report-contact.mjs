@@ -37,7 +37,7 @@ const { email: _omitted, ...withoutEmail } = contact;
 const missing = await post("/api/db", { "x-visitor": person.token }, { op: "create-report", path: `reports/${person.id}`, data: { key: "no-contact", item: makeItem("no contact " + tag) } });
 assert.equal(missing.status, 400, "a report without contact is refused");
 assert.equal((await snapshot()).reports[person.id], undefined, "a missing contact does not create a public case");
-for (const [key, details] of [["null-contact", null], ["no-email", withoutEmail], ["bad-email", { ...contact, email: "not-an-email" }], ["long-email", { ...contact, email: "a".repeat(250) + "@x.co" }], ["blank-email", { ...contact, email: "  " }]]) {
+for (const [key, details] of [["null-contact", null], ["no-email", withoutEmail], ["bad-email", { ...contact, email: "not-an-email" }], ["double-dot", { ...contact, email: "a@b..com" }], ["leading-hyphen", { ...contact, email: "a@-b.com" }], ["trailing-hyphen", { ...contact, email: "a@b-.com" }], ["trailing-dot", { ...contact, email: "a@b.com." }], ["long-email", { ...contact, email: "a".repeat(250) + "@x.co" }], ["blank-email", { ...contact, email: "  " }]]) {
   assert.equal((await create(key, makeItem(key + " " + tag), details)).status, 400, key + " is refused");
   assert.equal(await readContact(key), null, key + " leaves no private contact");
   assert.equal((await snapshot()).reports[person.id], undefined, key + " does not create a public case");
