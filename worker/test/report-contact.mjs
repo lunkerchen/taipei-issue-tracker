@@ -59,7 +59,8 @@ assert.equal((await create("duplicate", first)).status, 409);
 assert.equal(await readContact("duplicate"), null, "a refused duplicate leaves no private contact");
 assert.equal((await create("backdated", makeItem("backdated " + tag, { createdAt: "2020-01-01T00:00:00Z" }))).status, 400);
 assert.equal(await readContact("backdated"), null);
-assert.equal((await create("oversize", makeItem("x".repeat(33000)))).status, 413);
+// valid fields (create-report rejects a body over 2000 characters first), but the doc is over 32 KB
+assert.equal((await create("oversize", makeItem("oversize " + tag, { tags: Array(20).fill("x".repeat(1700)) }))).status, 413);
 assert.equal(await readContact("oversize"), null);
 for (const key of ["second", "third"]) assert.equal((await create(key, makeItem(key + " " + tag))).status, 200);
 assert.equal((await create("quota", makeItem("quota " + tag))).status, 429);
