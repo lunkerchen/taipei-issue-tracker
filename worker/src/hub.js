@@ -217,6 +217,12 @@ export class Hub extends DurableObject {
       const email = typeof c?.email === "string" ? c.email.trim() : "";
       if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
         return { status: 400, error: "bad_contact" };
+      // The client drops an item with a bad title, body or tags, so reject it here instead of storing an invisible case.
+      const it = data.item;
+      if (typeof it.title !== "string" || !it.title.trim() || it.title.length > 200 ||
+          typeof it.body !== "string" || !it.body.trim() || it.body.length > 2000 ||
+          (it.tags !== undefined && (!Array.isArray(it.tags) || !it.tags.every(tag => typeof tag === "string"))))
+        return { status: 400, error: "bad_item" };
       // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
       reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
       contactKey = `${path.slice(8)}:${data.key}`;
