@@ -1790,10 +1790,11 @@ function renderLiList() {
 $("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
 // District page: 大方向 filter (list and pins), and the 5 most +1'd unfinished reports. Not gated on li.geojson.
 let curAspect = "";
-$("distAspects").innerHTML = ["", ...Object.keys(ASP_ICON)].map(k => k
-  ? `<button type="button" data-asp="${k}" aria-pressed="false" aria-label="${k === "醫" ? "醫療" : k}"><img src="${ASP_ICON[k]}" alt="" width="44" height="44"></button>`
-  : `<button type="button" class="all" data-asp="" aria-pressed="true">全部</button>`).join("");
 function setAspect(a) {
+  // Built on first use: ASP_ICON is declared further down the script
+  if (!$("distAspects").firstChild) $("distAspects").innerHTML = ["", ...Object.keys(ASP_ICON)].map(k => k
+    ? `<button type="button" data-asp="${k}" aria-pressed="false" aria-label="${k === "醫" ? "醫療" : k}"><img src="${ASP_ICON[k]}" alt="" width="44" height="44"></button>`
+    : `<button type="button" class="all" data-asp="" aria-pressed="true">全部</button>`).join("");
   curAspect = a;
   for (const b of $("distAspects").querySelectorAll("[data-asp]")) b.setAttribute("aria-pressed", b.dataset.asp === a);
 }
