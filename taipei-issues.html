@@ -1473,7 +1473,7 @@ function mapMessage(message, retry = false) {
 }
 function initMap() {
   if (mainLM) return;
-  mainLM = L.map("map", TAIPEI_VIEW);
+  mainLM = L.map("map", { ...TAIPEI_VIEW, tapHold:true });
   addBase(mainLM);
   // Non-interactive, so long-press and marker clicks still go through
   for (const ring of Object.values(DISTRICT_RINGS)) L.polygon(ring, { className:"district", interactive:false }).addTo(mainLM);
