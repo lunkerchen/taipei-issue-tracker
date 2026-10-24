@@ -716,7 +716,7 @@ let db = null, me = null, admin = false, canWrite = false, sample = null, geocod
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
 // Vote counts arrive after reports/triage and can re-sort a shared case far up the list; scroll again when they land.
-let votesLoaded = false, scrollAfterVotes = null;
+let votesLoaded = false, scrollAfterVotes = null, votesRevision = 0;
 const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -916,7 +916,7 @@ async function act(i, list, patch = {}) {
 }
 
 function setVote(id, on) {
-  const prev = myVotes[id];
+  const prev = myVotes[id], revision = votesRevision;
   myVotes = { ...myVotes, [id]: on }; render();
   let writes = pendingVoteWrites.get(id);
   if (!writes) pendingVoteWrites.set(id, writes = new Set());
@@ -931,7 +931,8 @@ function setVote(id, on) {
       return true;
     }
     catch (e) {
-      if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+      // Another tab can save this vote while this write fails; its snapshot is newer than this rollback.
+      if (myVotes[id] === on && votesRevision === revision) myVotes = { ...myVotes, [id]: prev === true };
       fail(e); render(); return false;
     }
   })().finally(() => {
@@ -2887,6 +2888,7 @@ document.addEventListener("keydown", e => {
     addenda = out; build();
   }, () => {});
   db.collection("votes").onSnapshot(s => {
+    votesRevision++;
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
     myVotes = { ...(mine && isObj(mine.data().issues) ? mine.data().issues : {}) };
