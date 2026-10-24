@@ -178,7 +178,11 @@ const contact = {
 const seedReset = async () => {
   const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
-  const out = await r.json(); ready = load(); await ready; fire(); return out;
+  const out = await r.json();
+  // The reset already succeeded; a failed reload must not turn it into a reported failure.
+  ready = load();
+  try { await ready; fire(); } catch {}
+  return out;
 };
 window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();
