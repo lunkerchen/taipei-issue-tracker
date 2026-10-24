@@ -38,18 +38,20 @@ const adminToken = (() => {
 let visitorStorageBlocked = false;
 const visitorToken = /^[\\da-f]{16}\\.[\\da-f]{64}$/;
 const getVisitor = async () => {
-  let t = store.get("tit-visitor");
-  if (!visitorToken.test(t || "")) {
-    try {
-      const response = await req("/api/visitor", { method: "POST" });
-      if (!response.ok) return null;
-      t = (await response.json()).id;
-      if (!visitorToken.test(t || "")) return null;
-      store.set("tit-visitor", t);
-      if (store.get("tit-visitor") !== t) { visitorStorageBlocked = true; t = null; }
-    } catch { t = null; }
-  }
-  return t;
+  const t = store.get("tit-visitor"), valid = visitorToken.test(t || "");
+  // Confirm the stored token with the Worker: an unsigned or forged token looks valid but every write returns 403.
+  // If the Worker cannot answer, keep a well-formed stored token so an offline reload stays usable.
+  try {
+    const response = await req("/api/visitor", { method: "POST", headers: valid ? { "x-visitor": t } : {} });
+    if (!response.ok) return valid ? t : null;
+    const next = (await response.json()).id;
+    if (!visitorToken.test(next || "")) return valid ? t : null;
+    if (next !== t) {
+      store.set("tit-visitor", next);
+      if (store.get("tit-visitor") !== next) { visitorStorageBlocked = true; return null; }
+    }
+    return next;
+  } catch { return valid ? t : null; }
 };
 // Serialize first use across tabs, then re-read storage under the lock so all tabs keep the same identity.
 const visitor = navigator.locks?.request ? navigator.locks.request("tit-visitor", getVisitor) : getVisitor();
@@ -74,23 +76,35 @@ const load = async () => {
 let ready = load(); ready.catch(() => {});
 // Banner while the live socket is down; shown only after 3 s so a quick reconnect does not flash it
 let offTimer = null, banner;
+const OFFLINE_MSG = "連線中斷，重新連線中…地圖與列表暫停更新";
 const offline = on => {
-  if (!on) { clearTimeout(offTimer); offTimer = null; if (banner) banner.hidden = true; return; }
+  if (!on) { clearTimeout(offTimer); offTimer = null; if (banner) { banner.hidden = true; banner.textContent = ""; } return; }
   if (offTimer || (banner && !banner.hidden)) return; // reconnect attempts every 2 s must not restart the 3 s wait
   offTimer = setTimeout(() => { offTimer = null;
-    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status"); banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;padding:8px 12px;background:#9a6700;color:#fff;font:14px system-ui;text-align:center"; banner.textContent = "連線中斷，重新連線中…地圖與列表暫停更新"; document.body.append(banner); }
-    banner.hidden = false;
+    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status"); banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;padding:8px 12px;background:#9a6700;color:#fff;font:14px system-ui;text-align:center"; document.body.append(banner); }
+    banner.textContent = ""; banner.hidden = false;
+    // Insert the text after the empty live region is visible, or assistive technology can miss it.
+    requestAnimationFrame(() => { if (banner && !banner.hidden && !banner.textContent) banner.textContent = OFFLINE_MSG; });
   }, 3000);
 };
 addEventListener("offline", () => offline(true));
+// A short network drop can leave the socket open; clear the banner when the network returns.
+let live = null;
+addEventListener("online", () => { if (live && live.readyState === WebSocket.OPEN) offline(false); });
+let lastMsgAt = Date.now();
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
-  ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
+  const ws = live = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
+  ws.onmessage = e => { lastMsgAt = Date.now(); try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
-  ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
+  ws.onopen = () => { lastMsgAt = Date.now(); offline(false); ready = load(); ready.then(fire, () => {}); };
   ws.onclose = () => { offline(true); setTimeout(connect, 2000); };
 };
 connect();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - lastMsgAt > 15000) {
+    if (live) try { live.close(); } catch {} else connect();
+  }
+});
 
 const write = async (op, path, data, visitorOnly = false) => {
   await ready;
@@ -120,7 +134,12 @@ const db = {
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
 };
 const user = { id: async () => ((await visitor) || "").split(".")[0] || null, canEdit: async () => !!adminToken,
-  storageBlocked: async () => { await visitor; return visitorStorageBlocked; } };
+  storageBlocked: async () => { await visitor; return visitorStorageBlocked; },
+  // Hidden cases stay out of the public snapshot; this owner-only count lets 我的陳情 explain an empty list.
+  hiddenMine: async () => {
+    const v = await visitor; if (!v) return 0;
+    try { const r = await req("/api/mine", { headers: { "x-visitor": v } }); return r.ok ? (await r.json()).hidden || 0 : 0; } catch { return 0; }
+  } };
 const sample = { async json(prompt, { modelTier, signal } = {}) {
   const r = await fetch("/api/sample", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, tier: modelTier || "default" }), signal });
   if (r.ok) return r.json();
@@ -151,7 +170,7 @@ const photo = async (blob, visitorOnly = false) => {
   throw last;
 };
 photo.url = key => "/api/photo/" + key;
-// Reporter contact: save(item, {name, phone, realName}) for your own report; get(id) works for the admin only
+// Reporter contact: save(item, {name, phone, email, realName}) for your own report; get(id) works for the admin only
 const contactReq = async (url, init = {}, visitorOnly = false) => {
   const h = { ...(init.headers || {}) };
   if (adminToken && !visitorOnly) h["x-admin"] = adminToken;
@@ -175,7 +194,11 @@ const contact = {
 const seedReset = async () => {
   const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
-  const out = await r.json(); ready = load(); await ready; fire(); return out;
+  const out = await r.json();
+  // The reset already succeeded; a failed reload must not turn it into a reported failure.
+  ready = load();
+  try { await ready; fire(); } catch {}
+  return out;
 };
 window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();

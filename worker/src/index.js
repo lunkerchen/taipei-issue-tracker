@@ -1,4 +1,5 @@
 // Serves the demo page (static assets), proxies its two AI prompts to the Claude API, and fronts the shared Hub database.
+import { validEmail, isObj, CASE_ID } from "./hub.js";
 export { Hub } from "./hub.js";
 const MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5" };
 // ponytail: the page builds the prompt, so this is a capped proxy: prefix check, length/token caps and a per-IP rate limit bound abuse.
@@ -38,11 +39,27 @@ async function writeDb(req, env) {
     if (admin || path !== `reports/${id}`) return err(403, "forbidden");
   } else if (op === "append-addendum") {
     if (admin || path !== `addenda/${id}`) return err(403, "forbidden");
-  } else if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
+  } else if (!admin) {
+    if (path === `votes/${id}`) {
+      if (op === "delete") {
+        // ok
+      } else if (op === "set" || op === "update") {
+        if (text.includes('"__proto__"')) return err(400, "bad_item");
+        if (!isObj(data) || !isObj(data.issues)) return err(400, "bad_item");
+        for (const [k, v] of Object.entries(data.issues)) {
+          if (!CASE_ID.test(k) || k === "__proto__" || k === "constructor" || k === "prototype" || typeof v !== "boolean") return err(400, "bad_item");
+        }
+      } else {
+        return err(403, "forbidden");
+      }
+    } else if (path !== `reports/${id}` && path !== `addenda/${id}`) {
+      return err(403, "forbidden");
+    }
+  }
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 
-// Reporter contact (private): a signed visitor saves name/phone for one of its own reports; only the admin reads it back.
+// Reporter contact (private): a signed visitor saves name/phone/email for one of its own reports; only the admin reads it back.
 const ITEM = /^[\w-]{1,64}$/, NAME_MAX = 30;
 async function contact(req, env, searchParams) {
   const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
@@ -59,8 +76,9 @@ async function contact(req, env, searchParams) {
   let b;
   try { const t = await req.text(); if (t.length > 1000) return err(413, "too_large"); b = JSON.parse(t); } catch { return err(400, "bad_json"); }
   const name = typeof b?.name === "string" ? b.name.trim() : "", phone = typeof b?.phone === "string" ? b.phone.replace(/[\s-]/g, "") : "";
-  if (!ITEM.test(b?.item || "") || !name || name.length > NAME_MAX || !/^09\d{8}$/.test(phone) || typeof b.realName !== "boolean") return err(400, "bad_request");
-  return reply(await hub(env).contactPut(`${id}:${b.item}`, { name, phone, realName: b.realName, t: new Date().toISOString() }));
+  const email = typeof b?.email === "string" ? b.email.trim() : "";
+  if (!ITEM.test(b?.item || "") || !name || name.length > NAME_MAX || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof b.realName !== "boolean") return err(400, "bad_request");
+  return reply(await hub(env).contactPut(`${id}:${b.item}`, { name, phone, email, realName: b.realName, t: new Date().toISOString() }));
 }
 
 // Photos: upload by a signed visitor or the admin, read by anyone. JPEG only; the browser already resized and re-encoded it,
@@ -179,10 +197,20 @@ export default {
       if (!(await limited(env, req, true))) return err(429, "rate_limited");
       return Response.json(await hub(env).resetSeed());
     }
+    if (pathname === "/api/mine") {
+      if (req.method !== "GET") return err(405, "method_not_allowed");
+      const id = await visitorId(env, req.headers.get("x-visitor"));
+      if (!id) return err(403, "forbidden");
+      if (!(await env.VISITOR_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+      return Response.json({ hidden: await hub(env).hiddenCount(id) }, { headers: { "cache-control": "no-store" } });
+    }
     if (pathname === "/api/visitor") {
       if (req.method !== "POST") return err(405, "method_not_allowed");
       if (!env.VISITOR_SECRET) return err(503, "no_secret");
       if (!(await env.VISITOR_LIMITER.limit({ key: req.headers.get("cf-connecting-ip") || "unknown" })).success) return err(429, "rate_limited");
+      const supplied = req.headers.get("x-visitor");
+      // A client-supplied token with a valid signature stays the same identity, so a reload can confirm it.
+      if (await visitorId(env, supplied)) return Response.json({ id: supplied });
       const id = hex(crypto.getRandomValues(new Uint8Array(8)));
       return Response.json({ id: `${id}.${await sign(env.VISITOR_SECRET, id)}` });
     }

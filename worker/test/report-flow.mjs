@@ -74,6 +74,20 @@ try {
   await page.locator("#submitBtn").click();
   assert.equal(sampleCount, 0, "no preview before the citizen agrees to the privacy notice and terms");
   await page.locator("#agree").check();
+  assert.equal(await page.locator("#cEmail").getAttribute("aria-required"), "true");
+  assert.equal(await page.locator("#cEmail").getAttribute("type"), "text", "the page owns the email check, not the browser");
+  for (const bad of ["", "not-an-email", "a@b", "a b@c.co"]) {
+    await page.locator("#cEmail").fill(bad);
+    await page.locator("#submitBtn").click();
+    assert.equal(await page.locator("#cEmail").getAttribute("aria-invalid"), "true", `email "${bad}" is marked invalid`);
+    assert.equal(await page.locator("#formErr").innerText(), "請填寫有效的 Email（本站不會寄送通知）");
+    assert.equal(await page.locator("#cEmail").getAttribute("aria-errormessage"), "formErr", "the email error is attached to the field");
+    assert.equal(await page.evaluate(() => document.activeElement.id), "cEmail", "the email error moves focus to the field");
+  }
+  assert.equal(sampleCount, 0, "no preview while the email is missing or malformed");
+  await page.locator("#cEmail").fill(" citizen@example.com ");
+  assert.equal(await page.locator("#cEmail").getAttribute("aria-invalid"), null, "typing clears the email error mark");
+  assert.equal(await page.locator("#formErr").isHidden(), true, "typing hides the visible email error");
 
   await page.locator("#newText").fill("A 交通號誌故障，行人無法安全通過");
   await page.locator("#submitBtn").click();
@@ -98,6 +112,10 @@ try {
   assert.equal(await page.locator("#dupBox").isHidden(), true, "changing contact details dismisses the preview");
   await page.locator("#submitBtn").click();
   await page.locator("#dupBox").waitFor({ state:"visible" });
+  await page.locator("#cEmail").fill("  other@example.com  ");
+  assert.equal(await page.locator("#dupBox").isHidden(), true, "changing the email dismisses the preview");
+  await page.locator("#submitBtn").click();
+  await page.locator("#dupBox").waitFor({ state:"visible" });
   await page.evaluate(() => setPicked(25.033, 121.565, "gps"));
   assert.equal(await page.locator("#dupBox").isHidden(), true, "changing location dismisses the preview");
 
@@ -112,6 +130,8 @@ try {
   assert.equal(legacyContactWrites, 0, "the form never saves an orphan contact before creation succeeds");
   assert.equal(initial.data.contact.name, "另一位合成市民", "contact travels inside the atomic report creation request");
   assert.equal(initial.data.contact.phone, "0912345678");
+  assert.equal(initial.data.contact.email, "other@example.com", "the trimmed email travels inside the same request");
+  assert.ok(!JSON.stringify(initial.data.item).includes("example.com"), "the email is absent from the public report item");
   assert.equal(initial.data.item.body.replace(/[\s\p{P}\p{S}]/gu, "").length, 3, "the test report is short enough to bypass duplicate text detection");
   assert.deepEqual(creates[1], initial, "automatic retry keeps the same attempt ID and payload");
   const append = await fetch(`${base}/api/db`, { method:"POST", headers:{ "content-type":"application/json", "x-visitor":visitorToken },

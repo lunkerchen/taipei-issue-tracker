@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
 const playwrightModule = process.env.PLAYWRIGHT_MODULE || "playwright";
-const { chromium } = await import(playwrightModule);
+const require = createRequire(import.meta.url);
+const { chromium } = require(playwrightModule);
 const base = process.env.REPORT_ERROR_FOCUS_BASE || "http://localhost:8813";
 const visitorId = "a".repeat(16);
 const token = `${visitorId}.${"b".repeat(64)}`;
@@ -69,6 +71,7 @@ async function openForm(page) {
 async function fillForm(page, suffix = "A") {
   await page.locator("#cName").fill(`合成市民${suffix}`);
   await page.locator("#cPhone").fill("0912345678");
+  await page.locator("#cEmail").fill("citizen@example.com");
   await page.locator("#newText").fill("大安區和平東路測試草稿：路口標線褪色，行人過街不清楚。");
   await page.locator("#agree").check();
 }

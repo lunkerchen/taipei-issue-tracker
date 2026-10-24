@@ -66,6 +66,7 @@ try {
   await page.locator("#newBox").waitFor({ state:"visible" });
   await page.locator("#cName").fill("合成測試市民");
   await page.locator("#cPhone").fill("0912000111");
+  await page.locator("#cEmail").fill("citizen@example.com");
   const reportText = "信義路四段 200 號前，路燈閃爍。電話：０９１２ ／ ３４５ ／ ６７８，Email report@example.com，身分證 A123456789。";
   const maskedReport = "信義路四段 200 號前，路燈閃爍。電話：［已遮蔽］，Email ［已遮蔽］，身分證 ［已遮蔽］。";
   await page.locator("#newText").fill(reportText);
@@ -79,8 +80,8 @@ try {
   assert.equal(reportWrite?.data.item.body, maskedReport, "the public report body stays masked");
   const contactData = reportWrite?.data?.contact ?? contact;
   assert.ok(contactData, "the report flow sends contact data through its private field");
-  assert.deepEqual({ name:contactData.name, phone:contactData.phone, realName:contactData.realName },
-    { name:"合成測試市民", phone:"0912000111", realName:false }, "contact field keeps the supplied private values");
+  assert.deepEqual({ name:contactData.name, phone:contactData.phone, email:contactData.email, realName:contactData.realName },
+    { name:"合成測試市民", phone:"0912000111", email:"citizen@example.com", realName:false }, "contact field keeps the supplied private values");
 
   await page.locator('#list form[data-note]').waitFor({ state:"visible" });
   const noteText = "補充：電話 0912 / 345 / 678，舊格式 0912--345--678，換行格式 0912\r\n345\r\n678，國際格式 00886 / 912 / 345 / 678，市話 02 / 2720 / 8889，國碼市話 +886-2-2720-8889，破折號 0912–345–678，Email note@example.com，身分證 B234567890。";
@@ -93,6 +94,8 @@ try {
   assert.equal(noteWrite?.data.text, maskedNote, "the own-report append payload stays masked");
   assert.ok(!JSON.stringify(reportWrite?.data?.item || {}).includes("0912000111"), "the private contact phone is absent from the public report item");
   assert.ok(!JSON.stringify(noteWrite?.data || {}).includes("0912000111"), "the private contact phone is absent from the append payload");
+  assert.ok(!JSON.stringify(reportWrite?.data?.item || {}).includes("citizen@example.com"), "the private contact email is absent from the public report item");
+  assert.ok(!JSON.stringify(noteWrite?.data || {}).includes("citizen@example.com"), "the private contact email is absent from the append payload");
   if (evidenceDir) {
     await mkdir(evidenceDir, { recursive:true });
     await page.screenshot({ path:`${evidenceDir}/phone-mask.png`, fullPage:true });
