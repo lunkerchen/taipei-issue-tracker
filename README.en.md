@@ -77,6 +77,10 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `#admin=<ADMIN_TOKEN>` (a URL fragment, not a query). The page ignores a key in `?admin=`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
+- **Long contact data**: Long contact data, such as a 233-character email address, wraps inside the case details. It does not go past the right edge of the block.
+- **Admin tabs on phones**: The topic bar moves the active tab into view. This occurs when the page opens and when the view changes. The page does not move up or down. The bottom citizen navigation does not change.
+- **Counts**: The number in the Open tab and the 未結案件 number in the back office are the same. Both include cases that the admin hides or flags. Hidden cases stay out of the work queues.
+- **Search hint**: The search field shows 搜尋標題或內容. It does not show the unsupported `is:issue` filter.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen (key only).
 - **Repair order feedback**: A repair order title has a maximum of 80 characters, and the field shows the limit. After you make a repair order, the field is empty and the page shows the PR number. After you merge a repair order or mark a case fixed, the page shows a message. If the case leaves the Open list, the detail closes and the page shows the case list again.
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
@@ -333,6 +337,12 @@ BASE=http://localhost:8788 node worker/test/admin-queue.mjs
 The admin queue test uses a desktop viewport and administrator mode. It creates 22 cases without a department and 2 cases for review. It checks that each queue shows all its cases after 顯示更多, and that a quick second click does not change the next case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/admin-small-ux.mjs
+```
+
+The admin small UX test uses 390px and 1280px viewports. It checks that the active admin tab stays in view, that a long contact email wraps inside the case details, that the Open tab and the 未結案件 KPI agree, and that the search hint has no `is:issue`. It creates hidden and flagged cases. Use a separate local Worker persistence directory because the test resets the local demo data to remove its private contact row.
+
+```bash
 BASE=http://localhost:8788 node worker/test/pr-merge-feedback.mjs
 ```
 
@@ -344,7 +354,7 @@ BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 
 The stable case number test uses two visitors and one administrator. It checks that a case keeps the same number in the staff view and the owner's citizen view. It releases and hides another case and checks for the same number. It also reloads the page and takes a new snapshot. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
-`worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test, the progress notice test, the admin key test, the repair order feedback test and the supplement contact test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
+`worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test, the progress notice test, the admin key test, the repair order feedback test, the supplement contact test and the admin small UX test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
 
 ```bash
 cd worker && npx wrangler dev --port 8806 --persist-to <empty folder> --var NOTICE_FROM:notice@example.com
