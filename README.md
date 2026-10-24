@@ -13,6 +13,20 @@
 
 > 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料。請參閱〈資料來源〉。
 
+## 畫面截圖
+
+以下為 2026-10-24 線上網站的截圖（淺色模式，模擬資料）。
+
+| | |
+|---|---|
+| ![行政區地圖](docs/screens/map.png)<br>**地圖**：12 個行政區與 1999 九大類圖層 | ![行政區與各里](docs/screens/district.png)<br>**行政區**：各里界與有未完成陳情的里 |
+| ![里頁面](docs/screens/village.png)<br>**里頁面**：里長、議員與里內陳情 | ![通報表單](docs/screens/report.png)<br>**快速通報**：大方向、範本、語音、照片與位置 |
+| ![陳情列表](docs/screens/issues.png)<br>**陳情列表**：貢獻圖、篩選與 +1 | ![案件詳情](docs/screens/issue-detail.png)<br>**案件詳情**：照片、位置與小地圖 |
+| ![修繕單](docs/screens/pulls.png)<br>**Pull requests**：局處送出的修繕單 | ![里程碑](docs/screens/milestones.png)<br>**Milestones**：市政計畫與預算期 |
+| ![成效](docs/screens/insights.png)<br>**成效**：各局處 SLA | ![週報](docs/screens/releases.png)<br>**Releases**：每週結案摘要 |
+
+<img src="docs/screens/mobile-map.png" alt="手機版地圖" width="260"><br>**手機版**：地圖與底部導覽列
+
 ## 功能
 
 **市民（手機優先）**
@@ -106,6 +120,7 @@ Cloudflare Worker（worker/src/index.js）
 | `data/offices.json` | 台北市議員（議會辦公室電話、傳真、地址、信箱）與 456 里辦公處（電話、里長手機、地址），Hub 啟動時載入 `offices` 表，不傳給前端 |
 | `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
+| `docs/screens/` | 本說明文件用的網站截圖 |
 | `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
 | `PLAN.md` | 各階段任務與驗收紀錄 |
 
