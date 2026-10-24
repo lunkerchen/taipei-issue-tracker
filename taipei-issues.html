@@ -601,7 +601,7 @@ Switched to branch 'taipei'
   </ul>
   <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
-<dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
+<dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt" role="status" aria-live="polite" aria-atomic="true"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
 const DEPTS = {
@@ -2360,12 +2360,28 @@ let lbList = [], lbAt = 0;
 const lbShow = () => { $("lbImg").src = lbList[lbAt].href; $("lbImg").alt = lbList[lbAt].querySelector("img")?.alt || ""; $("lbCt").textContent = lbList.length > 1 ? `${lbAt + 1} / ${lbList.length}` : "";
   $("lbPrev").hidden = $("lbNext").hidden = lbList.length < 2; };
 document.addEventListener("click", e => { const a = e.target.closest(".photos a"); if (!a) return; e.preventDefault();
-  lbList = [...a.closest(".photos").querySelectorAll("a")]; lbAt = lbList.indexOf(a); lbShow(); $("lb").showModal(); });
+  lbList = [...a.closest(".photos").querySelectorAll("a")]; lbAt = lbList.indexOf(a); $("lb").showModal(); lbShow(); });
 $("lbPrev").onclick = () => { lbAt = (lbAt + lbList.length - 1) % lbList.length; lbShow(); };
 $("lbNext").onclick = () => { lbAt = (lbAt + 1) % lbList.length; lbShow(); };
 $("lbClose").onclick = () => $("lb").close();
 $("lb").addEventListener("click", e => { if (e.target === $("lb")) $("lb").close(); });
-$("lb").addEventListener("keydown", e => { if (lbList.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) (e.key === "ArrowLeft" ? $("lbPrev") : $("lbNext")).click(); });
+$("lb").addEventListener("keydown", e => {
+  if (e.key === "Tab") {
+    // Keep the keyboard path inside the modal: the last control wraps to the first, and the reverse.
+    const f = [...$("lb").querySelectorAll("button:not([hidden])")];
+    if (!f.length) return;
+    const at = f.indexOf(document.activeElement);
+    if (at === -1) { e.preventDefault(); (e.shiftKey ? f[f.length - 1] : f[0]).focus(); }
+    else if (!e.shiftKey && at === f.length - 1) { e.preventDefault(); f[0].focus(); }
+    else if (e.shiftKey && at === 0) { e.preventDefault(); f[f.length - 1].focus(); }
+    return;
+  }
+  if (lbList.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) (e.key === "ArrowLeft" ? $("lbPrev") : $("lbNext")).click();
+});
+// A modal dialog does not stop the page behind it from scrolling. The lightbox has no scrollable content,
+// so consume the gestures that would move the case list underneath it.
+$("lb").addEventListener("wheel", e => e.preventDefault(), { passive:false });
+$("lb").addEventListener("touchmove", e => { if (e.touches.length < 2) e.preventDefault(); }, { passive:false });
 // 補充：the reporter adds text and/or photos to their own case (an update of their own reports doc)
 const noteState = id => {
   let state = noteStates.get(id);
