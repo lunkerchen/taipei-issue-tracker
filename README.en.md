@@ -129,7 +129,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `deck/` | Slides and product screenshots |
 | `docs/og.jpg` | Share card (1200 × 630) for links on social media. Made with GPT Image. `worker/build.mjs` copies it to the site and adds the `og:` and `twitter:` tags. |
 | `docs/screens/` | Screenshots of the website for this README |
-| `promo/` | 30-second vertical promo video (9:16). `compose.html` draws each frame from the real 1999 data. `render.mjs` makes the video. The output goes to `promo/out/` (not in git). |
+| `promo/` | Two videos that draw each frame from the real 1999 data: `compose.html` is a 30-second vertical promo (9:16), and `intro.html` is a 90-second landscape introduction (16:9). `common.js` has the map, particle and effect code for the two. `render.mjs` makes the videos. The output goes to `promo/out/` (not in git). |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
 | `PLAN.md` | Tasks and acceptance records for each phase |
 
@@ -143,7 +143,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
 | `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data. If a JPEG is larger than 650 KB, the script uses a lower quality. All 50 demo cases have a photo. |
-| `promo/render.mjs` | Makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, ffmpeg with libx264, and a Traditional Chinese font (Source Han Sans TC or Noto Sans CJK TC). If there is no such font, the script stops with an error. Give seconds (for example `node promo/render.mjs 4.5 18`) to make only those frames in `promo/out/sample/`. Use `--encode` to encode the frames again without a new capture. |
+| `promo/render.mjs` | Makes a video. `node promo/render.mjs promo` makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). This is the default. `node promo/render.mjs intro` makes `promo/out/taipei-intro.mp4` (1920×1080, 30 fps, 90 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, ffmpeg with libx264, and a Traditional Chinese font (Source Han Sans TC or Noto Sans CJK TC). If there is no such font, the script stops with an error. Give seconds after the name (for example `node promo/render.mjs intro 4.5 18`) to make only those frames in `promo/out/<name>/sample/`. Use `--encode` to encode the frames in `promo/out/<name>/frames/` again without a new capture. |
 
 ## Local development
 

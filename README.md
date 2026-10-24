@@ -129,7 +129,7 @@ Cloudflare Worker（worker/src/index.js）
 | `deck/` | 簡報與產品截圖 |
 | `docs/og.jpg` | 社群分享縮圖（1200 × 630），以 GPT Image 產生。`worker/build.mjs` 會把它複製到網站，並加上 `og:` 與 `twitter:` 標籤。 |
 | `docs/screens/` | 本說明文件用的網站截圖 |
-| `promo/` | 30 秒直式（9:16）宣傳影片。`compose.html` 用真實 1999 資料畫出每一格，`render.mjs` 產生影片。輸出放在 `promo/out/`（不放進 git）。 |
+| `promo/` | 兩支用真實 1999 資料畫出每一格的影片：`compose.html` 是 30 秒直式（9:16）宣傳片，`intro.html` 是 90 秒橫式（16:9）介紹片。`common.js` 是兩支共用的地圖、粒子與特效程式。`render.mjs` 產生影片。輸出放在 `promo/out/`（不放進 git）。 |
 | `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
 | `PLAN.md` | 各階段任務與驗收紀錄 |
 
@@ -143,7 +143,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
 | `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料。JPEG 超過 650 KB 時，腳本會降低品質重做。50 筆示範案件都有照片。 |
-| `promo/render.mjs` | 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）、支援 libx264 的 ffmpeg，以及繁體中文字型（Source Han Sans TC 或 Noto Sans CJK TC）；找不到字型時，腳本會報錯停止。給秒數（例如 `node promo/render.mjs 4.5 18`）時只輸出那幾格到 `promo/out/sample/`。加 `--encode` 會直接用現有畫格重新編碼，不重新擷取。 |
+| `promo/render.mjs` | 產生影片。`node promo/render.mjs promo` 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），這是預設值。`node promo/render.mjs intro` 產生 `promo/out/taipei-intro.mp4`（1920×1080、30 fps、90 秒）。配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）、支援 libx264 的 ffmpeg，以及繁體中文字型（Source Han Sans TC 或 Noto Sans CJK TC）；找不到字型時，腳本會報錯停止。在名稱後給秒數（例如 `node promo/render.mjs intro 4.5 18`）時，只輸出那幾格到 `promo/out/<名稱>/sample/`。加 `--encode` 會直接用 `promo/out/<名稱>/frames/` 的現有畫格重新編碼，不重新擷取。 |
 
 ## 本機開發
 
