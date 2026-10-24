@@ -9,7 +9,13 @@ const DOC_MAX = 32 * 1024, ITEMS_MAX = 20, ADMIN_DOC_MAX = 256 * 1024;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
-export const validEmail = e => e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); // shared with index.js; the page uses the same rule
+export const validEmail = e => {
+  if (e.length > 254) return false;
+  const at = e.indexOf("@");
+  if (at < 1 || at !== e.lastIndexOf("@") || /\s/.test(e)) return false;
+  const domain = e.slice(at + 1); // shared with index.js; the page uses the same rule
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+};
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
 const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;
@@ -29,6 +35,8 @@ const THREADS = [
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+// A case number is a positive integer below 1e6; the page uses the same range.
+const caseNo = v => Number.isInteger(v) && v >= 1 && v < 1e6;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Same one-level-deep merge as the page's artifact runtime uses for update()
 const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = isObj(v) && isObj(o[k]) ? { ...o[k], ...v } : v; return o; };
@@ -156,6 +164,38 @@ export class Hub extends DurableObject {
     return status.hidden !== true && !(item.flagged === true && status.hidden !== false);
   }
 
+  // Hidden items never reach the public snapshot, so the owner gets a count to explain an empty 我的陳情 list.
+  hiddenCount(owner) {
+    if (typeof owner !== "string" || !VISITOR_ID.test(owner)) return 0;
+    const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${owner}`).toArray()[0];
+    const items = row && JSON.parse(row.data).items;
+    if (!isObj(items)) return 0;
+    let n = 0;
+    for (const [key, item] of Object.entries(items)) {
+      if (!isObj(item) || item.author !== owner) continue;
+      const t = this.sql.exec("SELECT data FROM docs WHERE path = ?", `triage/${owner}:${key}`).toArray()[0];
+      const triage = t ? JSON.parse(t.data) : {};
+      if (triage.hidden === true || (item.flagged === true && triage.hidden !== false)) n++;
+    }
+    return n;
+  }
+
+  // Numbers are assigned once, when a case is created, and never recomputed from what a viewer can see.
+  // Start above every stored issue number and PR number so the two kinds never collide.
+  // ponytail: scans every reports and triage doc; fine for a demo-sized database.
+  nextCaseNumber() {
+    let max = 0;
+    for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
+      const items = JSON.parse(r.data).items;
+      if (isObj(items)) for (const x of Object.values(items)) if (isObj(x) && caseNo(x.n)) max = Math.max(max, x.n);
+    }
+    for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'triage/%'").toArray()) {
+      const events = JSON.parse(r.data).events;
+      if (Array.isArray(events)) for (const e of events) if (isObj(e) && e.type === "pr" && caseNo(e.n)) max = Math.max(max, e.n);
+    }
+    return Math.min(999999, max + 1);
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
@@ -181,6 +221,12 @@ export class Hub extends DurableObject {
   floodCheck(path, oldDoc, doc, ip, needContact = true) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
+    // A visitor may not choose a number: an existing case keeps its stored n, and a new case is numbered below.
+    for (const [k, x] of Object.entries(items)) {
+      if (!isObj(x)) continue;
+      const prev = old[k];
+      if (isObj(prev) && caseNo(prev.n)) x.n = prev.n; else delete x.n;
+    }
     const fresh = Object.keys(items).filter(k => !Object.hasOwn(old, k));
     if (!fresh.length) return null;
     if (fresh.length > 1) return { status: 400, error: "one_report_per_write" };
@@ -198,6 +244,7 @@ export class Hub extends DurableObject {
         if (x && x !== it && now - Date.parse(x.createdAt) < DUP_WINDOW && norm(x.body) === body) return { status: 409, error: "duplicate_report" };
     if (needContact && !this.sql.exec("SELECT 1 FROM contacts WHERE k = ?", `${who}:${fresh[0]}`).toArray().length) return { status: 400, error: "bad_contact" };
     this.sql.exec("INSERT INTO quota VALUES (?, ?, ?)", who, ip, now);
+    if (isObj(it)) it.n = this.nextCaseNumber();
     return null;
   }
 
@@ -218,9 +265,17 @@ export class Hub extends DurableObject {
       const email = typeof c?.email === "string" ? c.email.trim() : "";
       if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
         return { status: 400, error: "bad_contact" };
+      // The client drops an item with a bad title, body or tags, so reject it here instead of storing an invisible case.
+      const it = data.item;
+      if (typeof it.title !== "string" || !it.title.trim() || it.title.length > 200 ||
+          typeof it.body !== "string" || !it.body.trim() || it.body.length > 2000 ||
+          (it.tags !== undefined && (!Array.isArray(it.tags) || !it.tags.every(tag => typeof tag === "string"))))
+        return { status: 400, error: "bad_item" };
       // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
       reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
       contactKey = `${path.slice(8)}:${data.key}`;
+      // The case number is permanent and assigned here, once; a number the client sent is ignored.
+      data.item.n = this.nextCaseNumber();
       data = { items: { [data.key]: data.item } }; op = "update";
     }
     let doc = null;
