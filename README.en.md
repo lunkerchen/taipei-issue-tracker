@@ -265,6 +265,12 @@ BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 The short viewport test uses 320×568, 640×400, 512×384 and 390×844 viewports. It checks that the district map is at least 300px tall, that all 12 district labels show, and that the labels rarely overlap. It also opens a district from the map and goes back. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/dark-map-controls.mjs
+```
+
+The dark map controls test uses a 1440×900 viewport. It checks that map zoom buttons and location pickbox zoom buttons in dark mode have dark backgrounds and contrast of at least 4.5:1 against text, that district labels stay readable, and that light mode controls keep their white styling. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 

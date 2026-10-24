@@ -227,12 +227,22 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .tl-row .btn{min-width:40px;justify-content:center}
 .mapside .foot{padding:10px 14px;border-top:1px solid var(--line)}
 .mapbox .leaflet-container{font:inherit;background:var(--hover)}
-.mapbox .leaflet-popup-content-wrapper,.mapbox .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
-.mapbox .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
 .mapbox .leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted)}
 .mapbox .leaflet-control-attribution a{color:var(--link)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
+:is(.mapbox,.pickbox) .leaflet-popup-content-wrapper,:is(.mapbox,.pickbox) .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+:is(.mapbox,.pickbox) .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar{border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a{background-color:var(--panel);color:var(--fg);border-bottom:1px solid var(--line)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a:hover{background-color:var(--hover);color:var(--fg)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a.leaflet-disabled{background-color:var(--hover);color:var(--muted)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
+}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 .pop b{display:block;margin-bottom:2px}
 .pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
