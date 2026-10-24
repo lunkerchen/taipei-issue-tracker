@@ -59,7 +59,12 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .detail .body{white-space:pre-wrap;max-width:68ch}
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .photos a{flex:0 1 180px;min-width:0}
-.photos img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--hover)}
+.lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
+.lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
+.lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
+.lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
+.lb .x{top:12px;right:12px}.lb .pv{left:8px;top:50%}.lb .nx{right:8px;top:50%}.lb .ct{position:fixed;bottom:16px;left:0;right:0;text-align:center;color:#fff;font-size:14px}
+.photos img{cursor:zoom-in;display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--hover)}
 .pop img{display:block;width:220px;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;margin:6px 0}
 .phprev{display:flex;flex-wrap:wrap;gap:8px}
 .phprev figure{position:relative;margin:0}
@@ -420,6 +425,7 @@ Switched to branch 'taipei'
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
+<dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
 const DEPTS = {
@@ -1112,7 +1118,7 @@ function markerStyle(i, votes, key) {
 function popupHtml(id) {
   const r = markers.get(id); if (!r) return "";
   const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
-  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}${photoFn && i.photos.length ? `<img src="${esc(photoUrl(i.photos[0]))}" alt="陳情照片：${esc(i.title)}" width="220" height="165">` : ""}
+  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}${photoFn && i.photos.length ? `<span class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}"${n ? " hidden" : ""}><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" width="220" height="165"></a>`).join("")}</span>` : ""}
     <div class="meta">${esc(i.dept)}${sub ? ` · 1999：${esc(sub.name)}` : ""} · +1：${r.votes}</div>
     <button class="btn" type="button" data-go="${esc(i.id)}">看詳情</button></div>`;
 }
@@ -1357,6 +1363,17 @@ function show(v, replace) {
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (v === "map") openMap();
 }
+// Lightbox: any photo link opens in a native <dialog> (Esc closes it); arrows step through that case's photos.
+let lbList = [], lbAt = 0;
+const lbShow = () => { $("lbImg").src = lbList[lbAt].href; $("lbImg").alt = lbList[lbAt].querySelector("img")?.alt || ""; $("lbCt").textContent = lbList.length > 1 ? `${lbAt + 1} / ${lbList.length}` : "";
+  $("lbPrev").hidden = $("lbNext").hidden = lbList.length < 2; };
+document.addEventListener("click", e => { const a = e.target.closest(".photos a"); if (!a) return; e.preventDefault();
+  lbList = [...a.closest(".photos").querySelectorAll("a")]; lbAt = lbList.indexOf(a); lbShow(); $("lb").showModal(); });
+$("lbPrev").onclick = () => { lbAt = (lbAt + lbList.length - 1) % lbList.length; lbShow(); };
+$("lbNext").onclick = () => { lbAt = (lbAt + 1) % lbList.length; lbShow(); };
+$("lbClose").onclick = () => $("lb").close();
+$("lb").addEventListener("click", e => { if (e.target === $("lb")) $("lb").close(); });
+$("lb").addEventListener("keydown", e => { if (lbList.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) (e.key === "ArrowLeft" ? $("lbPrev") : $("lbNext")).click(); });
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 $("navReport").onclick = () => $("newBtn").click();
 // Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
