@@ -10,6 +10,13 @@ const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
 const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
+// 食住行育樂醫 of a report (pop-up icon and district filter): sub-category name first, then the 1999 main category
+const aspectOf = new Function("SUBS", `${grabConst("ASP_MID")}
+${grab("aspectOf")}
+return aspectOf;`)({
+  a:{ name:"食品衛生", mid:"TYPEA-AC0700" }, b:{ name:"公園設施", mid:"TYPEA-AC0300" }, c:{ name:"病媒", mid:"TYPEA-AC0700" }, d:{ name:"其他", mid:"TYPEA-AC0900" } });
+for (const [category, want] of [["a", "食"], ["b", "樂"], ["c", "醫"], ["d", ""], ["x", ""]]) assert.equal(aspectOf({ category }), want, category);
+
 const tkDate = new Function(`${grabConst("tkDate")}\nreturn tkDate;`)();
 for (const [src, want] of [["10/24", "10/24"], [" 9/05", "9/5"], ["2026-10-23T16:15:30Z", "10/24"], ["", ""]]) assert.equal(tkDate(src), want, src);
 

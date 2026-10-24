@@ -1,4 +1,4 @@
-<title>台北市 Issue Tracker</title>
+<title>台北市，你給我聽好了｜市民 1999 通報地圖</title>
 <script>try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
 <style>
 /* Layout: repo-style header, one issue list column; filters wrap above it on phones */
@@ -24,6 +24,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 .repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
 .repo h1 b{font-weight:600}
+.repo h1 .cz b{display:inline-block} /* the platform name wraps as one piece on phones */
 .repo .vis{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:99px;padding:1px 8px;color:var(--muted);margin-left:6px;vertical-align:middle}
 .term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
 .term .p{color:var(--term-dim)}
@@ -64,6 +65,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .photos a{flex:0 1 180px;min-width:0}
 .pv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:8px 0}.pv dt{color:var(--muted)}.pv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.ldrow .party{width:20px;height:20px;margin-left:6px;vertical-align:-3px;display:inline-block}
+.ldrow .ptext{margin-left:6px;font-weight:400}
 .contact{border:0;padding:0;margin:0 0 10px;display:grid;gap:6px}.contact[hidden]{display:none}.contact .row input{flex:1 1 140px;min-width:0}.contact .row #cEmail{flex-basis:220px}
 .addl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.addnote{display:grid;gap:6px;margin:0 0 12px}.addnote textarea{width:100%;box-sizing:border-box;min-height:56px;font:inherit}
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
@@ -219,6 +222,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .pop b{display:block;margin-bottom:2px}
+.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:14px}
+.pop .head b{flex:1}
+.pop .asp{flex:none;width:32px;height:32px;margin:0;aspect-ratio:auto;border-radius:50%}
+.pop .addr{display:block;margin-top:2px;color:var(--link)}
 .pop .btn{margin-top:8px}
 .pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
@@ -244,6 +251,22 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .lipanel .nm{flex:1;font-weight:600}
 .lipanel .cnt{border:1.5px solid var(--fixed);color:var(--fixed);background:none;min-width:28px;text-align:center;font-size:13px}
 .lipanel .chev{color:var(--muted);font-size:18px}
+/* District page: 大方向 filter (one coloured circle per aspect) and the most +1'd unfinished reports, each with 加入 */
+.dasp{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.dasp button{width:44px;height:44px;padding:0;border-radius:50%;border:0;background:none;cursor:pointer}
+.dasp img{display:block;width:44px;height:44px;border-radius:50%}
+.dasp button.all{width:auto;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:14px;font-weight:600}
+.dasp button[aria-pressed=true]{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--fg)}
+.dasp button:focus-visible{outline:2px solid var(--link);outline-offset:4px}
+#hotList{list-style:none;margin:0;padding:0}
+#hotList li{display:flex;align-items:center;gap:8px}
+#hotList li button[data-go]{flex:1;min-width:0;display:grid;gap:2px;padding:8px 4px}
+#hotList .t{font-weight:600}
+#hotList .meta{font-size:13px;color:var(--muted)}
+#hotList button.join{flex:none;min-width:44px;min-height:44px;width:auto;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font-size:14px;font-weight:600;text-align:center}
+#hotList button.join:hover{background:var(--hover)}
+.joinbox{border:1px solid var(--link);background:color-mix(in srgb,var(--link) 8%,transparent);border-radius:6px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.joinbox span{flex:1 1 100%}
 .mapside[hidden]{display:none}
 .lipanel .boxhead #liBack{font-size:18px;line-height:1;padding:2px 10px}
 .ldsec{padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -324,7 +347,7 @@ html.citizen [hidden]{display:none!important}
 
 <div class="wrap" id="wrap">
   <header class="repo">
-    <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北 1999 <b>快速通報</b></span></h1>
+    <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北市，你給我聽好了｜<b>市民 1999 通報地圖</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
     <button class="btn primary" id="newBtn" type="button" hidden><span class="gh">New issue</span><span class="cz">我要通報</span></button>
   </header>
@@ -358,6 +381,7 @@ Switched to branch 'taipei'
   <section class="box" id="newBox" hidden>
     <form class="new" id="newForm">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
+      <div class="joinbox" id="joinBox" hidden><span id="joinMsg"></span><button class="btn" type="button" id="joinVote">只按 +1</button><button class="btn" type="button" id="joinOff">改為新案件</button></div>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
@@ -376,9 +400,9 @@ Switched to branch 'taipei'
         <span class="status" id="locStatus" role="status"></span>
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
-      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有管理者看得到，不會公開）</legend>
+      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填。本示範站的局處後台不需驗證，任何人都看得到，請勿填寫真實姓名、手機與 Email）</legend>
         <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（接收處理進度通知）" aria-label="Email" aria-required="true"></div>
-        <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。不勾選時，身分只用於聯繫查證，不會告知被檢舉人。</label>
+        <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。勾選與否都不影響誰看得到：本示範站的局處後台不需驗證，任何人（包含被檢舉人）都能看到姓名、手機與 Email。</label>
       </fieldset>
       <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
       <label class="note"><input type="checkbox" id="agree" required> 我已閱讀<a href="#privacy" data-doc="privacy">隱私權告知</a>與<a href="#terms" data-doc="terms">使用條款</a>，同意本站依告知內容蒐集、處理及利用我填寫的資料。</label>
@@ -446,6 +470,8 @@ Switched to branch 'taipei'
       </div>
       <aside class="box mapside lipanel" id="liPanel" aria-label="各里未完成陳情" hidden>
         <div class="boxhead"><b id="liTitle"></b><span class="spacer"></span><span class="note" id="liSum"></span></div>
+        <div class="dasp" id="distAspects" role="group" aria-label="依大方向篩選這個區的陳情"></div>
+        <section class="ldsec" aria-labelledby="hotH"><h3 id="hotH">熱門陳情</h3><ol id="hotList"></ol><p class="note" id="hotNone" hidden>沒有符合的未完成陳情</p></section>
         <ol id="liList"></ol>
         <div class="foot note" id="liFoot"></div>
       </aside>
@@ -503,11 +529,12 @@ Switched to branch 'taipei'
     <div class="new"><div class="row">
       <button class="btn" id="snapBtn" type="button">儲存展示快照</button>
       <button class="btn" id="resetBtn" type="button">重設到快照</button>
+      <button class="btn" id="seedBtn" type="button" hidden>重設模擬資料</button>
       <span class="status" id="snapStatus" role="status"></span>
     </div></div>
   </section>
 
-  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
+  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
@@ -522,7 +549,7 @@ Switched to branch 'taipei'
   <h3>蒐集哪些資料、誰看得到</h3>
   <ul>
     <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
-    <li><b>不公開</b>：姓名、手機、Email，以及是否實名檢舉。只有本站管理者看得到。</li>
+    <li><b>後台可見</b>：姓名、手機、Email，以及是否實名檢舉。不會出現在市民畫面，但本示範站的局處後台不需驗證，任何人都能進入並看到。請不要填寫真實個資。</li>
     <li><b>訪客 ID</b>：存在你的瀏覽器（localStorage），用來辨識「我的陳情」。清除瀏覽器資料後，就無法再補充原本的陳情。</li>
     <li><b>IP 位址</b>：用於限流與防洗版，約 24 小時後刪除。Cloudflare 的服務紀錄依 Cloudflare 的政策保存。</li>
     <li><b>瀏覽器暫存</b>：深色或淺色模式設定（localStorage）；本次填寫的姓名、手機與 Email（sessionStorage，關閉分頁後清除）。</li>
@@ -662,6 +689,7 @@ const ICON = {
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
+const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -698,6 +726,7 @@ function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
   $("newBtn").hidden = $("navReport").hidden = $("reportBtn").hidden = $("lpHint").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("roleLink").textContent = admin ? "回到市民畫面" : "局處後台（示範，免驗證）"; $("roleLink").href = admin ? "?citizen#map" : "?admin#admin";
   $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
   $("cancelBtn").textContent = admin ? "Cancel" : "取消";
   $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";
@@ -850,18 +879,35 @@ async function act(i, list, patch = {}) {
   } finally { acting = false; }
 }
 
-async function setVote(id, on) {
+function setVote(id, on) {
   const prev = myVotes[id];
   myVotes = { ...myVotes, [id]: on }; render();
-  try {
-    const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
-    if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
-    else await ref.set(patch);
-  }
-  catch (e) {
-    if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
-    fail(e); render();
-  }
+  let writes = pendingVoteWrites.get(id);
+  if (!writes) pendingVoteWrites.set(id, writes = new Set());
+  let tracked;
+  tracked = (async () => {
+    try {
+      const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
+      if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
+      else await ref.set(patch);
+      // The Worker shim publishes the acknowledged write on the next task; let sorting see it before a redirect scrolls.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return true;
+    }
+    catch (e) {
+      if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+      fail(e); render(); return false;
+    }
+  })().finally(() => {
+    writes.delete(tracked);
+    if (!writes.size) pendingVoteWrites.delete(id);
+  });
+  writes.add(tracked);
+  return tracked;
+}
+async function voteForSupplement(id) {
+  while (pendingVoteWrites.has(id)) await Promise.all([...pendingVoteWrites.get(id)]);
+  return myVotes[id] || await setVote(id, true);
 }
 
 function heatmap() {
@@ -1103,7 +1149,7 @@ function clearReportFlow() {
 }
 $("cancelBtn").onclick = () => {
   if (reportCreating) return;
-  formEpoch++; pickMapIntent++; clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
+  formEpoch++; pickMapIntent++; clearReportFlow(); setJoin(null); $("newBox").hidden = true; clearPick(); clearShots();
   if (formFrom === "map") show("map");
   restoreFormFocus();
 };
@@ -1248,6 +1294,7 @@ $("newForm").addEventListener("submit", async e => {
     const stillCurrent = () => current() && signature === reportInputStamp();
     const cached = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
     maskedN = cached ? cached.maskedN : m.count;
+    if (joinTarget) return await supplement({ dup:joinTarget }, text, undefined, signature); // 加入 from the district page: no triage, add to that case
     const note = maskedN ? `已遮蔽 ${maskedN} 項個資。` : "";
     $("newStatus").textContent = note + (sample && !cached ? "taipei-bot 正在分類…" : "");
     const t = cached ? cached.t : await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
@@ -1300,10 +1347,21 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   $("dupBox").hidden = false;
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
-function doneReport(openId) {
-  clearReportFlow();
-  supplementAttempts.clear(); view.open.add(openId); view.closed = false;
-  $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
+function doneReport(openId, { publicTarget = false } = {}) {
+  clearReportFlow(); setJoin(null);
+  supplementAttempts.clear();
+  view.open.add(openId);
+  if (publicTarget) {
+    const target = issues.find(i => i.id === openId);
+    view.closed = target?.status === "fixed";
+    $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
+  } else view.closed = false;
+  $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
+  if (publicTarget) {
+    scrollTo = openId; setTimeout(() => { if (scrollTo === openId) scrollTo = null; }, 10000);
+    show("issues");
+  }
+  render();
   restoreFormFocus();
 }
 // A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
@@ -1353,20 +1411,21 @@ async function supplement(t, text, photos, signature) {
         throw Object.assign(new Error("idempotency_conflict"), { status:409 });
       if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }) : ref.set({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }));
     }
-    if (!myVotes[attempt.target]) setVote(attempt.target, true);
+    const voteSaved = await voteForSupplement(attempt.target);
     supplementAttempts.delete(attemptKey);
-    if (unchanged()) doneReport(attempt.target);
+    if (unchanged()) doneReport(attempt.target, { publicTarget:true });
     else { $("newStatus").textContent = "補充已送出；目前修改中的內容已保留"; render(); }
-    toast(`已補充到 #${t.dup.n}`);
+    toast(voteSaved ? `已補充到 #${t.dup.n}` : `已補充到 #${t.dup.n}；+1 尚未成功`);
   } catch (e) { $("newStatus").textContent = ""; fail(e); }
   finally {
     supplementBusy = false; reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false;
   }
 }
-$("dupBox").addEventListener("click", e => {
+$("dupBox").addEventListener("click", async e => {
   const b = e.target.closest("[data-dup]");
   if (!b || !pending) return;
-  const { t, text, photos, signature } = pending;
+  const intent = pending;
+  const { t, text, photos, signature } = intent;
   if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
   const restoreOnFailure = b.dataset.dup === "new" && document.activeElement === b;
   pending = null; $("dupBox").hidden = true;
@@ -1380,8 +1439,20 @@ $("dupBox").addEventListener("click", e => {
     }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
   }
   if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
-  setVote(t.dup.id, true);
-  doneReport(t.dup.id);
+  if (b.dataset.dup !== "vote") return;
+  const voteRevision = reportRevision, votePreviewRun = previewRun;
+  if (!await setVote(t.dup.id, true)) return;
+  const reportUnchanged = reportRevision === voteRevision && previewRun === votePreviewRun &&
+    signature === reportInputStamp() && !pending && !$("newBox").hidden &&
+    intent.signature === signature && intent.t.dup.id === t.dup.id;
+  if (!reportUnchanged) {
+    toast($("newBox").hidden
+      ? `已幫 #${t.dup.n} 按 +1；通報表單已取消`
+      : `已幫 #${t.dup.n} 按 +1；目前通報內容已保留`);
+    return;
+  }
+  doneReport(t.dup.id, { publicTarget:true });
+  toast(`已幫 #${t.dup.n} 按 +1`);
 });
 
 // Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.
@@ -1584,16 +1655,16 @@ async function drawDistricts() {
 }
 function openDistrict(d) {
   const l = distLayers[d]; if (!l) return;
-  curDist = d;
+  curDist = d; curLi = ""; $("liDetail").hidden = true; setAspect(""); // a 里 page left open from before would sit beside the new 里 list
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
   l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone"); mapMode();
   mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
   $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
-  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
+  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…"; renderHot();
   loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
 }
 function closeDistrict() {
-  curDist = ""; curLi = "";
+  curDist = ""; curLi = ""; setAspect("");
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
   liGroup?.clearLayers(); liLayers = {}; mapMode();
   $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
@@ -1659,7 +1730,16 @@ function loadContacts() {
   });
 }
 const telHref = p => "tel:" + String(p).replace(/[^\d+#]/g, "");
-const contactRow = (role, name, phone) => `<div class="ldrow"><div class="who"><span class="role">${esc(role)}</span><b>${name ? esc(name) : '<span class="note">資料待補</span>'}</b>${phone ? `<span class="tel">${esc(phone)}</span>` : ""}</div>${phone ? `<a class="btn sm" href="${esc(telHref(phone))}">撥打</a>` : ""}</div>`;
+// Party emblems (Wikimedia, 48 px WebP) shown beside a councillor's name; a party without one stays as text.
+const PARTY_ICON = {
+  "中國國民黨":"data:image/webp;base64,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",
+  "民主進步黨":"data:image/webp;base64,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",
+  "台灣民眾黨":"data:image/webp;base64,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",
+  "新黨":"data:image/webp;base64,UklGRpYEAABXRUJQVlA4WAoAAAAQAAAALwAALwAAQUxQSBQAAAABDzD/ERFCSED4f1rV1Ij+J8FpMlZQOCBcBAAAkBkAnQEqMAAwAD4xEohCoiEhFx39mCADBLYAXZlCOrvTfxJ/Gb5BKo/RPu5+3PIBxL5iXHH98+zftAeYB+mX97/i37Fe7B6gPMB+jv+g/zPYN9AD+0/2PrAPQA/WP0vv10+Bz9nv2o+Af+Vf2L/m3lJ9s5XD2Gymz3nhB2gP7tj0P8r+Tuox8YNHn6DH+F5dPnn2Cv5Z/RP9J+aXdw9GNllhytGaLtctUEWU0J03xImDPMADaj0zpWmboej0CGCOMf/CdaxHdfMgIGBXd2gTbwFA+3gAAP7//s4Bt/Wf/Q6/If0ubO+8wCGmYYq/P/7+0mbsbpK85Qdrw365jHnoyVaEbwmPeD00b8q8adMEzz5duQXVAF798Ls29AVWkslf7sWtEOS3SWlrcSduAOEMnoXq3FJBWrdRCeuUO3lumCZKKaEuNhnPFPIoxTNN5AceQK/p8Z9U4Hsz/f47+NfI5P1nr+p9nP+g1IQMzdMH34HA0ydysb255tiNEv9/wD2+k5K8IwPYjMiyxCJQMwkWP4EnFRyyj3P7uHplRXVmJLiMJFp+Y/1mjmkJ8OSCzFnKIlsbC6XyhuDk3yEYDI98fAKIeHu7u9W6zFHtmeSvN/VkuH+qHqOBT+6cOtAcBlAn5+JGKkNuI0RaAg2oRCfj+bf+oxCLc0fWQNepXpfVMvQk6QvVh2IvVSmMfRT39Ds8Y++7oqe/P3mup/VlMN6bQbgulI4vfmjeJRKU56wMd1BVM7kiEClsyjemIFKZTOJGTOtP6dTCx6bqbWPS8Ej/HKK6h179Mr8vibPCDJ4C33i8Ar260ebHU3IezUhj6zhyDOpz4BoPLnqTR8INt1jJnuMfNnW49Z4w1Kutsa0fsb7OT7YZvOW/zHv0xBltXReSv7wHrs+j27+zGbFNFNo/Cyn4QVle+tLAhvkillfx2QRl26VeD/jcb8+uCG3BpkG16XCK7YE9V/MBw9nywitZ1ltRmp9BFzjBiSVM+KE8hV/Zze69fuAf+GKAJoyykGy11wp7zzXOOJ9V4Bl0/rjg8ZG7+glKRegCH6rhsyTOndUyOZ+qvr/W7t+VNx/iUBWHu5B+sjwKN8pVbHPKap4yrLCz0N+/+X5HRIsZZABmL2Vf/lpwSvEFxcK4sWudlBWpBEQgUU8P8YG0BQo5ojtFvmKSjas4j+Ryn6JeSdp+5NqvwO82fBdPS+//F6XP8Kv5qiYMVtwMj1g99jDU42w4lPOc253Xf3PvN4Vf3znSfd7yMBKNhA6itVvyMGmH/9boSgeedh0ymn9MAZ/XKmtmMaru/rECn7eu38xCC9spG+Kqd3JBf5eE8sxnzGVsZmKcB9xzd21RGakX+YNx+XMBHjSki90vpl08UfkF+tCrwXlIAhxWTcJXdNWzs8mnn71Asz9abD+/FjABn/aJ3uXxbgUPbgV1wJltRnYJ3f5QGinzhEM2v+kBKVMXXyZxTaLM39TnymmKQOjWtAAA",
+  "社會民主黨":"data:image/webp;base64,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"
+};
+const partyMark = party => !party ? "" : PARTY_ICON[party] ? `<img class="party" src="${PARTY_ICON[party]}" alt="${esc(party)}" title="${esc(party)}" width="20" height="20">` : `<span class="note ptext">${esc(party)}</span>`;
+const contactRow = (role, name, phone, party) => `<div class="ldrow"><div class="who"><span class="role">${esc(role)}</span><b>${name ? esc(name) : '<span class="note">資料待補</span>'}${partyMark(party)}</b>${phone ? `<span class="tel">${esc(phone)}</span>` : ""}</div>${phone ? `<a class="btn sm" href="${esc(telHref(phone))}">撥打</a>` : ""}</div>`;
 // Key events = every report in the 里: unfinished first, then most +1, then status (處理中 before 已受理), then newest.
 function liEvents(x) {
   const c = counts(), rank = { progress:0, open:1, fixed:2 };
@@ -1675,7 +1755,7 @@ function renderLiDetail() {
     const ct = liContacts[x.code] || {}, zone = councilors.find(z => Array.isArray(z.districts) && z.districts.includes(x.district));
     const ms = (zone && Array.isArray(zone.members) ? zone.members : []).filter(m => m && (m.name || m.phone));
     $("ldContacts").innerHTML = contactRow("里長", ct.chief, ct.phone) +
-      (ms.length ? ms.map(m => contactRow(`議員（${zone.zone}）${m.party ? "・" + m.party : ""}`, m.name, m.phone)).join("") : contactRow(`議員${zone ? `（${zone.zone}）` : ""}`, "", ""));
+      (ms.length ? ms.map(m => contactRow(`議員（${zone.zone}）`, m.name, m.phone, m.party)).join("") : contactRow(`議員${zone ? `（${zone.zone}）` : ""}`, "", ""));
   };
   draw(); loadContacts().then(draw);
   const ev = liEvents(x);
@@ -1713,6 +1793,43 @@ function renderLiList() {
   $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有未完成陳情` : "";
 }
 $("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
+// District page: 大方向 filter (list and pins), and the 5 most +1'd unfinished reports. Not gated on li.geojson.
+let curAspect = "";
+function setAspect(a) {
+  // Built on first use: ASP_ICON is declared further down the script
+  if (!$("distAspects").firstChild) $("distAspects").innerHTML = ["", ...Object.keys(ASP_ICON)].map(k => k
+    ? `<button type="button" data-asp="${k}" aria-pressed="false" aria-label="${k === "醫" ? "醫療" : k}"><img src="${ASP_ICON[k]}" alt="" width="44" height="44"></button>`
+    : `<button type="button" class="all" data-asp="" aria-pressed="true">全部</button>`).join("");
+  curAspect = a;
+  for (const b of $("distAspects").querySelectorAll("[data-asp]")) b.setAttribute("aria-pressed", b.dataset.asp === a);
+}
+$("distAspects").addEventListener("click", e => { const b = e.target.closest("[data-asp]"); if (!b) return; setAspect(b.dataset.asp); renderHot(); setPins(); });
+function renderHot() {
+  if (!curDist) return;
+  const c = counts(), distOf = i => (markers.get(i.id) || {}).dist || i.district;
+  const rows = issues.filter(i => i.status !== "fixed" && distOf(i) === curDist && (!curAspect || aspectOf(i) === curAspect))
+    .map(i => ({ i, v:c[i.id] || 0 })).sort((a, b) => b.v - a.v || String(b.i.createdAt).localeCompare(String(a.i.createdAt))).slice(0, 5);
+  $("hotNone").hidden = rows.length > 0;
+  $("hotList").innerHTML = rows.map(({ i, v }) => { const st = STATUS[i.status] || STATUS.open, a = aspectOf(i);
+    return `<li><button type="button" data-go="${esc(i.id)}"><span class="t">${esc(i.title)}</span><span class="meta">#${esc(i.n)}${a ? ` · ${esc(a)}` : ""} · ${esc(st[0])} · +1 ${v}</span></button>${canWrite && i.author !== me
+      ? `<button type="button" class="join" data-join="${esc(i.id)}" aria-label="加入 #${esc(i.n)} ${esc(i.title)}">加入</button>` : ""}</li>`; }).join("");
+}
+$("hotList").addEventListener("click", e => { const j = e.target.closest("[data-join]"); j ? joinIssue(j.dataset.join) : goIssue(e); });
+// 加入: the report form adds the citizen's text and photos to that case (addenda) and +1s it, like 補充到 #N
+let joinTarget = null;
+function setJoin(t) {
+  joinTarget = t; $("joinBox").hidden = !t;
+  for (const id of ["aspects", "tpls", "newDistrict"]) $(id).hidden = !!t;
+  $("gpsBtn").parentElement.hidden = !!t;
+  if (t) $("joinMsg").innerHTML = `加入 <b>#${esc(t.n)} ${esc(t.title)}</b>：你的描述和照片會補充到這件，局處會一起看到，也會幫它 +1。`;
+  $("submitBtn").textContent = t ? `補充到 #${t.n}` : admin ? "Submit new issue" : "預覽通報";
+}
+function joinIssue(id) {
+  const i = issues.find(x => x.id === id); if (!i || !canWrite) return;
+  $("newBtn").click(); invalidateReportPreview(); setJoin({ id:i.id, n:i.n, title:i.title });
+}
+$("joinVote").onclick = () => { const t = joinTarget; if (!t) return; if (!myVotes[t.id]) setVote(t.id, true); toast(`已幫 #${t.n} +1`); $("cancelBtn").click(); };
+$("joinOff").onclick = () => { setJoin(null); invalidateReportPreview(); $("newText").focus(); };
 
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
@@ -1779,20 +1896,43 @@ function markerStyle(i, votes, key) {
 const pinIcon = ({ color, fixed, h }) => L.divIcon({ className:"rpin" + (fixed ? " fixed" : ""), iconSize:[h * .75, h], iconAnchor:[h * .375, h], popupAnchor:[0, -h + 4],
   html:`<svg viewBox="0 0 24 32" width="${h * .75}" height="${h}" aria-hidden="true"><path d="M12 31s10-11.2 10-19A10 10 0 0 0 2 12c0 7.8 10 19 10 19z" fill="${color}" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>` });
 // Live pins are added to the map one by one: in a district, all of its pins; on the city map, only the ticked layers.
-const pinVisible = r => !histOn && (curDist ? r.dist === curDist : layerOn[r.key] === true);
+const pinVisible = r => !histOn && (curDist ? r.dist === curDist && (!curAspect || aspectOf(r.i) === curAspect) : layerOn[r.key] === true);
 const setPin = r => { const want = pinVisible(r); if (want !== mainLM.hasLayer(r.m)) want ? r.m.addTo(mainLM) : r.m.remove(); };
 const setPins = () => { if (mainLM) for (const r of markers.values()) setPin(r); };
+// 食住行育樂醫 badge for a case, from its 1999 sub-category name, else its 1999 major category; none for 其他.
+// Icons cut from the 食住行育樂醫 artwork (64 px WebP).
+const ASP_ICON = {
+  食:"data:image/webp;base64,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",
+  住:"data:image/webp;base64,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",
+  行:"data:image/webp;base64,UklGRnQIAABXRUJQVlA4WAoAAAAwAAAAPwAAPwAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIFgEAAAGAW1t72wbK2VOg5kROWMJxBlbcBhtoCpQcAeXniPA/DRARDNw2UpQcMyzMfMHdrufhfowpK6c43g9nYxb+ZVbN+cUv7M4PWW3mYHP63ad6/LzrZhnUa1j24ZP6Tb6He9l438xqkpXTqo19lJ1x3zReZem1YVhF2RrrOydZO3XdiLiPF6EvlvaEkJYFghhDoaqK8u4fnxif/9oZcZ5L+8ndiwySF+Uyh5W9F5SXH2aU+d/Z6MkDzODuYe7dCDO6CBNdgkkuw2QnWn7Cb+ZP48sdX+75esfXe7zd4ds9vt3l23283+H7Pbzf5ft9PO7g4x487sLjPjzu5ONePO7G434876DzHjzvwvM+Ou+k8146777JvN8BVlA4IGgFAABQGgCdASpAAEAAPlEgjkUjoaEWCV2YOAUEtgBOmXHC096/HT8Vfleq/9x/Df8n5YgxPZj+K+27tP+YB+mf+A6pHmA/Xn9cvd570D5AP5n/kutE9AD9jvS6/Xz4Lf2u/Z74Bv1x/9N5T1mHvP5AZQH8vw17Ae9tZP/1HGBpX8cPoN58vqj2CulUzpwSsUmbuv3WPP0QKOzis/f4Sc9a7IKcfzORnFMc3S3SmWqW/Pj9RxtDSAYday1oUm3S1UP41ZB2q1fZ8jxBv+lI9oqbKMyaU4bZ9tHh39qbnwAA/v33n/+1h/+uyf/7bkecX1PURZuCIbXnE/hegbFb7ik114e8GOR3//gTuX/058s3+MVWmhIkGlmfp2nG1YIvOvgNCNWOobFf/WZEf/WjiCGLZBN4HavCMxscyCA4hduSZHv3aOJWYfSKq+fvJ1qSBR9Nlbz/FgzPTKe+1EOem/JtbuBK8+zwXZl4g47FlkZU/EMxU05KuxQFwgQliFhH0usrVZ98XtjLkUWr/5OGn2uoeiwPnrGQv8kRkMbU8GnrkZv/E87+IRWtoMf1x6twNBOmUeXTdI/BRDZQ4L/Zt9GvKxfq9jAFmAR0ODRogfhnVtYANVi1L7+UTf9QB2TY9yztgERzL87tfthjvSIWXdPEkNS3/wmAJvUlybPKiAkawhl6mx78Smm3++vj1dEu6N7r6x322iBY25G32hi0q8PLPzAt9lIBQpKFjpbjv+MWKNlvqhsY0E55PPPhCQu/iv2dChCWO6qMZk2/f0UcJtKws8NFeQ7it7U7mIvT6ajIMEaw/Ku40azFHulvpSw545UeTH8H3KCeeQyor7R58bchtBazosIY/+O5yGWBOqRfw7xgr+YP/RGF+sZJqX6XJynygKr/7Js6i3um5WRke9Fj1GDBepqBMW3u1iuumjRH3osj4l8F3+1fimNY7Is7vbir4gG1x7GZtU/dFj26MTWLYEb0uVDEhP7YqVi8EMSFTrHHet/9433xSd/ol+O9wUovhHI/Cxu97tfj7nU6MmYPgvjQmGQqazgy+3DlGrqpobW7Oyomw58dfy8DISZkjBdUxsqO+OMBh7VizrNtro9qP/Gzqd6N07j9XWx95ZhdFDqqcoboWYes/8k0k0VnBzfqkFuObtKS23VbQQeHF7v9YAiJZ7mvHcABkwRkr8vghlv6H047VuvCAYEtAN/oxbQrDc/q+pHc/7m/US/wW08qpR3TJ2i1eDPtOe5UmVOmvR55wkvYcIzKhMYmgHanCjh1+lkfIW1twv7AR7ubbGCdFbnUTk9uz3jj9BdUTnNLM+djqEdmuZlsCeqxvpgMSH6P7dp8lGnsGC6WGncxXpYPzB/mRLfDBg/5dQinZO9Z+CWM0fTXJsVLCZrC6BSBivaUSF+f9Gn8pkrF2//ROt/Ys3e9857yX2qulBNRU5iurIhc18/tKn3elc5ZviE/As7YSkeKP+o1OBetgEaylnXcA3L60RY/prapmJWEAo1t9ggE91IjOEknnogM1hkdbxFzCNaf+B0IrxLx3nk4rvAOvlUfxz1JP9pxBU05OXXyZxeMhEHEUITQsdHf9K3LKKa+T4AW34ZWAd2SsGj9TfuQdtSHTfS68u34Jaj7vek65Y4REsr8YOazU/zL0vClk9SaeKzKVw2ijKW+MIUgOiyF2GYhmT/feOVNosvgxK9xJbRq5Yr6JX7f7uHg6Iel9/3lu3mKSf6v84nuprGd/B0nlnyDCnd5J8caErgVV+KWWzJOfhQkk1c3ehx+8/jxlN24IvY/SIdSd+qEMf0XcRjkp28dSqBXATLoCTYdV6b981JdE8tMVCxJ5oAA",
+  育:"data:image/webp;base64,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",
+  樂:"data:image/webp;base64,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",
+  醫:"data:image/webp;base64,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"
+};
+const ASP_MID = { "TYPEA-AC0100":"住", "TYPEA-AC0200":"行", "TYPEA-AC0300":"住", "TYPEA-AC0400":"育", "TYPEA-AC0500":"行", "TYPEA-AC0600":"住", "TYPEA-AC0700":"醫", "TYPEA-AC0800":"行" };
+function aspectOf(i) {
+  const s = SUBS[i.category]; if (!s) return "";
+  return /食品/.test(s.name) ? "食" : /公園|體育|觀光|文化/.test(s.name) ? "樂" : ASP_MID[s.mid] || "";
+}
+const aspBadge = a => a ? `<img class="asp" src="${ASP_ICON[a]}" alt="${a}" title="${a}" width="32" height="32">` : "";
+// Address text links to the case's point on Google Maps (coordinates when known, else the address).
+function addrLink(i) {
+  const has = Number.isFinite(i.lat), text = i.address || (has ? coordText(i.lat, i.lng) : "");
+  if (!text) return "";
+  const q = has ? `${i.lat},${i.lng}` : i.address;
+  return `<a class="addr" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+}
 function popupHtml(id) {
   const r = markers.get(id); if (!r) return "";
   const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
-  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}${photoFn && i.photos.length ? `<span class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}"${n ? " hidden" : ""}><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" width="220" height="165"></a>`).join("")}</span>` : ""}
+  return `<div class="pop"><div class="head"><b>${esc(i.title)}</b>${aspBadge(aspectOf(i))}</div>${lbl(st[0], st[1])}${addrLink(i)}${photoFn && i.photos.length ? `<span class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}"${n ? " hidden" : ""}><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" width="220" height="165"></a>`).join("")}</span>` : ""}
     <div class="meta">${esc(i.dept)}${sub ? ` · 1999：${esc(sub.name)}` : ""} · +1：${r.votes}</div>
     <button class="btn" type="button" data-go="${esc(i.id)}">看詳情</button></div>`;
 }
 // Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
 function syncMap() {
   if (!mainLM || histOn) return;
-  renderLiList();
+  renderLiList(); renderHot();
   const c = counts(), live = new Set(), tally = {}, now = Date.now();
   for (const i of issues) {
     if (!inTaipei(i.lat, i.lng)) continue;
@@ -2457,6 +2597,21 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
   view.open.clear(); view.closed = false;
   $("snapStatus").textContent = "已重設到快照";
 });
+// 重設模擬資料: the whole database back to the seed data (worker/data.json). Worker host only; two clicks like 重設到快照.
+let seedFn = null, seedArmed = 0;
+$("seedBtn").onclick = () => run($("seedBtn"), async () => {
+  if (!seedFn) return;
+  if (Date.now() - seedArmed > 10000) {
+    seedArmed = Date.now(); $("seedBtn").textContent = "確定重設（10 秒內再按一次）";
+    $("snapStatus").textContent = "會刪掉所有市民陳情、補充、+1、聯絡資料與展示快照，回到最初的模擬資料。所有訪客都會看到。";
+    setTimeout(() => { if (Date.now() - seedArmed >= 10000) $("seedBtn").textContent = "重設模擬資料"; }, 10000);
+    return;
+  }
+  seedArmed = 0; $("seedBtn").textContent = "重設模擬資料"; $("snapStatus").textContent = "重設中…";
+  const r = await seedFn();
+  view.open.clear(); view.closed = false; render();
+  $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+});
 
 // Issue templates fill the textarea with the fields 1999 needs.
 $("aspects").insertAdjacentHTML("beforeend", ["不確定", ...Object.keys(ASPECTS)].map((k, i) => `<input type="radio" name="aspect" id="asp${i}" value="${i ? k : ""}"${i ? "" : " checked"}><label for="asp${i}">${k}</label>`).join(""));
@@ -2505,6 +2660,7 @@ document.addEventListener("keydown", e => {
   if (typeof revgeo !== "function") revgeo = null;
   contactFn = await opt("contact"); if (contactFn && typeof contactFn.save === "function") { $("contactBox").hidden = false;
     try { const c = JSON.parse(sessionStorage.getItem("contact") || "null"); if (c) { $("cName").value = c.name || ""; $("cPhone").value = c.phone || ""; $("cEmail").value = c.email || ""; } } catch {} } else contactFn = null;
+  seedFn = await opt("seedReset"); $("seedBtn").hidden = typeof seedFn !== "function"; if ($("seedBtn").hidden) seedFn = null;
   photoFn = await opt("photo"); if (typeof photoFn === "function") $("photoRow").hidden = false; else photoFn = null;
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;

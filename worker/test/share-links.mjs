@@ -10,7 +10,8 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(modulePath);
 const artifactDir = process.env.ARTIFACT_DIR;
 const runId = Date.now().toString(36);
-const docId = `share-links-${runId}`;
+// Real reports use a signed 16-hex visitor id as owner; fixtures must match so the public view accepts them.
+const docId = Array.from({ length: 16 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
 const ids = { open: `${docId}:open`, fixed: `${docId}:fixed`, hidden: `${docId}:hidden`, hideWhileCopy: `${docId}:hide-while-copy` };
 const titles = {
   open: `Share link open ${runId}`,

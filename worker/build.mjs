@@ -1,6 +1,6 @@
 // Builds public/index.html: the artifact page plus a window.claude stand-in.
 // State lives in the Worker's Hub Durable Object: the shim loads GET /api/db, applies pushes from /api/ws, and writes via POST /api/db.
-// AI calls go to the Worker's /api/sample. ?admin=<token> sends x-admin so the presenter gets the bureau controls (merge, draft release).
+// AI calls go to the Worker's /api/sample. ?admin sends x-admin so the presenter gets the bureau controls (merge, draft release); no token is checked.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
@@ -25,13 +25,13 @@ const req = async (url, init = {}) => {
   throw last;
 };
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-// Admin token moves from ?admin=<token> to sessionStorage and is stripped from the URL bar, so the projector never shows it.
+// Demo mode, no token: ?admin turns the 局處後台 on and ?citizen turns it off; the choice stays in sessionStorage for this tab.
 const adminToken = (() => {
-  const q = new URLSearchParams(location.search), t = q.get("admin");
-  if (t === null) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
-  try { sessionStorage.setItem("admin", t); } catch {}
-  q.delete("admin"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
-  return t;
+  const q = new URLSearchParams(location.search), on = q.has("admin"), off = q.has("citizen");
+  if (!on && !off) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
+  try { on ? sessionStorage.setItem("admin", "1") : sessionStorage.removeItem("admin"); } catch {}
+  q.delete("admin"); q.delete("citizen"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
+  return on ? "1" : "";
 })();
 
 // Visitor identity: "<id>.<signature>" from the Worker, kept in localStorage; the page only sees the id.
@@ -62,7 +62,7 @@ let baseSeq = -1;
 const put = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; };
 const apply = (path, d, seq) => { if (!(seq > Math.max(baseSeq, pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
 const load = async () => {
-  const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status);
+  const r = await req("/api/db", adminToken ? { headers: { "x-admin": adminToken } } : undefined); if (!r.ok) throw new Error("db " + r.status);
   const { _seq = 0, ...fresh } = await r.json(), old = DATA;
   if (_seq < baseSeq) return; // an older snapshot finished after a newer one
   DATA = fresh; baseSeq = _seq;
@@ -84,7 +84,7 @@ const offline = on => {
 };
 addEventListener("offline", () => offline(true));
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws");
+  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
   ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
@@ -171,13 +171,25 @@ const contact = {
   save: (item, c) => contactReq("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item, ...c }) }, true),
   get: async id => (await contactReq("/api/contact?id=" + encodeURIComponent(id))).contact
 };
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact })[n] ?? null };
+// Admin only: put the database back to the seed data, then reload this page's copy at once
+const seedReset = async () => {
+  const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
+  const out = await r.json(); ready = load(); await ready; fire(); return out;
+};
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();
 </script>`;
 
 mkdirSync(here("public"), { recursive: true });
+// Share card: og:image needs an absolute URL, so the live site address is fixed here
+const SITE = "https://taipei-issue-tracker.labanchen.workers.dev", TITLE = "台北市，你給我聽好了｜市民 1999 通報地圖";
+const DESC = "手機優先的 1999 快速通報網站：送出陳情，AI 分類並分派給負責局處，陳情立即出現在地圖上。";
+copyFileSync(here("../docs/og.jpg"), here("public/og.jpg"));
 for (const f of ["history-2026.json", "districts.geojson", "li.geojson", "li-contacts.json", "councilors.json"]) if (existsSync(here("../data/" + f))) copyFileSync(here("../data/" + f), here("public/" + f));
-writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台北市 Issue Tracker</title></head><body style="margin:0">
+writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${TITLE}</title>
+<meta name="description" content="${DESC}"><meta property="og:type" content="website"><meta property="og:site_name" content="${TITLE}"><meta property="og:title" content="${TITLE}"><meta property="og:description" content="${DESC}">
+<meta property="og:url" content="${SITE}/"><meta property="og:image" content="${SITE}/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${TITLE}"><meta name="twitter:card" content="summary_large_image"></head><body style="margin:0">
 <div style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">展示版：資料為模擬資料，所有訪客共用、即時同步。</div>
 ${shim}${page}</body></html>`);
 console.log("built public/index.html");
