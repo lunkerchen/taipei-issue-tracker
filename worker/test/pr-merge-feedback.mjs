@@ -67,7 +67,7 @@ async function openApp(browser, viewport, hash, titles = []) {
 const cardFor = (page, title) => page.locator("#list .issue").filter({ hasText:title });
 const toastText = page => page.locator("#toast").innerText();
 
-let browser;
+let browser, cleaned = false;
 try {
   const items = {};
   Object.values(cases).forEach((c, n) => items[c.key] = item(c.title, n));
@@ -199,8 +199,9 @@ try {
   await browser.close();
   browser = null;
   await cleanup();
+  cleaned = true;
   console.log("OK: PR title stops at 80 and clears after success; a second click adds no PR; merge/fixed toast and return the list URL to #issues.");
 } finally {
   await browser?.close();
-  await cleanup().catch(e => console.error("cleanup failed:", e.message));
+  if (!cleaned) await cleanup().catch(e => console.error("cleanup failed:", e.message));
 }
