@@ -112,7 +112,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `scripts/history-releases.mjs` | Makes the monthly dispatch reports from the history data (`--write` writes them to the live database) |
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
-| `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data |
+| `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data. If a JPEG is larger than 650 KB, the script uses a lower quality. All 50 demo cases have a photo. |
 
 ## Local development
 
