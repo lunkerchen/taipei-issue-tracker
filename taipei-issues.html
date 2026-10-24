@@ -73,6 +73,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .ldrow .ptext{margin-left:6px;font-weight:400}
 .contact{border:0;padding:0;margin:0 0 10px;display:grid;gap:6px}.contact[hidden]{display:none}.contact .row input{flex:1 1 140px;min-width:0}.contact .row #cEmail{flex-basis:220px}
 .addl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.addnote{display:grid;gap:6px;margin:0 0 12px}.addnote textarea{width:100%;box-sizing:border-box;min-height:56px;font:inherit}
+#draftList .draft{padding:12px 14px;border-top:1px solid var(--line)}#draftList .draft:first-child{border-top:0}#draftList textarea{width:100%;box-sizing:border-box;margin:6px 0;resize:vertical}
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
 .doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
 .doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
@@ -435,6 +436,11 @@ Switched to branch 'taipei'
         <span class="status" id="newStatus" role="status"></span>
       </div>
     </form>
+  </section>
+
+  <section class="box" id="draftBox" hidden aria-labelledby="draftHead">
+    <div class="boxhead"><b id="draftHead">未送出的補充草稿</b><span class="spacer"></span><span class="note">案件目前無法公開顯示，草稿仍保留在這裡</span></div>
+    <div id="draftList"></div>
   </section>
 
   <div class="bar">
@@ -1025,6 +1031,14 @@ function syncDataNote() {
 }
 $("dataNoteRetry").onclick = () => location.reload();
 function render() {
+  // A live update can remove a case under a half-written addendum; snapshot the draft before rebuilding.
+  document.querySelectorAll("#list textarea[id^=note-]").forEach(ta => {
+    const id = ta.id.slice("note-".length), text = ta.value;
+    if (!text) { noteDrafts.delete(id); return; }
+    const title = ta.closest(".issue")?.querySelector(".title")?.textContent.trim() || noteDrafts.get(id)?.title || "";
+    noteDrafts.set(id, { text, title });
+  });
+  renderDrafts();
   heatmap();
   const c = counts();
   const q = $("q").value.trim().toLowerCase();
@@ -1117,11 +1131,11 @@ function render() {
         ${canWrite && me && i.author === me ? (() => {
           const ownN = i.notes.filter(x => !x.other).length, full = ownN >= 10 || noteLimits.has(i.id);
           const s = noteStates.get(i.id) || {}, busy = s.uploading || s.sending, pics = notePics.get(i.id) || [];
-          const draft = full ? (document.getElementById(`note-${i.id}`)?.value || "") : "";
+          const draft = full ? (document.getElementById(`note-${i.id}`)?.value || noteDrafts.get(i.id)?.text || "") : "";
           if (full && !draft && !pics.length) return `<div class="note" data-notefull="${esc(i.id)}">此案件已達 10 則補充上限。</div>`;
           return `<form class="addnote" data-note="${esc(i.id)}">
             <div class="note">${full ? "此案件已達 10 則補充上限。草稿已保留，請自行複製。" : `每件案件最多 10 則補充，目前已 ${ownN} 則。`}</div>
-            <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${full ? "readonly" : s.sending ? "disabled" : ""}></textarea>
+            <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${full ? "readonly" : s.sending ? "disabled" : ""}>${esc(noteDrafts.get(i.id)?.text || "")}</textarea>
           <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
           <div class="row">${!full && photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
             <button class="btn" type="submit" ${full || busy ? "disabled" : ""}>${full ? "已達上限" : "新增補充"}</button><span class="status" role="status">${esc(full ? "" : s.status || "")}</span></div>
@@ -1351,6 +1365,47 @@ const notePics = new Map();
 const noteStates = new Map();
 const noteAttempts = new Map();
 const noteLimits = new Set();
+const noteDrafts = new Map();
+const draftAnnounced = new Set();
+function renderDrafts() {
+  const unavailable = [...noteDrafts.entries()].filter(([id]) => !issues.some(i => i.id === id));
+  $("draftBox").hidden = !unavailable.length;
+  if (!unavailable.length) { $("draftList").innerHTML = ""; return; }
+  for (const id of [...draftAnnounced]) if (!noteDrafts.has(id) || issues.some(i => i.id === id)) draftAnnounced.delete(id);
+  if (gotReports && gotTriage) {
+    const fresh = unavailable.filter(([id]) => !draftAnnounced.has(id));
+    if (fresh.length) {
+      fresh.forEach(([id]) => draftAnnounced.add(id));
+      toast("案件已無法公開顯示，未送出的補充草稿已保留，可在列表上方複製");
+    }
+  }
+  $("draftList").innerHTML = unavailable.map(([id, d]) => `<div class="draft" data-draft="${esc(id)}">
+    <div class="meta">案件「${esc(d.title || "未命名案件")}」目前無法公開顯示</div>
+    <textarea readonly rows="2" aria-label="保留的補充草稿：${esc(d.title || "未命名案件")}">${esc(d.text)}</textarea>
+    <div class="row"><button class="btn" type="button" data-draft-copy="${esc(id)}">複製草稿</button><button class="btn" type="button" data-draft-drop="${esc(id)}">丟棄</button><span class="status" role="status" data-draft-status></span></div>
+  </div>`).join("");
+}
+$("draftBox").addEventListener("click", async e => {
+  const copy = e.target.closest("[data-draft-copy]"), drop = e.target.closest("[data-draft-drop]");
+  if (copy) {
+    const id = copy.dataset.draftCopy, d = noteDrafts.get(id), item = copy.closest(".draft");
+    if (!d) return;
+    const status = item?.querySelector("[data-draft-status]");
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(d.text);
+      if (status && status.isConnected) status.textContent = "已複製草稿";
+      toast("已複製草稿");
+    } catch {
+      if (!item || !item.isConnected) return;
+      const ta = item.querySelector("textarea");
+      ta.focus(); ta.select();
+      if (status) status.textContent = "無法自動複製，請選取上方文字後手動複製。";
+    }
+    return;
+  }
+  if (drop) { noteDrafts.delete(drop.dataset.draftDrop); render(); toast("已丟棄草稿"); }
+});
 const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
