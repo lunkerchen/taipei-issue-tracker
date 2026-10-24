@@ -86,6 +86,17 @@ assert.equal(maskPII("0912 / 345 / 678、00886 / 912 / 345 / 678、02 / 2720 / 8
 for (const phone of ["0912\n345\n678", "0912\r\n345\r\n678", "+886\n912\n345\n678", "02\r\n2720\r\n8889"]) assert.equal(maskPII(phone).count, 1, JSON.stringify(phone));
 assert.equal(maskPII("沒有個資").count, 0);
 
+// Reopened cases are not fixed; a case fixed again counts from its latest fix, not the first one.
+const closedSrc = html.match(/^const closedAt\b[\s\S]*?^};/m); assert(closedSrc, "closedAt not found");
+const { closedAt } = new Function(`${grabConst("evs")}\n${closedSrc[0]}\nreturn { closedAt };`)();
+const ev = (t, type, to) => ({ t, type, ...(to ? { to } : {}) });
+const started = { createdAt:"2026-10-01T00:00:00+08:00" }, fixed1 = ev("2026-10-02T00:00:00+08:00", "status", "fixed"), reopened = ev("2026-10-03T00:00:00+08:00", "status", "open");
+assert.equal(closedAt({ ...started, status:"open", events:[fixed1, reopened] }), undefined, "reopened case has no close time");
+assert.equal(closedAt({ ...started, status:"fixed", events:[fixed1] }), +new Date(fixed1.t));
+const fixed2 = ev("2026-10-04T00:00:00+08:00", "status", "fixed");
+assert.equal(closedAt({ ...started, status:"fixed", events:[fixed1, reopened, fixed2] }), +new Date(fixed2.t), "latest fix wins");
+assert.equal(closedAt({ ...started, status:"fixed", events:[ev("2026-10-05T00:00:00+08:00", "merged")] }), +new Date("2026-10-05T00:00:00+08:00"));
+assert.equal(closedAt({ ...started, status:"open", events:[] }), undefined, "open case has no close time");
 assert.deepEqual(isoWeek(new Date(2026, 9, 23)), [2026, 43]);
 assert.deepEqual(isoWeek(new Date(2021, 0, 1)), [2020, 53]);
 assert.deepEqual(isoWeek(new Date(2024, 11, 30)), [2025, 1]);
