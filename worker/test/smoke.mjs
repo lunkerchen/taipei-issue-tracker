@@ -64,7 +64,11 @@ await write({ "x-admin": admin }, "delete", `votes/${A.id}`);
 // photos: visitor uploads a JPEG into its own folder, anyone reads it; wrong type / no identity / bad key refused
 // SOI, APP0 (JFIF), APP1 "Exif" with a fake GPS payload, SOS + data, EOI
 const app0 = [0xff, 0xe0, 0, 6, 0x4a, 0x46, 0x49, 0x46], exif = [0xff, 0xe1, 0, 10, 0x45, 0x78, 0x69, 0x66, 0, 0, 0x47, 0x50], sos = [0xff, 0xda, 0, 4, 1, 2, 9, 9, 0xff, 0xd9];
-const jpg = new Uint8Array([0xff, 0xd8, ...app0, ...exif, ...sos]), clean = new Uint8Array([0xff, 0xd8, ...app0, ...sos]);
+// minimal DQT / SOF0 / DHT so the structure check passes; SOS header is 8 bytes (1 component)
+const dqt = [0xff, 0xdb, 0, 3, 0], sof = [0xff, 0xc0, 0, 3, 8], dht = [0xff, 0xc4, 0, 3, 0];
+const scan = [0xff, 0xda, 0, 8, 1, 1, 0, 0, 63, 0, 9, 9, 0xff, 0xd9];
+const jfif = [0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0];
+const jpg = new Uint8Array([0xff, 0xd8, ...app0, ...exif, ...dqt, ...sof, ...dht, ...scan]), clean = new Uint8Array([0xff, 0xd8, ...jfif, ...dqt, ...sof, ...dht, ...scan]);
 const up = (headers, body) => fetch(BASE + "/api/photo", { method: "POST", headers: { "content-type": "image/jpeg", ...headers }, body, signal: AbortSignal.timeout(8000) });
 const pr = await up({ "x-visitor": A.token }, jpg);
 assert.equal(pr.status, 200, "photo upload");
@@ -72,7 +76,7 @@ const { key } = await pr.json();
 assert.match(key, new RegExp(`^${A.id}/[\\w-]+\\.jpg$`), "photo key in own folder");
 const got = await fetch(BASE + "/api/photo/" + key);
 assert.equal(got.status, 200); assert.equal(got.headers.get("content-type"), "image/jpeg"); assert.equal(got.headers.get("x-content-type-options"), "nosniff");
-assert.deepEqual(new Uint8Array(await got.arrayBuffer()), clean, "EXIF segment stripped, image kept");
+assert.deepEqual(new Uint8Array(await got.arrayBuffer()), clean, "EXIF segment stripped, APP0 replaced by a bare JFIF header");
 assert.equal((await up({ "x-visitor": A.token }, new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 "))).status, 415, "webp refused (JPEG only)");
 assert.equal((await up({ "x-visitor": A.token }, new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 99]))).status, 415, "truncated jpeg refused");
 const C = await visitor(); // separate visitor: these extra uploads would push A past the 10-photos-per-minute limit
@@ -82,6 +86,7 @@ for (const [bad, why] of [
   [[0xff, 0xd8, 0xff, 0xff, 0xe1, 0, 4, 0, 0, ...sos], "fill byte before a marker"],
   [[0xff, 0xd8, ...app0, 0xff, 0xda, 0, 4, 1, 2, 0xff, 0xe1, 0, 4, 9, 9, 0xff, 0xd9], "APP1 after SOS"],
   [[0xff, 0xd8, ...app0, 0xff, 0xc2, 0, 2, ...sos], "progressive SOF2"],
+  [[0xff, 0xd8, 0xff, 0xda, 0, 2, 0xff, 0xd9], "SOS without tables"],
 ]) assert.equal((await up({ "x-visitor": C.token }, new Uint8Array(bad))).status, 415, why);
 // no Content-Length (streamed): still capped
 const big = new ReadableStream({ start(c) { for (let i = 0; i < 12; i++) c.enqueue(new Uint8Array(64 * 1024).fill(0xff)); c.close(); } });

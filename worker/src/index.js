@@ -56,15 +56,18 @@ async function readCapped(body, max) {
 // entropy data where 0xFF is only ever followed by 0x00 or RST0–7, ending in EOI as the last two bytes. Anything else -> null.
 // Rejecting instead of repairing means no later APP segment, fill-byte trick or truncation can carry EXIF/GPS through.
 const SEG_OK = new Set([0xe0, 0xdb, 0xc0, 0xc4, 0xdd, 0xee]); // APP0, DQT, SOF0 (baseline), DHT, DRI, APP14
+// Every APP0 is replaced by this bare JFIF header: a JFIF/JFXX APP0 can embed a thumbnail that carries its own EXIF
+const JFIF = new Uint8Array([0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]);
 function stripJpeg(b) {
   if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
-  const keep = [b.subarray(0, 2)]; let i = 2;
+  const keep = [b.subarray(0, 2)], seen = new Set(); let i = 2;
   for (;;) {
     if (i + 4 > b.length || b[i] !== 0xff) return null;
     const mk = b[i + 1], len = (b[i + 2] << 8) | b[i + 3];
     if (len < 2 || i + 2 + len > b.length) return null;
     const end = i + 2 + len;
     if (mk === 0xda) { // start of scan: header, then entropy-coded data to EOI
+      if (!seen.has(0xdb) || !seen.has(0xc0) || !seen.has(0xc4) || len < 8) return null; // ponytail: structure only; entropy data is not decoded
       for (let j = end; j < b.length; j++) {
         if (b[j] !== 0xff) continue;
         const n = b[j + 1];
@@ -77,7 +80,7 @@ function stripJpeg(b) {
     }
     const meta = (mk >= 0xe1 && mk <= 0xef && mk !== 0xee) || mk === 0xfe;
     if (!meta && !SEG_OK.has(mk)) return null;
-    if (!meta) keep.push(b.subarray(i, end));
+    if (!meta) { seen.add(mk); keep.push(mk === 0xe0 ? JFIF : b.subarray(i, end)); }
     i = end;
   }
   const out = new Uint8Array(keep.reduce((s, p) => s + p.length, 0)); let o = 0;
