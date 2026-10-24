@@ -21,6 +21,10 @@
   --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
 .wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:18px}
+.skip{position:absolute;left:8px;top:-48px;z-index:80;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font-weight:600;text-decoration:none}
+.skip:focus{top:8px}
+#main{display:flex;flex-direction:column;gap:18px}
+#main:focus{outline:none}
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 .repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
 .repo h1 b{font-weight:600}
@@ -349,6 +353,7 @@ html.citizen [hidden]{display:none!important}
 </style>
 
 <div class="wrap" id="wrap">
+  <a class="skip" href="#main">跳到主要內容</a>
   <header class="repo">
     <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北市，你給我聽好了｜<b>市民 1999 通報地圖</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
@@ -369,6 +374,7 @@ html.citizen [hidden]{display:none!important}
   </nav>
   <div class="empty share-notice" id="shareNotice" role="status" hidden></div>
 
+  <main id="main" tabindex="-1">
   <div class="view" id="v-issues">
 
   <div class="term" aria-label="終端機示意"><span class="p">$</span> git checkout taipei
@@ -382,7 +388,7 @@ Switched to branch 'taipei'
   </section>
 
   <section class="box" id="newBox" hidden>
-    <form class="new" id="newForm">
+    <form class="new" id="newForm" aria-label="新增陳情">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <div class="joinbox" id="joinBox" hidden><span id="joinMsg"></span><button class="btn" type="button" id="joinVote">只按 +1</button><button class="btn" type="button" id="joinOff">改為新案件</button></div>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
@@ -538,6 +544,7 @@ Switched to branch 'taipei'
       <span class="status" id="snapStatus" role="status"></span>
     </div></div>
   </section>
+  </main>
 
   <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
@@ -1041,7 +1048,7 @@ function render() {
             <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
         </form>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
-        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
+        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
@@ -1341,7 +1348,7 @@ $("newForm").addEventListener("submit", async e => {
     pending = { t, text, signature };
     $("newStatus").textContent = note;
     const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
-    $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
+    $("dupBox").innerHTML = `<div class="h" role="heading" aria-level="3">確認送出前，請看一下 1999 的分類結果</div>
       <dl class="pv" id="dupDetails"><dt>標題</dt><dd>${esc(t.title)}</dd>
       <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
       <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
@@ -1517,6 +1524,7 @@ function completeCreatedReport(attempt) {
   }
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
+  else toast("已送出陳情");
 }
 async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
