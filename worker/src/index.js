@@ -185,6 +185,9 @@ export default {
       if (req.method !== "POST") return err(405, "method_not_allowed");
       if (!env.VISITOR_SECRET) return err(503, "no_secret");
       if (!(await env.VISITOR_LIMITER.limit({ key: req.headers.get("cf-connecting-ip") || "unknown" })).success) return err(429, "rate_limited");
+      const supplied = req.headers.get("x-visitor");
+      // A client-supplied token with a valid signature stays the same identity, so a reload can confirm it.
+      if (await visitorId(env, supplied)) return Response.json({ id: supplied });
       const id = hex(crypto.getRandomValues(new Uint8Array(8)));
       return Response.json({ id: `${id}.${await sign(env.VISITOR_SECRET, id)}` });
     }
