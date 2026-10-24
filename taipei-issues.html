@@ -6,7 +6,7 @@
 :root{
   --bg:#ffffff; --panel:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0;
   --accent:#1f883d; --accent-fg:#ffffff; --link:#0969da; --term:#161b22; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa;
+  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa; --bad:#cf222e;
   --merged:#8250df; --hm0:#eff2f5; --hm1:#aceebb; --hm2:#4ac26b; --hm3:#2da44e; --hm4:#116329;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
@@ -14,11 +14,11 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
 .wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:18px}
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
@@ -72,6 +72,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
 .doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
 .doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
+.doc .doc-close{position:sticky;top:-16px;z-index:1;display:flex;justify-content:flex-end;margin:-16px -20px 12px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
 .lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
 .lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
@@ -99,6 +100,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .aspects input:checked+label{background:var(--accent,#0969da);border-color:transparent;color:#fff}
 .aspects input:focus-visible+label{outline:2px solid var(--accent,#0969da);outline-offset:2px}
 .status{font-size:13px;color:var(--muted)}
+.field-err{display:block;margin:4px 0 0;font-size:13px;color:var(--bad)}
+input[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
 .toast{position:fixed;left:16px;right:16px;bottom:16px;margin:0 auto;width:fit-content;max-width:480px;background:var(--term);color:var(--term-fg);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:10}
 .toast:empty{opacity:0;pointer-events:none}
 .hm-wrap{overflow-x:auto;padding:12px 14px 6px}
@@ -321,6 +324,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.tk-track{animation:tkmove linear infinite}.ticker:hover .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}}
 @keyframes tkmove{to{transform:translateX(-50%)}}
 .has-tk .wrap{padding-bottom:104px}
+/* Fixed ticker and mobile nav must not cover a focused control or the last buttons. */
+html{scroll-padding-bottom:32px}
+@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(58px + env(safe-area-inset-bottom))}html.citizen.has-tk{scroll-padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
@@ -332,7 +338,7 @@ html.citizen [hidden]{display:none!important}
 .citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
 .citizen .nav .ni{display:block!important}.citizen .nav .cnt,.citizen #newBtn{display:none}
-.citizen .wrap{padding-bottom:80px}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:112px}
+.citizen .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom))}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .citizen .ticker{bottom:calc(57px + env(safe-area-inset-bottom))}
 .citizen .toast,.citizen.has-tk .toast{bottom:104px}
 .citizen .mapbox{height:calc(100vh - var(--hdr,170px) - 222px);height:calc(100svh - var(--hdr,170px) - 222px)}}
@@ -388,7 +394,8 @@ Switched to branch 'taipei'
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
-      <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <textarea id="newText" maxlength="1000" aria-required="true" aria-describedby="formErr" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <span class="field-err" id="formErr" role="alert" hidden></span>
       <div class="row" id="photoRow" hidden>
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
         <label class="btn" for="photoIn" id="photoLbl">加入照片</label>
@@ -545,6 +552,7 @@ Switched to branch 'taipei'
 <div class="toast" id="toast" role="status"></div>
 
 <dialog class="doc" id="privacy" aria-labelledby="privacyH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉隱私權告知">關閉</button></form>
   <h2 id="privacyH">隱私權告知</h2>
   <p class="note">依個人資料保護法第 8 條告知。最後更新：2026-10-24。</p>
   <h3>誰蒐集你的資料</h3>
@@ -572,9 +580,9 @@ Switched to branch 'taipei'
   <p>你可以依個資法第 3 條，請求查詢、閱覽、複製、補充或更正、停止蒐集處理利用，以及刪除你的資料。請寄信到上面的信箱，並附上陳情編號。</p>
   <h3>不提供資料的影響</h3>
   <p>姓名、手機與 Email 是必填。不提供時，無法送出陳情。</p>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="doc" id="terms" aria-labelledby="termsH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉使用條款">關閉</button></form>
   <h2 id="termsH">使用條款</h2>
   <p class="note">最後更新：2026-10-24。</p>
   <h3>非官方服務</h3>
@@ -599,11 +607,12 @@ Switched to branch 'taipei'
     <li>跑馬燈：Bing News、PTT Taipei 板，版權屬原作者。</li>
     <li>示範照片由 AI 生成，不是真實現場。</li>
   </ul>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionBehavior = () => REDUCED_MOTION ? "auto" : "smooth";
 const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
@@ -1165,6 +1174,7 @@ function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
   $("cName").removeAttribute("aria-invalid"); $("cPhone").removeAttribute("aria-invalid"); $("cEmail").removeAttribute("aria-invalid");
+  $("newText").removeAttribute("aria-invalid"); $("formErr").textContent = ""; $("formErr").hidden = true;
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 $("cancelBtn").onclick = () => {
@@ -1265,7 +1275,7 @@ function invalidateReportPreview() {
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
-  if (e.target.matches("#cName,#cPhone,#cEmail")) e.target.removeAttribute("aria-invalid");
+  if (e.target.matches("#newText,#cName,#cPhone,#cEmail")) clearFieldError(e.target);
   if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cEmail,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
 };
 $("newForm").addEventListener("input", reportInputChanged);
@@ -1289,6 +1299,20 @@ $("photoIn").addEventListener("change", () => {
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
+function clearFieldError(el) {
+  if (el.getAttribute("aria-invalid") !== "true") return;
+  el.removeAttribute("aria-invalid"); el.removeAttribute("aria-errormessage");
+  const box = $("formErr"); box.textContent = ""; box.hidden = true;
+}
+// Keep the one visible error next to the invalid field, above the fixed mobile bars.
+function fieldError(el, msg) {
+  for (const f of $("newForm").querySelectorAll('[aria-invalid="true"]')) { f.removeAttribute("aria-invalid"); f.removeAttribute("aria-errormessage"); }
+  const box = $("formErr");
+  box.hidden = false; box.textContent = msg;
+  (el.closest(".row") || el).insertAdjacentElement("afterend", box);
+  el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-errormessage", "formErr");
+  el.focus({ preventScroll:true }); el.scrollIntoView({ block:"center" });
+}
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled || reportCreating || supplementBusy) return;
@@ -1300,15 +1324,15 @@ $("newForm").addEventListener("submit", async e => {
     await shrinking; // Photos still shrinking belong to this report.
     if (!current()) return;
     const m = maskPII($("newText").value.trim()), text = m.text;
-    if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
-    if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
+    if (!text) { fieldError($("newText"), "請描述你遇到的問題"); return; }
+    if (!withoutTemplate(text)) { fieldError($("newText"), "請在範本的冒號後面填上內容"); return; }
     if (contactFn) {
-      if (!$("cName").value.trim()) { $("cName").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      if (!$("cName").value.trim()) { fieldError($("cName"), "請填寫姓名"); return; }
       $("cName").removeAttribute("aria-invalid");
-      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("cPhone").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { fieldError($("cPhone"), "請填寫手機號碼（09 開頭共 10 碼）"); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { $("cEmail").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫 Email（用來通知處理進度）"; $("cEmail").focus(); return; }
+      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { fieldError($("cEmail"), "請填寫 Email（用來通知處理進度）"); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
@@ -1353,7 +1377,8 @@ $("newForm").addEventListener("submit", async e => {
       <div class="row"><button class="btn primary" type="button" data-dup="new" aria-describedby="dupDetails">確認送出</button>
       <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
-    $("dupBox").querySelector("[data-dup=new]").focus();
+    const next = $("dupBox").querySelector("[data-dup=new]");
+    next.focus({ preventScroll:true }); next.scrollIntoView({ block:"center" });
   } catch (err) { if (current()) { $("newStatus").textContent = ""; fail(err); } }
   finally { finish(); }
 });
@@ -1368,7 +1393,8 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
     <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
     ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
   $("dupBox").hidden = false;
-  $("dupBox").querySelector("[data-dup=add]").focus();
+  const add = $("dupBox").querySelector("[data-dup=add]");
+  add.focus({ preventScroll:true }); add.scrollIntoView({ block:"center" });
 }
 function doneReport(openId, { publicTarget = false } = {}) {
   clearReportFlow(); setJoin(null);
@@ -1703,7 +1729,7 @@ $("distBack").addEventListener("click", closeDistrict);
 function mapMode() {
   const v = $("v-map"); v.classList.toggle("indist", !!curDist); v.classList.toggle("inli", !!curLi);
   mainLM.invalidateSize({ pan:false });
-  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:"smooth" }), 600);
+  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:motionBehavior() }), 600);
 }
 
 // Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
@@ -2163,7 +2189,7 @@ $("liveBtn").onclick = () => {
   if (histWanted || histOn || $("histOn").checked) setHist(false); // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
-  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
+  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:motionBehavior() });
 };
 $("liveList").addEventListener("click", e => {
   const b = e.target.closest("[data-live]"); if (!b) return;
@@ -2171,10 +2197,10 @@ $("liveList").addEventListener("click", e => {
   if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
   if (curDist && r.dist !== curDist) closeDistrict();
   if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
-  $("map").scrollIntoView({ block:"center", behavior:"smooth" });
+  $("map").scrollIntoView({ block:"center", behavior:motionBehavior() });
   mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
 });
-$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:"smooth" }); };
+$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:motionBehavior() }); };
 
 // ---- Location picker on the New issue form ----
 let picked = null, pickLM = null, pinM = null;
@@ -2696,6 +2722,7 @@ $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl
 // GitHub-style keyboard shortcuts.
 // Privacy notice and terms: any [data-doc] link opens that <dialog>
 document.addEventListener("click", e => { const a = e.target.closest("[data-doc]"); if (a) { e.preventDefault(); $(a.dataset.doc).showModal(); } });
+for (const d of document.querySelectorAll("dialog.doc")) d.addEventListener("click", e => { if (e.target === d) d.close(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("newBox").hidden && !document.querySelector("dialog[open]")) return $("cancelBtn").click();
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
