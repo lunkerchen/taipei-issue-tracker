@@ -244,6 +244,21 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .lipanel .nm{flex:1;font-weight:600}
 .lipanel .cnt{border:1.5px solid var(--fixed);color:var(--fixed);background:none;min-width:28px;text-align:center;font-size:13px}
 .lipanel .chev{color:var(--muted);font-size:18px}
+/* District page: 大方向 filter (one coloured circle per aspect) and the most +1'd unfinished reports, each with 加入 */
+.dasp{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.dasp button{width:44px;height:44px;border-radius:50%;border:0;background:var(--c);color:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
+.dasp button.all{width:auto;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:14px;font-weight:600}
+.dasp button[aria-pressed=true]{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--c,var(--fg))}
+.dasp button:focus-visible{outline:2px solid var(--link);outline-offset:4px}
+#hotList{list-style:none;margin:0;padding:0}
+#hotList li{display:flex;align-items:center;gap:8px}
+#hotList li button[data-go]{flex:1;min-width:0;display:grid;gap:2px;padding:8px 4px}
+#hotList .t{font-weight:600}
+#hotList .meta{font-size:13px;color:var(--muted)}
+#hotList button.join{flex:none;min-width:44px;min-height:44px;width:auto;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font-size:14px;font-weight:600;text-align:center}
+#hotList button.join:hover{background:var(--hover)}
+.joinbox{border:1px solid var(--link);background:color-mix(in srgb,var(--link) 8%,transparent);border-radius:6px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.joinbox span{flex:1 1 100%}
 .mapside[hidden]{display:none}
 .lipanel .boxhead #liBack{font-size:18px;line-height:1;padding:2px 10px}
 .ldsec{padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -358,6 +373,7 @@ Switched to branch 'taipei'
   <section class="box" id="newBox" hidden>
     <form class="new" id="newForm">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
+      <div class="joinbox" id="joinBox" hidden><span id="joinMsg"></span><button class="btn" type="button" id="joinVote">只按 +1</button><button class="btn" type="button" id="joinOff">改為新案件</button></div>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
@@ -446,6 +462,8 @@ Switched to branch 'taipei'
       </div>
       <aside class="box mapside lipanel" id="liPanel" aria-label="各里未完成陳情" hidden>
         <div class="boxhead"><b id="liTitle"></b><span class="spacer"></span><span class="note" id="liSum"></span></div>
+        <div class="dasp" id="distAspects" role="group" aria-label="依大方向篩選這個區的陳情"></div>
+        <section class="ldsec" aria-labelledby="hotH"><h3 id="hotH">熱門陳情</h3><ol id="hotList"></ol><p class="note" id="hotNone" hidden>沒有符合的未完成陳情</p></section>
         <ol id="liList"></ol>
         <div class="foot note" id="liFoot"></div>
       </aside>
@@ -611,6 +629,14 @@ const ASPECTS = {
   "樂": "休閒：公園、遊具、運動中心、文化設施、觀光景點；多屬【公園…】或【文教、體育…】，常見單位工務局公園處、體育局、文化局",
   "醫療": "醫療：醫院診所、藥品、長照、防疫、病媒；多屬【衛福、勞動…】，常見單位衛生局"
 };
+// A report's 大方向 for the district filter: its first mapped tag, else its 1999 main category; "" when neither maps.
+const ASPECT_COLOR = { "食":"#9a2b2b", "住":"#1a7f37", "行":"#0550ae", "育":"#bc4c00", "樂":"#bf3989", "醫療":"#0e7490" };
+const ASPECT_OF_TAG = { "路面坑洞":"行", "人行道":"行", "路燈":"行", "違規停車":"行", "交通號誌":"行", "噪音":"住", "垃圾":"住", "違建":"住", "排水淤積":"住", "流浪動物":"住", "公園設施":"樂", "文化設施":"樂", "運動設施":"樂", "食安":"食", "校園":"育" };
+const ASPECT_OF_MAIN = { "TYPEA-AC0100":"住", "TYPEA-AC0200":"行", "TYPEA-AC0300":"住", "TYPEA-AC0400":"育", "TYPEA-AC0500":"行", "TYPEA-AC0600":"住", "TYPEA-AC0700":"醫療" };
+function aspectOf(i) {
+  for (const t of i.tags || []) if (ASPECT_OF_TAG[t]) return ASPECT_OF_TAG[t];
+  return ASPECT_OF_MAIN[(SUBS[i.category] || {}).mid] || "";
+}
 // Suggested templates per 大方向 ("" = 不確定). Every line is a label ending in "：" so withoutTemplate can strip it.
 const ROAD = "地點（路名、門牌或地標）：\n狀況（坑洞大小、磚塊鬆動…）：\n影響（有人跌倒、機車打滑…）：";
 const NOISE = "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：";
@@ -1103,7 +1129,7 @@ function clearReportFlow() {
 }
 $("cancelBtn").onclick = () => {
   if (reportCreating) return;
-  formEpoch++; pickMapIntent++; clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
+  formEpoch++; pickMapIntent++; clearReportFlow(); setJoin(null); $("newBox").hidden = true; clearPick(); clearShots();
   if (formFrom === "map") show("map");
   restoreFormFocus();
 };
@@ -1245,6 +1271,7 @@ $("newForm").addEventListener("submit", async e => {
     const stillCurrent = () => current() && signature === reportInputStamp();
     const cached = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
     maskedN = cached ? cached.maskedN : m.count;
+    if (joinTarget) return await supplement({ dup:joinTarget }, text, undefined, signature); // 加入 from the district page: no triage, add to that case
     const note = maskedN ? `已遮蔽 ${maskedN} 項個資。` : "";
     $("newStatus").textContent = note + (sample && !cached ? "taipei-bot 正在分類…" : "");
     const t = cached ? cached.t : await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
@@ -1298,7 +1325,7 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
 function doneReport(openId) {
-  clearReportFlow();
+  clearReportFlow(); setJoin(null);
   supplementAttempts.clear(); view.open.add(openId); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
   restoreFormFocus();
@@ -1581,16 +1608,16 @@ async function drawDistricts() {
 }
 function openDistrict(d) {
   const l = distLayers[d]; if (!l) return;
-  curDist = d;
+  curDist = d; setAspect("");
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
   l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone"); mapMode();
   mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
   $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
-  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
+  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…"; renderHot();
   loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
 }
 function closeDistrict() {
-  curDist = ""; curLi = "";
+  curDist = ""; curLi = ""; setAspect("");
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
   liGroup?.clearLayers(); liLayers = {}; mapMode();
   $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
@@ -1710,6 +1737,42 @@ function renderLiList() {
   $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有未完成陳情` : "";
 }
 $("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
+// District page: 大方向 filter (list and pins), and the 5 most +1'd unfinished reports. Not gated on li.geojson.
+let curAspect = "";
+$("distAspects").innerHTML = ["", ...Object.keys(ASPECTS)].map(k => k
+  ? `<button type="button" data-asp="${k}" aria-pressed="false" aria-label="${k}" style="--c:${ASPECT_COLOR[k]}">${k[0]}</button>`
+  : `<button type="button" class="all" data-asp="" aria-pressed="true">全部</button>`).join("");
+function setAspect(a) {
+  curAspect = a;
+  for (const b of $("distAspects").querySelectorAll("[data-asp]")) b.setAttribute("aria-pressed", b.dataset.asp === a);
+}
+$("distAspects").addEventListener("click", e => { const b = e.target.closest("[data-asp]"); if (!b) return; setAspect(b.dataset.asp); renderHot(); setPins(); });
+function renderHot() {
+  if (!curDist) return;
+  const c = counts(), distOf = i => (markers.get(i.id) || {}).dist || i.district;
+  const rows = issues.filter(i => i.status !== "fixed" && distOf(i) === curDist && (!curAspect || aspectOf(i) === curAspect))
+    .map(i => ({ i, v:c[i.id] || 0 })).sort((a, b) => b.v - a.v || String(b.i.createdAt).localeCompare(String(a.i.createdAt))).slice(0, 5);
+  $("hotNone").hidden = rows.length > 0;
+  $("hotList").innerHTML = rows.map(({ i, v }) => { const st = STATUS[i.status] || STATUS.open, a = aspectOf(i);
+    return `<li><button type="button" data-go="${esc(i.id)}"><span class="t">${esc(i.title)}</span><span class="meta">#${esc(i.n)}${a ? ` · ${esc(a)}` : ""} · ${esc(st[0])} · +1 ${v}</span></button>${canWrite && i.author !== me
+      ? `<button type="button" class="join" data-join="${esc(i.id)}" aria-label="加入 #${esc(i.n)} ${esc(i.title)}">加入</button>` : ""}</li>`; }).join("");
+}
+$("hotList").addEventListener("click", e => { const j = e.target.closest("[data-join]"); j ? joinIssue(j.dataset.join) : goIssue(e); });
+// 加入: the report form adds the citizen's text and photos to that case (addenda) and +1s it, like 補充到 #N
+let joinTarget = null;
+function setJoin(t) {
+  joinTarget = t; $("joinBox").hidden = !t;
+  for (const id of ["aspects", "tpls", "newDistrict"]) $(id).hidden = !!t;
+  $("gpsBtn").parentElement.hidden = !!t;
+  if (t) $("joinMsg").innerHTML = `加入 <b>#${esc(t.n)} ${esc(t.title)}</b>：你的描述和照片會補充到這件，局處會一起看到，也會幫它 +1。`;
+  $("submitBtn").textContent = t ? `補充到 #${t.n}` : admin ? "Submit new issue" : "預覽通報";
+}
+function joinIssue(id) {
+  const i = issues.find(x => x.id === id); if (!i || !canWrite) return;
+  $("newBtn").click(); invalidateReportPreview(); setJoin({ id:i.id, n:i.n, title:i.title });
+}
+$("joinVote").onclick = () => { const t = joinTarget; if (!t) return; if (!myVotes[t.id]) setVote(t.id, true); toast(`已幫 #${t.n} +1`); $("cancelBtn").click(); };
+$("joinOff").onclick = () => { setJoin(null); invalidateReportPreview(); $("newText").focus(); };
 
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
@@ -1776,7 +1839,7 @@ function markerStyle(i, votes, key) {
 const pinIcon = ({ color, fixed, h }) => L.divIcon({ className:"rpin" + (fixed ? " fixed" : ""), iconSize:[h * .75, h], iconAnchor:[h * .375, h], popupAnchor:[0, -h + 4],
   html:`<svg viewBox="0 0 24 32" width="${h * .75}" height="${h}" aria-hidden="true"><path d="M12 31s10-11.2 10-19A10 10 0 0 0 2 12c0 7.8 10 19 10 19z" fill="${color}" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>` });
 // Live pins are added to the map one by one: in a district, all of its pins; on the city map, only the ticked layers.
-const pinVisible = r => !histOn && (curDist ? r.dist === curDist : layerOn[r.key] === true);
+const pinVisible = r => !histOn && (curDist ? r.dist === curDist && (!curAspect || aspectOf(r.i) === curAspect) : layerOn[r.key] === true);
 const setPin = r => { const want = pinVisible(r); if (want !== mainLM.hasLayer(r.m)) want ? r.m.addTo(mainLM) : r.m.remove(); };
 const setPins = () => { if (mainLM) for (const r of markers.values()) setPin(r); };
 function popupHtml(id) {
@@ -1789,7 +1852,7 @@ function popupHtml(id) {
 // Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
 function syncMap() {
   if (!mainLM || histOn) return;
-  renderLiList();
+  renderLiList(); renderHot();
   const c = counts(), live = new Set(), tally = {}, now = Date.now();
   for (const i of issues) {
     if (!inTaipei(i.lat, i.lng)) continue;

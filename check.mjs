@@ -10,6 +10,14 @@ const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
 const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
+// District filter: tag wins, then the 1999 main category, else no aspect
+const aspectOf = new Function("SUBS", ["ASPECT_OF_TAG","ASPECT_OF_MAIN"].map(n => grabConst(n)).join("\n") + `\n${grab("aspectOf")}\nreturn aspectOf;`)({ "TYPEA-AC0701": { mid:"TYPEA-AC0700" }, "TYPEA-AC0901": { mid:"TYPEA-AC0900" } });
+assert.equal(aspectOf({ tags:["食安"], category:"TYPEA-AC0701" }), "食");
+assert.equal(aspectOf({ tags:["未知", "校園"] }), "育");
+assert.equal(aspectOf({ tags:[], category:"TYPEA-AC0701" }), "醫療");
+assert.equal(aspectOf({ category:"TYPEA-AC0901" }), "");
+assert.equal(aspectOf({}), "");
+
 const tkDate = new Function(`${grabConst("tkDate")}\nreturn tkDate;`)();
 for (const [src, want] of [["10/24", "10/24"], [" 9/05", "9/5"], ["2026-10-23T16:15:30Z", "10/24"], ["", ""]]) assert.equal(tkDate(src), want, src);
 
