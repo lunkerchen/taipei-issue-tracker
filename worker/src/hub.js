@@ -158,36 +158,52 @@ export class Hub extends DurableObject {
   contactPut(k, v) { this.sql.exec("INSERT OR REPLACE INTO contacts VALUES (?, ?)", k, JSON.stringify(v)); return { ok: true }; }
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
-  // After a token-admin triage write: email the reporter what changed since the last notice. Off until NOTICE_FROM is set.
-  // demo-seed cases have no contact, so they never send. ponytail: "重設到快照" re-sets triage docs through this path too,
-  // so a restore can send a "status went back" notice; skip triage writes from that button if it matters.
-  notify(target, triage) {
+  // After a token-admin triage write: email the reporter what token-admin writes changed since the last notice. Off until
+  // NOTICE_FROM is set; demo-seed cases have no contact, so they never send. Only this write's own changes (old doc -> new doc)
+  // count, so status, department or 修繕單 text that the token-free demo admin put in the doc never reaches an email.
+  // notices row: told = what the reporter was last told, set = the state token-admin writes made, times = send times.
+  // ponytail: "重設到快照" re-sets triage docs through this path too, so a restore can send a "status went back" notice.
+  notify(target, oldDoc, triage) {
     if (!this.env.EMAIL || !this.env.NOTICE_FROM || !isObj(triage)) return;
     const contact = this.contactGet(target).contact, colon = target.indexOf(":");
     if (!contact?.email || colon < 0) return;
     const report = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${target.slice(0, colon)}`).toArray()[0];
     const item = report && JSON.parse(report.data).items?.[target.slice(colon + 1)];
     if (!isObj(item) || typeof item.title !== "string") return;
-    const evs = Array.isArray(triage.events) ? triage.events.filter(isObj) : [];
-    const now = { status: triage.status || "open", dept: triage.dept || item.dept || "",
-      prs: evs.filter(e => e.type === "pr" && Number.isFinite(e.n)).map(e => e.n), merged: evs.filter(e => e.type === "merged" && Number.isFinite(e.pr)).map(e => e.pr) };
+    const evs = d => isObj(d) && Array.isArray(d.events) ? d.events.filter(isObj) : [], key = e => `${e.type}:${e.n ?? e.pr}@${e.t}`;
+    const before = new Set(evs(oldDoc).map(key)), one = (v, n) => String(v || "").replace(/\s+/g, " ").slice(0, n);
     const row = this.sql.exec("SELECT v FROM notices WHERE k = ?", target).toArray()[0];
-    const last = row ? JSON.parse(row.v) : { state: { status: "open", dept: item.dept || "", prs: [], merged: [] }, times: [] }, was = last.state;
-    const lines = [
-      ...now.prs.filter(n => !was.prs.includes(n)).map(n => `已開立修繕單 #${n}：${String(evs.find(e => e.type === "pr" && e.n === n).title || "").slice(0, 80)}`),
-      ...now.merged.filter(n => !was.merged.includes(n)).map(n => `修繕單 #${n} 已完成並合併`),
-      ...(now.status !== was.status ? [`狀態改為「${STATUS_ZH[now.status] || now.status}」`] : []),
-      ...(now.dept !== was.dept ? [`改由「${now.dept}」負責`] : [])];
-    const times = last.times.filter(t => t > Date.now() - 864e5);
-    if (!lines.length || times.length >= NOTICE_DAY) return; // nothing new (dedupe), or over the daily cap
-    this.sql.exec("INSERT OR REPLACE INTO notices VALUES (?, ?)", target, JSON.stringify({ state: now, times: [...times, Date.now()] }));
-    const title = item.title.replace(/\s+/g, " ").slice(0, 60);
+    const base = { status: "open", dept: one(item.dept, 30), prs: [], merged: [] };
+    const last = row ? JSON.parse(row.v) : { told: base, set: base, times: [] }, told = last.told;
+    const set = { ...last.set, prs: [...last.set.prs], merged: [...last.set.merged] };
+    if (triage.status !== oldDoc?.status && STATUS_ZH[triage.status]) set.status = triage.status;
+    if (typeof triage.dept === "string" && triage.dept !== oldDoc?.dept) set.dept = one(triage.dept, 30);
+    for (const e of evs(triage)) if (!before.has(key(e))) {
+      if (e.type === "pr" && Number.isFinite(e.n)) set.prs.push({ k: key(e), n: e.n, title: one(e.title, 80) });
+      if (e.type === "merged" && Number.isFinite(e.pr)) set.merged.push({ k: key(e), n: e.pr });
+    }
+    const has = (a, k) => a.some(x => x.k === k), lines = [
+      ...set.prs.filter(p => !has(told.prs, p.k)).map(p => `已開立修繕單 #${p.n}：${p.title}`),
+      ...set.merged.filter(p => !has(told.merged, p.k)).map(p => `修繕單 #${p.n} 已完成並合併`),
+      ...(set.status !== told.status ? [`狀態改為「${STATUS_ZH[set.status]}」`] : []),
+      ...(set.dept !== told.dept ? [`改由「${set.dept}」負責`] : [])];
+    const save = v => this.sql.exec("INSERT OR REPLACE INTO notices VALUES (?, ?)", target, JSON.stringify(v));
+    const stamp = Date.now(), times = last.times.filter(t => t > stamp - 864e5);
+    // Nothing new since the last notice (dedupe), or over the daily cap: keep `set`, so the next notice includes it
+    if (!lines.length || times.length >= NOTICE_DAY) return save({ ...last, set, times });
+    save({ told: set, set, times: [...times, stamp] });
+    const title = one(item.title, 60);
     const text = [`${contact.name} 您好：`, "", `你通報的「${title}」有新進度：`, ...lines.map(l => "・" + l), "",
       `案件頁面：${SITE}/#issue/${encodeURIComponent(target)}`, "",
       "這是示範專案的自動通知，不是臺北市政府或 1999 的官方通知，請勿直接回覆。有問題請寫信到 labanchen@gmail.com。"].join("\n");
-    // Errors log the case and the error code only, never the address or the message
+    // Errors log the case and the error code only, never the address or the message. A send that surely failed (not a
+    // timeout, which may still arrive) is undone, so the next notice repeats these changes and the cap is not used up.
     this.ctx.waitUntil(mail(this.env, { to: contact.email, from: { email: this.env.NOTICE_FROM, name: "台北市民 1999 通報地圖（示範）" },
-      subject: `陳情進度更新：${title}`, text, html: escHtml(text).replace(/\n/g, "<br>") }).catch(e => console.error("notice_failed", target, e.code || "error")));
+      subject: `陳情進度更新：${title}`, text, html: escHtml(text).replace(/\n/g, "<br>") }).catch(e => {
+      console.error("notice_failed", target, e.code || "error");
+      const cur = JSON.parse(this.sql.exec("SELECT v FROM notices WHERE k = ?", target).toArray()[0]?.v || "null");
+      if (e.code !== "E_TIMEOUT" && cur && JSON.stringify(cur.told) === JSON.stringify(set)) save({ ...cur, told, times: cur.times.filter(t => t !== stamp) });
+    }));
   }
 
   publicCase(target) {
@@ -341,7 +357,7 @@ export class Hub extends DurableObject {
         ws.send(JSON.stringify({ path, data, seq: this.seq }));
       } catch {}
     }
-    if (trusted && doc && path.startsWith("triage/")) this.notify(path.slice(7), doc);
+    if (trusted && doc && path.startsWith("triage/")) this.notify(path.slice(7), row && JSON.parse(row.data), doc);
     return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 
