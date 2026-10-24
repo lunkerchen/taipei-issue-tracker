@@ -59,21 +59,22 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. If a village page is open, clicking a district closes it and shows the village list of that district. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map. **← 全市** returns focus to the district on the map.
 - **Village page**: Click a village to see its page in the side panel. **聯絡窗口** shows the village chief and the city councillors of the election zone, with a **撥打** (call) button when there is a phone number. The party emblem of each councillor shows after the name. A councillor without a party emblem (for example 無黨籍) shows the party name as text. **重大事件** lists the reports in the village: unfinished first, then most +1. Click a report to open it in the list. **回報這個里的問題** opens the report form with the district and a point in the village. Names and phone numbers come from `data/li-contacts.json` and `data/councilors.json`; empty entries show "資料待補".
-- **Report pop-up**: When you click a pin, a pop-up opens. At the top right of the title, an icon shows the area of daily life of the report (食 food, 住 home, 行 transport, 育 education, 樂 leisure, 醫 health). The website finds this area from the 1999 category. Reports in 「其他」 have no icon. Below the status, the address is a link. It opens the location in Google Maps. When you close the pop-up, focus goes back to its pin. **看詳情** moves focus to the case title. On a phone, the pop-up stays inside the map. Long content scrolls, and the close button stays in view. The close button is 44px, so it is easy to tap.
+- **Report pop-up**: When you click a pin, a pop-up opens. At the top right of the title, an icon shows the area of daily life of the report (食 food, 住 home, 行 transport, 育 education, 樂 leisure, 醫 health). The website finds this area from the 1999 category. Reports in 「其他」 have no icon. Below the status, the address is a link. It opens the location in Google Maps. When you close the pop-up, focus goes back to its pin. **看詳情** moves focus to the case title. On a phone, the pop-up stays inside the map. The same cap uses the map height on a landscape phone, where the screen is wide but the map is short. Long content scrolls, and the close button stays in view. The close button is 44px, so it is easy to tap.
 - **District page**: The side panel of a district has 7 buttons: **全部** and one icon for each area of daily life (食, 住, 行, 育, 樂, 醫). These are the same icons as in the report pop-up. Push an icon to show only the reports of that area, on the map and in the list. The 里 counts, the 里 list and a village page use the same limit. The area comes from the 1999 category, as in the report pop-up. Reports in 「其他」 show only with **全部**. **熱門陳情** shows the 5 unfinished reports in the district that have the most +1 votes. Click a report to open it in the report list.
 - **加入 (join a report)**: Each 熱門陳情 row has a **加入** button. The button does not show on your own reports or when this browser cannot send reports. **加入** opens the report form in join mode. Write what you saw, and add photos if necessary. Your name, mobile number and email address are necessary. Push **補充到 #N**. The website does not send the text to AI sorting. It adds your text and photos to that case as a supplement, and it gives the case +1. **只按 +1** gives +1 only. If the +1 write fails, the form stays open and keeps your text. **改為新案件** changes the form back to a new report.
 - **Report pins**: Each report is a map pin in the colour of its 1999 category. More +1 votes make the pin taller. Fixed reports are faded. On the full city map, all 9 category layers are off at the start, so you see only the districts; **全選** / **全不選** turns all layers on or off. When you open a district, all reports in that district show, whatever the layer settings. The 食住行育樂醫 buttons on the district page can limit them to one area.
 - **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number. The points use the same map pins as the reports. When you open the timeline, all layers are on; when you close it, your layer settings come back.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The lightbox keeps the keyboard focus on its controls, does not scroll the page behind it, and tells a screen reader the number of the photo. The case details also show a small map with the location. The small map is read-only. Use **在地圖上開啟** below it to open the main map at the case point. The case pop-up opens, and the keyboard focus moves to the map. If a photo cannot be added, the error shows next to the photo picker, not at the bottom of the form. The page moves the error into view, and a screen reader reads it. The error goes away after you add a valid photo. The add-photo and remove-photo buttons are 44px, so they are easy to tap.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
-- **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. A double click on a case title opens the detail and keeps it open. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases. A double tap on +1 adds one vote; the second tap does not remove it. After a citizen files a report, the keyboard focus goes to the new case. A status message "已送出陳情" also confirms the successful report. The `c` shortcut opens the report form. Escape then returns the keyboard focus to 通報. On a short screen, the form keeps its description heading in view. A skip link at the top of the page goes to the main content. The page has one main landmark. The report form has a name. The preview starts with a level 3 heading. A small case map is a named group, not an image, because it contains the map attribution links. When you open a case from the list, the browser adds a history entry. Back returns to the list, and the search and filters stay. When a different case opens, an old case-not-found notice goes away. The photo picker shows a focus ring. Screen readers can read the classification in the preview. The name, phone and email fields are marked as required. A field with an error stays marked until the citizen corrects it. Label text has sufficient contrast in the light and dark themes. When the network drops, a banner shows the lost connection. The banner becomes visible before its text, so screen readers announce the change. When the network returns and the live connection is still open, the banner goes away. A tab switch starts at the top of the page. On a phone, the location picker scrolls above the fixed ticker and tab bar when it opens.
+- **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. A double click on a case title opens the detail and keeps it open. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases. A double tap on +1 adds one vote; the second tap does not remove it. If a +1 write fails while another tab saved the same vote, the page keeps the newer saved state. A failed +1 with no other save returns to the previous state. After a citizen files a report, the keyboard focus goes to the new case. A status message "已送出陳情" also confirms the successful report. The `c` shortcut opens the report form. Escape then returns the keyboard focus to 通報. On a short screen, the form keeps its description heading in view. A skip link at the top of the page goes to the main content. The page has one main landmark. The report form has a name. The preview starts with a level 3 heading. A small case map is a named group, not an image, because it contains the map attribution links. When you open a case from the list, the browser adds a history entry. Back returns to the list, and the search and filters stay. When a different case opens, an old case-not-found notice goes away. The photo picker shows a focus ring. Screen readers can read the classification in the preview. The name, phone and email fields are marked as required. A field with an error stays marked until the citizen corrects it. Label text has sufficient contrast in the light and dark themes. When the network drops, a banner shows the lost connection. The banner becomes visible before its text, so screen readers announce the change. When the network returns and the live connection is still open, the banner goes away. A tab switch starts at the top of the page. On a phone, the location picker scrolls above the fixed ticker and tab bar when it opens. A live update or a filter can remove an open case from the list. The page then closes the detail, removes the case ID from the URL, and shows a status message. The message tells you if the case is now fixed, does not match the filter, or is not public. The keyboard focus stays in the case list. A new case that is not in the list yet, and a case that has a kept addition draft, stay open.
 - **Case numbers**: A case gets a number when the Worker creates it. The number is permanent. Citizens and staff see the same number. The number does not change when other cases are hidden or released. A reload or a new snapshot keeps the same number. Case numbers and PR numbers never have the same value. An old case that has no stored number still shows a number on the page.
 - **Case links**: Each case has a stable link from its data ID, not its number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details. When you switch between the 未完成 and 已修復 lists, a case from the other list closes, and the URL goes back to the list. The URL and the list always agree.
+- **Department filter counts**: The department list shows how many cases each department will show under the current open or fixed tab, search and milestone. The number is the same as the rows after you choose that department. A selected department stays in the list with 0 when no case matches.
 - **Search**: The search field finds a case by number (`57`, `#57` or a full-width `＃57`), title, text, tags or district. When you type with an input method editor, the list keeps the current result until you commit the text. A pre-edit does not show an empty result.
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
 - **Long text**: Titles, report text, additions, addresses, timeline entries and queue titles wrap at any character when a word or URL is longer than the available width. The text does not cover the +1 button or the department selector, and it stays inside the page.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
-- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24. A pause and resume button with an `aria-pressed` state and a 44px touch target stops the CSS marquee or the reduced-motion rotation. The browser keeps your paused selection across page reloads.
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `#admin=<ADMIN_TOKEN>` (a URL fragment, not a query). The page ignores a key in `?admin=`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
 
@@ -84,7 +85,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Search hint**: The search field shows 搜尋標題或內容. It does not show the unsupported `is:issue` filter.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen (key only).
 - **Repair order feedback**: A repair order title has a maximum of 80 characters, and the field shows the limit. After you make a repair order, the field is empty and the page shows the PR number. After you merge a repair order or mark a case fixed, the page shows a message. If the case leaves the Open list, the detail closes and the page shows the case list again.
-- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
+- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. If you hide a case after a release, the public release notes no longer show it, and the visible count goes down. The administrator still sees the stored release. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
 - **Reset demo data** (重設模擬資料, Worker website only): Puts the full database back to the seed data in `worker/data.json`. It removes all citizen reports, additions, +1 votes, contact data and demo snapshots. Push the button two times in 10 seconds. All open pages show the change immediately. Uploaded photos stay in R2. If the reset fails, the status line says that it did not complete, and you can push the button again. A successful reset still shows its result if the page cannot reload.
@@ -250,7 +251,10 @@ BASE=http://localhost:8788 node worker/test/a11y-semantics.mjs
 BASE=http://localhost:8788 node worker/test/form-open-focus.mjs
 BASE=http://localhost:8788 node worker/test/route-history.mjs
 BASE=http://localhost:8788 node worker/test/map-keyboard-focus.mjs
+BASE=http://localhost:8788 node worker/test/vote-failure-resync.mjs
 ```
+
+The vote failure test uses two tabs with one visitor identity. It holds the first tab's +1 write, saves the same vote from the second tab, and then fails the held write. It checks that the failed tab keeps the newer saved vote, and that a failed +1 with no other save returns to the previous state. Set `BASE` to use another local URL. The test deletes the visitor's votes when it ends.
 
 The accessibility semantics test checks one main landmark, the skip link, the report form name, the preview heading, the success status, and the small map role. Set `BASE` to use another local URL. The test writes one report and one case with a location to the local Worker and deletes them when it ends.
 
@@ -282,7 +286,19 @@ BASE=http://localhost:8788 node worker/test/mine-hidden-empty.mjs
 
 The hidden case test uses a 390px phone viewport. It creates a case for a test visitor and hides the case as the administrator. It checks that My reports says the case is not public, on the live update and after a reload. It also checks that a visitor with no reports gets the first-report message. Set `BASE` to use another local URL. The test writes one private case and one triage record and deletes them when it ends.
 
+```bash
+BASE=http://localhost:8788 node worker/test/stale-open-detail.mjs
+```
+
+The stale detail test opens a case and removes it from the list in three ways: with a search filter, with a remote hide, and with a remote fix. It checks that the detail closes, that the URL goes back to the case list, that the status message shows, and that the keyboard focus stays in the list. It also reloads a live shared case link and checks that its detail stays open. Set `BASE` to use another local URL. The test writes three private cases and deletes them when it ends.
+
 The pop-up edge test uses 390px and 320px phone viewports. It opens the north-most case, which has photos. The test checks that the pop-up, its title, and the close button stay inside the viewport. Use a separate local Worker persistence directory. The test writes one private case and deletes it when it ends.
+
+```bash
+BASE=http://localhost:8788 node worker/test/landscape-popup-close.mjs
+```
+
+The landscape pop-up test uses an 844×390 phone viewport with 200% text. It opens a north-edge case with two photos. It checks that the pop-up fits the short map, that the close button is inside the map and receives the tap, and that the tap closes the pop-up. Set `BASE` to use another local URL. The test writes one private case and deletes it when it ends.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/popup-edge.mjs
@@ -298,13 +314,25 @@ The photo error feedback test uses phone viewports of 390px and 320px. It adds a
 BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 ```
 
-The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
+The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, the photo remove button, the report form buttons (#submitBtn, #cancelBtn, #gpsBtn, #pinBtn, template buttons, aspect labels, consent label), the preview duplicate action buttons, and the neighborhood contact call buttons are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/tab-hash.mjs
 ```
 
 The tab and URL test uses a desktop viewport. It opens an unfinished case, switches to 已修復, and checks that the case closes and the URL goes back to the list. It reloads the page and checks that no case detail stays. It also checks that a case in the current list stays open. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
+BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
+```
+
+The Li back focus test checks both desktop and 390x844 mobile viewports. It checks that returning from a Li page to the Li list returns keyboard focus to the button of the Li that was just open.
+
+```bash
+BASE=http://localhost:8788 node worker/test/ticker-pause.mjs
+```
+
+The ticker pause test uses desktop and 390×844 viewports. It checks that the pause button can be reached by keyboard, has a 44px touch target, and updates `aria-pressed` and `aria-label`. It verifies that pausing stops the continuous marquee animation for 2 seconds and stops headline rotation under `prefers-reduced-motion: reduce` for 6 seconds. It also verifies that the paused preference persists across page reloads. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
@@ -325,6 +353,12 @@ BASE=http://localhost:8788 node worker/test/text-scale-layout.mjs
 ```
 
 The text-scale layout test uses 390×844 and 320×568 phone viewports. It sets the text size to 200%. It checks that the page keeps the viewport width, that each bottom tab stays on the screen, that the news ticker stays above the navigation bar, and that the last case scrolls above the ticker. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
+BASE=http://localhost:8788 node worker/test/dark-map-controls.mjs
+```
+
+The dark map controls test uses a 1440×900 viewport. It checks that map zoom buttons and location pickbox zoom buttons in dark mode have dark backgrounds and contrast of at least 4.5:1 against text, that district labels stay readable, and that light mode controls keep their white styling. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
@@ -361,6 +395,12 @@ BASE=http://localhost:8788 node worker/test/long-token-wrap.mjs
 ```bash
 BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
 BASE=http://localhost:8788 node worker/test/report-contact-bypass.mjs
+```
+
+The visitor document schema test checks input validation for visitor writes to `votes/<visitor>` and `addenda/<visitor>`. It confirms that invalid vote shapes, non-boolean values, and non-case keys return 400 `bad_item`, and that unvalidated or oversized addenda are excluded from the public snapshot:
+
+```bash
+BASE=http://localhost:8788 node worker/test/visitor-doc-schema.mjs
 ```
 
 ```bash
@@ -408,6 +448,24 @@ BASE=http://localhost:8788 node worker/test/case-title-double-click.mjs
 ```
 
 The case title double click test uses a desktop viewport. It checks that a double click opens one detail and keeps the URL on the case. It also checks that one later click closes the detail and returns the URL to the list. The test deletes its case when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/release-hidden-after-publish.mjs
+```
+
+The release hide test publishes one release with two fixed cases and then hides one case. It checks that the public release drops the hidden case number, title and count, and keeps the other case. It also checks that a longer number with the same start stays, that the administrator still sees the stored release, and that the case returns after it is public again. The test deletes its documents when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/dept-counts.mjs
+```
+
+The department count test uses a desktop viewport. It makes one open and one fixed case in 警察局. It checks every department option under the open and fixed tabs against the rows that option shows. It then searches for the test case and checks that the counts narrow to the matching case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8907 node worker/test/release-sort-tz.mjs
+```
+
+The release sorting test verifies that releases sort in newest-first order by parsed timestamp epoch rather than string comparison, so releases with different timezone offset representations (e.g. `+08:00` vs `Z`) maintain correct chronological order. It also verifies that history dispatch count numbers format with thousands separators.
 
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 

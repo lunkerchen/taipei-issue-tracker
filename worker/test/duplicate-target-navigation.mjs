@@ -136,9 +136,10 @@ try {
   const setMismatchedFilters = async target => {
     if (await page.locator('#nav [data-view="issues"]').getAttribute("aria-current") !== "page")
       await page.locator('#nav [data-view="issues"]').click();
-    await page.locator("#q").fill(`不符合目標的搜尋 ${runId}`);
+    // Department options follow the search, so choose the department before the search hides it.
     const wrongDept = target === first ? "交通局" : "工務局新工處";
     await page.locator("#deptFilter").selectOption(wrongDept);
+    await page.locator("#q").fill(`不符合目標的搜尋 ${runId}`);
     await page.locator("#msFilter").selectOption("flood-prep");
     assert.equal(await page.locator("#q").inputValue(), `不符合目標的搜尋 ${runId}`);
     assert.equal(await page.locator("#deptFilter").inputValue(), wrongDept);

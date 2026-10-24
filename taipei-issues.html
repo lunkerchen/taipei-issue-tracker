@@ -230,12 +230,26 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .tl-row .btn{min-width:40px;justify-content:center}
 .mapside .foot{padding:10px 14px;border-top:1px solid var(--line)}
 .mapbox .leaflet-container{font:inherit;background:var(--hover)}
-.mapbox .leaflet-popup-content-wrapper,.mapbox .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
-.mapbox .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
+/* A landscape phone map is short even when its width is over 760px; cap the popup to the map and let long content scroll.
+   At 200% text the attribution control can cover the close button, so the popup pane sits above the controls. */
+@media (max-height:500px){.mapbox .leaflet-popup-content{max-height:max(96px,calc(100svh - 260px));overflow-y:auto}}
+.mapbox .leaflet-popup-pane{z-index:801}
 .mapbox .leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted)}
 .mapbox .leaflet-control-attribution a{color:var(--link)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
+:is(.mapbox,.pickbox) .leaflet-popup-content-wrapper,:is(.mapbox,.pickbox) .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+:is(.mapbox,.pickbox) .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar{border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a{background-color:var(--panel);color:var(--fg);border-bottom:1px solid var(--line)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a:hover{background-color:var(--hover);color:var(--fg)}
+:is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a.leaflet-disabled{background-color:var(--hover);color:var(--muted)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
+}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 .pop b{display:block;margin-bottom:2px}
 .pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
@@ -326,6 +340,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:auto;min-height:32px;box-sizing:border-box;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:4px 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
+.tk-btn{flex:none;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;color:var(--term-fg);cursor:pointer;padding:0;font-size:14px;line-height:1}
+.tk-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.ticker.paused .tk-track{animation-play-state:paused!important}
 .tk-view{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 .tk-track{display:flex;width:max-content}
 .tk-set{display:flex;flex:none}
@@ -347,6 +364,9 @@ html{scroll-padding-bottom:32px}
 html.citizen [hidden]{display:none!important}
 .citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
 @media (max-width:760px){
+.new .btn,.dup .btn,.ldrow .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.aspects label{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
+.new label:has(> #agree),.new label#cRealRow{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
 .citizen .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;margin:0;gap:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
 .citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;line-height:1.15;white-space:normal;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
@@ -571,7 +591,7 @@ Switched to branch 'taipei'
 
   <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
-<div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
+<div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><button type="button" class="tk-btn" id="tkPause" aria-pressed="false" aria-label="暫停新聞跑馬燈"><span aria-hidden="true">⏸</span></button><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <dialog class="doc" id="privacy" aria-labelledby="privacyH">
@@ -728,7 +748,7 @@ let db = null, me = null, admin = false, canWrite = false, sample = null, geocod
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
 // Vote counts arrive after reports/triage and can re-sort a shared case far up the list; scroll again when they land.
-let votesLoaded = false, scrollAfterVotes = null;
+let votesLoaded = false, scrollAfterVotes = null, votesRevision = 0;
 const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -963,7 +983,7 @@ async function act(i, list, patch = {}) {
 }
 
 function setVote(id, on) {
-  const prev = myVotes[id];
+  const prev = myVotes[id], revision = votesRevision;
   myVotes = { ...myVotes, [id]: on }; render();
   let writes = pendingVoteWrites.get(id);
   if (!writes) pendingVoteWrites.set(id, writes = new Set());
@@ -978,7 +998,8 @@ function setVote(id, on) {
       return true;
     }
     catch (e) {
-      if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+      // Another tab can save this vote while this write fails; its snapshot is newer than this rollback.
+      if (myVotes[id] === on && votesRevision === revision) myVotes = { ...myVotes, [id]: prev === true };
       fail(e); render(); return false;
     }
   })().finally(() => {
@@ -1058,23 +1079,25 @@ function render() {
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
   $("tabClosed").setAttribute("aria-pressed", view.closed);
 
-  const prev = dept;
+  const prev = dept, ms = $("msFilter").value;
+  // Option counts follow the tab, the search and the milestone, so a count never opens a different number of rows.
+  const counted = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
+    .filter(i => view.mine || !ms || i.milestone === ms)
+    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
+      || (qNum !== null && Number(i.n) === qNum));
   const byDept = {};
-  issues.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  counted.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  // Keep a selected department visible with zero rows instead of silently clearing the filter.
+  const deptOptions = Object.keys(DEPTS).filter(d => byDept[d] || d === prev);
   $("deptFilter").innerHTML = `<option value="">全部局處</option>` +
-    Object.keys(DEPTS).filter(d => byDept[d]).map(d => `<option value="${esc(d)}">${esc(d)}（${byDept[d]}）</option>`).join("");
+    deptOptions.map(d => `<option value="${esc(d)}">${esc(d)}（${byDept[d] || 0}）</option>`).join("");
   $("deptFilter").value = prev;
-  const ms = $("msFilter").value;
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
   renderViews(c); if (admin) renderAdmin(c); syncDataNote();
   trackNew(); syncMap(); renderLive();
 
-  let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
-    .filter(i => view.mine || !dept || i.dept === dept)
-    .filter(i => view.mine || !ms || i.milestone === ms)
-    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
-      || (qNum !== null && Number(i.n) === qNum));
+  let rows = counted.filter(i => view.mine || !dept || i.dept === dept);
   const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
     votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
   rows.sort(sorts[$("sort").value]);
@@ -1082,6 +1105,21 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
+  // A live change or a filter can remove an open case from the list; close it and do not keep its #issue URL.
+  // Not stale: a just-sent own case that is not in the snapshot yet, and a hidden case with a kept addition draft
+  // (renderDrafts tells the visitor, and the draft goes back into the form when the case is public again).
+  const staleOpen = [...view.open].filter(id => !rows.some(i => i.id === id) && !noteDrafts.has(id)
+    && !((id === mine || id === scrollTo) && !issues.some(i => i.id === id)));
+  const dropHadFocus = staleOpen.length > 0 && $("list").contains(document.activeElement);
+  if (staleOpen.length) {
+    for (const id of staleOpen) view.open.delete(id);
+    if (staleOpen.includes(activeShareId)) activeShareId = null;
+    if (staleOpen.includes(issueIdFromHash())) replaceHash("#issues");
+    const gone = staleOpen.map(id => issues.find(i => i.id === id)).find(Boolean);
+    toast(gone && gone.status === "fixed" && !view.closed ? "這件案件已改為已修復，詳情已收起。"
+      : gone ? "這件案件已不符合目前的篩選，詳情已收起。"
+      : "這件案件目前無法公開，詳情已收起。");
+  }
   if (!rows.length) {
     // Hidden cases stay out of issues, so an empty mine view must not claim the citizen never sent one.
     let empty;
@@ -1089,6 +1127,7 @@ function render() {
     else if (view.mine) empty = "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。";
     else empty = issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。";
     $("list").innerHTML = `<div class="empty">${empty}</div>`;
+    if (dropHadFocus) $("q").focus();
     if (view.mine && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
       myHiddenPending = true;
       userApi.hiddenMine().then(n => { myHiddenPending = false; const v = Number(n) || 0; if (v !== myHidden) { myHidden = v; render(); } })
@@ -1197,6 +1236,9 @@ function render() {
         target.setSelectionRange(focused.start, focused.end, focused.direction);
     }
   }
+  // Focus was inside the case that just left the list, so the restore above has no target; stay in the list.
+  if (dropHadFocus && document.activeElement === document.body)
+    (document.querySelector("#list [data-open]") || $("q")).focus();
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
@@ -2018,8 +2060,11 @@ function selectLi(li) {
 }
 function backToList() {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  const leavingLi = curLi;
   curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList(); mapMode();
   if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
+  const backTarget = leavingLi ? document.querySelector(`#liList button[data-li="${CSS.escape(leavingLi)}"]`) : null;
+  if (backTarget) backTarget.focus();
 }
 $("liBack").onclick = backToList;
 
@@ -2439,9 +2484,9 @@ function drawHist() {
     m.bindPopup(`<b>${esc(it[0])}</b><div class="meta">${esc(rd[0] + rd[1])} · ${dayLabel(key)} ${String(hm).padStart(4, "0").replace(/(..)$/, ":$1")}</div><div class="meta">${rd[4] ? "路段" : "行政區"}概略位置</div>`);
     histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
   });
-  $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length} 件派工`;
-  $("histDay").setAttribute("aria-valuetext", `${dayLabel(key)}，${list.length} 件派工`);
-  layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length} 件`);
+  $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length.toLocaleString()} 件派工`;
+  $("histDay").setAttribute("aria-valuetext", `${dayLabel(key)}，${list.length.toLocaleString()} 件派工`);
+  layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length.toLocaleString()} 件`);
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
 const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
@@ -2459,7 +2504,7 @@ $("histPlay").onclick = () => {
 // ---- Live: today's newest reports (Asia/Taipei day), newest first. Tap one to fly the map to it. ----
 function renderLive() {
   if ($("liveBox").hidden) return;
-  const today = dayKey(Date.now()), byNew = [...issues].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const today = dayKey(Date.now()), byNew = [...issues].sort((a, b) => (+new Date(b.createdAt) || 0) - (+new Date(a.createdAt) || 0));
   const todays = byNew.filter(i => dayKey(i.createdAt) === today);
   // ponytail: an empty "today" falls back to the 5 newest so the panel is never blank on a quiet day
   const list = todays.length ? todays.slice(0, 30) : byNew.slice(0, 5);
@@ -2558,8 +2603,31 @@ async function togglePickMap() {
 $("pinBtn").onclick = () => togglePickMap();
 
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
-let newsItems = [], tkTimer = 0, tkI = 0;
+let newsItems = [], tkTimer = 0, tkI = 0, tkPaused = localStorage.getItem("tit-ticker-paused") === "1";
 const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
+function syncTkPauseBtn() {
+  const btn = $("tkPause");
+  if (!btn) return;
+  btn.setAttribute("aria-pressed", tkPaused ? "true" : "false");
+  btn.setAttribute("aria-label", tkPaused ? "繼續播放新聞跑馬燈" : "暫停新聞跑馬燈");
+  btn.innerHTML = `<span aria-hidden="true">${tkPaused ? "▶" : "⏸"}</span>`;
+  $("ticker").classList.toggle("paused", tkPaused);
+}
+function toggleTkPause() {
+  tkPaused = !tkPaused;
+  if (tkPaused) localStorage.setItem("tit-ticker-paused", "1");
+  else localStorage.removeItem("tit-ticker-paused");
+  syncTkPauseBtn();
+  if (reduceMQ.matches) {
+    clearInterval(tkTimer);
+    if (!tkPaused && newsItems.length) {
+      const el = $("ticker"), n = newsItems.length;
+      tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within") && !tkPaused) { $("tkView").innerHTML = tkItem(newsItems[tkI++ % n]).replace(/^<a /, '<a class="it" '); } }, 5000);
+    }
+  }
+}
+const tkPauseBtn = $("tkPause");
+if (tkPauseBtn) tkPauseBtn.addEventListener("click", toggleTkPause);
 // PTT gives "10/24"; Bing and Threads give an ISO time, shown as the Taipei date
 const tkDate = s => { const m = /^\s*(\d{1,2})\/(\d{1,2})/.exec(s), t = Date.parse(s); return m ? `${+m[1]}/${+m[2]}` : t ? new Intl.DateTimeFormat("en-US", { timeZone:"Asia/Taipei", month:"numeric", day:"numeric" }).format(t) : ""; };
 const tkItem = (n, hid) => { const t = `${n.date ? `<span class="src">${n.date}</span>` : ""}<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
@@ -2569,10 +2637,14 @@ function drawTicker() {
   const el = $("ticker"), n = newsItems.length;
   el.hidden = !n; document.documentElement.classList.toggle("has-tk", !!n);
   if (!n) return;
+  syncTkPauseBtn();
   if (reduceMQ.matches) {
-    // static rotation: one headline at a time, every 5s, held while the pointer or focus is on the bar
+    // static rotation: one headline at a time, every 5s, held while the pointer or focus is on the bar or when paused
     const one = () => { $("tkView").innerHTML = tkItem(newsItems[tkI++ % n]).replace(/^<a /, '<a class="it" '); };
-    one(); tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within")) one(); }, 5000);
+    one();
+    if (!tkPaused) {
+      tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within") && !tkPaused) one(); }, 5000);
+    }
   } else {
     const set = hid => `<span class="tk-set"${hid ? ' aria-hidden="true"' : ""}>${newsItems.map(x => tkItem(x, hid)).join("")}</span>`;
     $("tkView").innerHTML = `<div class="tk-track" style="animation-duration:${Math.max(40, n * 9)}s">${set(false)}${set(true)}</div>`;
@@ -3125,7 +3197,7 @@ document.addEventListener("keydown", e => {
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
   db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; loadErr = false; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
   db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.due || "").localeCompare(String(b.due || ""))); render(); });
-  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
+  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => (+new Date(b.createdAt) || 0) - (+new Date(a.createdAt) || 0)); render(); });
   db.collection("categories").onSnapshot(s => {
     cats = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => isStr(c.name) && Array.isArray(c.subs)).sort((a, b) => a.id.localeCompare(b.id))
       .map(c => ({ id: c.id, name: c.name, subs: c.subs.filter(x => isObj(x) && isStr(x.id) && isStr(x.name)) }));
@@ -3143,6 +3215,7 @@ document.addEventListener("keydown", e => {
     addenda = out; build();
   }, () => {});
   db.collection("votes").onSnapshot(s => {
+    votesRevision++;
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
     myVotes = { ...(mine && isObj(mine.data().issues) ? mine.data().issues : {}) };
