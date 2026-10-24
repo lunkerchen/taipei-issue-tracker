@@ -1160,9 +1160,10 @@ async function onListClick(e) {
   const prInput = $("pr-" + i.id), title = prInput.value.trim().slice(0, 80);
   if (!title) return prInput.focus();
   if (prInput.value !== title) prInput.value = title; // keep the field and the saved title equal if a scripted value passed maxlength
-  const pr = nextN(), isOpen = cur => (cur.status || "open") === "open";
+  let pr = 0;
+  const isOpen = cur => (cur.status || "open") === "open";
   run(btn, async () => {
-    if (!await act(i, cur => [{ type:"pr", n:pr, title }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])],
+    if (!await act(i, cur => { pr = nextN(); return [{ type:"pr", n:pr, title }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])]; },
       cur => isOpen(cur) ? { status:"progress" } : {})) return;
     // Clear the fresh input, not the one from click time: a live re-render can replace it and restore the old text.
     const live = $("pr-" + i.id); if (live) live.value = "";
