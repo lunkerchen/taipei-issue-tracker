@@ -1502,12 +1502,10 @@ function initMap() {
   drawDistricts();
 }
 
-// City map: the 12 districts as flat colour blocks instead of a street basemap. Five colours, no two neighbours alike,
-// orange never touches pink (the two look too close side by side), and cream only on inner districts
-// (中山、信義) because on the city edge it fades into the background.
+// City map: the 12 districts as flat colour blocks instead of a street basemap. Five colours, no two neighbours alike.
 // The districts pane sits under the overlay pane, so a raised (bringToFront) district never covers the report markers.
-const DIST_COLOR = { 北投區:"#ff8cc6", 士林區:"#5bd8f5", 內湖區:"#d9e35b", 中山區:"#fff4c8", 大同區:"#ff9e1b", 松山區:"#ff9e1b",
-  信義區:"#fff4c8", 南港區:"#5bd8f5", 大安區:"#d9e35b", 中正區:"#5bd8f5", 萬華區:"#d9e35b", 文山區:"#ff8cc6" };
+const DIST_COLOR = { 北投區:"#ff8cc6", 士林區:"#ff9e1b", 內湖區:"#5bd8f5", 中山區:"#d9e35b", 大同區:"#5bd8f5", 松山區:"#ff8cc6",
+  信義區:"#d9e35b", 南港區:"#fff4c8", 大安區:"#ff9e1b", 中正區:"#ff8cc6", 萬華區:"#d9e35b", 文山區:"#5bd8f5" };
 const DIST_STYLE = { weight:1.5, color:"#ffffff", opacity:1, fillOpacity:.9 };
 let distLayers = {}, curDist = "", cityBounds = null, distGeo = null;
 // Which district a point is in, from the boundary file; until it loads, the report's own district field is used.
