@@ -31,8 +31,12 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides Taiwan telephone numbers, including common slash separators and the `+886` and `00886` mobile prefixes, email addresses and ID numbers before it sends a report or an addition. Contact fields stay private. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
-- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**. Purple dashed lines show the boundaries of the 12 districts.
-- **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number.
+- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**.
+- **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
+- **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
+- **Village page**: Click a village to see its page in the side panel. **聯絡窗口** shows the village chief and the city councillors of the election zone, with a **撥打** (call) button when there is a phone number. **重大事件** lists the reports in the village: unfinished first, then most +1. Click a report to open it in the list. **回報這個里的問題** opens the report form with the district and a point in the village. Names and phone numbers come from `data/li-contacts.json` and `data/councilors.json`; empty entries show "資料待補".
+- **Report pins**: Each report is a map pin in the colour of its 1999 category. More +1 votes make the pin taller. Fixed reports are faded. On the full city map, all 9 category layers are off at the start, so you see only the districts; **全選** / **全不選** turns all layers on or off. When you open a district, all reports in that district show, whatever the layer settings.
+- **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number. The points use the same map pins as the reports. When you open the timeline, all layers are on; when you close it, your layer settings come back.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
 - **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases.
@@ -91,6 +95,8 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/1999-categories.json` | Official 1999 case categories (9 main categories, 136 subcategories) |
 | `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
 | `data/history-roads.json` | Cache of road coordinates |
+| `data/districts.geojson`, `data/li.geojson` | Boundaries of the 12 districts and the 456 villages (里), WGS84 |
+| `data/li-contacts.json`, `data/councilors.json` | Village chief per village (by village code) and councillors per election zone (6 zones). Fill `chief`, `phone`, `name`, `party` by hand. Use office phone numbers, not personal mobile numbers. |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
@@ -99,6 +105,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | Script | Purpose |
 |---|---|
 | `scripts/fetch-1999-history.mjs` | Downloads the data.taipei 1999 dispatch CSV files, gets the road sections, finds the coordinates, and makes `data/history-2026.json` |
+| `scripts/build-li.mjs` | Downloads the data.taipei village boundary map (TWD97 shapefile), changes it to WGS84, simplifies it, and makes `data/li.geojson` and `data/districts.geojson`. Needs `unzip`. |
 | `scripts/history-releases.mjs` | Makes the monthly dispatch reports from the history data (`--write` writes them to the live database) |
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
@@ -197,6 +204,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 | Data | Source |
 |---|---|
 | 1999 dispatches (January to September 2026) | [Taipei City Open Data Platform](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed). The source data has only the case date. It does not have the close status. |
+| District and village boundaries | [Taipei City Village Boundary Map](https://data.taipei/dataset/detail?id=6b17b31d-4e16-495e-95b1-9fd1f47c80d8), Department of Civil Affairs. The districts are the union of their villages. |
 | 1999 case categories | [Taipei 1999 Citizen Hotline](https://1999.gov.taipei/) |
 | Base map | Taiwan e-Map, National Land Surveying and Mapping Center |
 | Addresses and coordinates | © OpenStreetMap contributors (Nominatim) |

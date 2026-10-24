@@ -217,19 +217,67 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapbox .leaflet-control-attribution a{color:var(--link)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
-.leaflet-overlay-pane path.district{stroke:var(--fixed);stroke-width:1.5;stroke-opacity:.8;stroke-dasharray:6 4;fill:none}
 .pop b{display:block;margin-bottom:2px}
 .pop .btn{margin-top:8px}
 .pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
 .pin-wrap{background:none;border:0}
+/* District blocks: a hovered district lifts (shadow + slight raise); labels sit in the middle of each district */
+.mapbox .leaflet-container:has(.leaflet-districts-pane path){background:var(--hover)}
+.leaflet-districts-pane path{cursor:pointer;transition:transform .15s,filter .15s}
+.leaflet-districts-pane path.hot{transform:translateY(-4px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.35)) brightness(1.06);stroke-width:3}
+@media (prefers-reduced-motion:reduce){.leaflet-districts-pane path{transition:none}.leaflet-districts-pane path.hot{transform:none}}
+.leaflet-dlabels-pane{pointer-events:none}
+.leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:#1f2328;font-weight:700;font-size:14px;text-shadow:0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+.leaflet-tooltip.dlabel::before{display:none}
+.leaflet-tooltip.dlabel.hot{background:#1f2328;color:#fff;text-shadow:none;padding:4px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:1}
+.leaflet-tooltip.dlabel.gone{display:none}
+.leaflet-li-pane path{cursor:pointer}
+.lipanel ol{list-style:none;margin:0;padding:0}
+.lipanel li{border-top:1px solid var(--line)}
+.lipanel li:first-child{border-top:0}
+.lipanel li button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;cursor:pointer;font-size:15px}
+.lipanel li button:hover,.lipanel li button[aria-current="true"]{background:var(--hover)}
+.lipanel li button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.lipanel .nm{flex:1;font-weight:600}
+.lipanel .cnt{border:1.5px solid var(--fixed);color:var(--fixed);background:none;min-width:28px;text-align:center;font-size:13px}
+.lipanel .chev{color:var(--muted);font-size:18px}
+.mapside[hidden]{display:none}
+.lipanel .boxhead #liBack{font-size:18px;line-height:1;padding:2px 10px}
+.ldsec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.ldsec h3{margin:0 0 8px;font-size:15px}
+.ldsec h3 span{color:#d4a72c}
+.ldrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.ldrow:first-child{border-top:0}
+.ldrow .who{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ldrow .role{font-size:13px;color:var(--muted)}
+.ldrow .tel{font-family:var(--mono);font-size:13px;color:var(--muted)}
+#ldEvents{list-style:none;margin:0;padding:0}
+#ldEvents li{border-top:1px solid var(--line)}
+#ldEvents li:first-child{border-top:0}
+#ldEvents li.more{padding:8px 0}
+#ldEvents button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:2px 8px;width:100%;padding:8px 4px;cursor:pointer}
+#ldEvents button:hover{background:var(--hover)}
+#ldEvents button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+#ldEvents .t{font-weight:600}
+#ldEvents .meta{grid-column:1/-1;font-size:13px;color:var(--muted)}
+#ldEvents .chip{align-self:start;border:1.5px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:12px;white-space:nowrap}
+.ldreport{width:100%;min-height:44px;font-size:15px;font-weight:600}
+.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
+.distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
 .locbtn[aria-busy="true"]{opacity:.6}
 .me{display:block;width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px rgba(26,115,232,.35)}
 .pin{display:block;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
-@media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
+@media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}.rpin.mk-new{animation:pinbounce .5s ease-out 6}}
+@keyframes pinbounce{0%,100%{translate:0 0}50%{translate:0 -8px}}
+.rpin{background:none;border:0}
+.boxhead .btn.sm{padding:2px 10px;min-height:0;font-size:13px}
+.rpin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.rpin.fixed{opacity:.5}
+.rpin.mk-new svg path{stroke:#000;stroke-width:2.5}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
 @media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:160px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
@@ -264,6 +312,12 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
 .has-tk .toast{bottom:48px}
 @media (max-width:760px){.has-tk .mapgrid{height:auto}}
+@media (max-width:760px){
+  #v-map.indist :is(.tline,.mapact,.livebox){display:none}
+  #v-map.indist .mapbox{height:48vh;height:48svh}
+  #v-map.inli .mapbox{height:30vh;height:30svh}
+  .lipanel li button{min-height:48px}
+}
 </style>
 
 <div class="wrap" id="wrap">
@@ -365,6 +419,7 @@ Switched to branch 'taipei'
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+        <button class="btn distback" type="button" id="distBack" hidden></button>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
       <div class="tline" id="tline" hidden>
@@ -387,8 +442,19 @@ Switched to branch 'taipei'
         <ol id="liveList"></ol>
       </section>
       </div>
-      <aside class="box mapside" aria-label="圖層">
-        <div class="boxhead"><b>圖層</b><span class="spacer"></span><span class="note">1999 九大類</span></div>
+      <aside class="box mapside lipanel" id="liPanel" aria-label="各里未完成陳情" hidden>
+        <div class="boxhead"><b id="liTitle"></b><span class="spacer"></span><span class="note" id="liSum"></span></div>
+        <ol id="liList"></ol>
+        <div class="foot note" id="liFoot"></div>
+      </aside>
+      <aside class="box mapside lipanel" id="liDetail" aria-labelledby="ldName" hidden>
+        <div class="boxhead"><button class="btn sm" type="button" id="liBack" aria-label="回到各里清單">‹</button><b id="ldName"></b><span class="note" id="ldDist"></span></div>
+        <section class="ldsec" aria-labelledby="ldC"><h3 id="ldC">聯絡窗口</h3><div id="ldContacts"></div></section>
+        <section class="ldsec" aria-labelledby="ldE"><h3 id="ldE"><span aria-hidden="true">★</span> 重大事件</h3><ol id="ldEvents"></ol><p class="note" id="ldNone" hidden>這個里目前沒有陳情</p></section>
+        <div class="foot"><button class="btn primary ldreport" type="button" id="ldReport">回報這個里的問題</button></div>
+      </aside>
+      <aside class="box mapside" id="layerPanel" aria-label="圖層">
+        <div class="boxhead"><b>圖層</b><span class="note">1999 九大類</span><span class="spacer"></span><button class="btn sm" type="button" id="layerAll" aria-pressed="false">全選</button></div>
         <div id="mapLayers"></div>
         <div class="foot note" id="mapFoot"></div>
       </aside>
@@ -521,19 +587,6 @@ const BOUNDS = { lat:[24.95, 25.22], lng:[121.45, 121.67] }, LOC_KINDS = ["gps",
 // Taipei City boundary [lat, lng], OSM relation 1293250 simplified to ~200 m (Nominatim polygon_threshold=0.002).
 // The bounding box alone let 板橋/三重/永和 reports onto the Taipei map.
 const TAIPEI_RING = [[25.108,121.4571],[25.1017,121.4662],[25.1009,121.4814],[25.097,121.489],[25.0872,121.4998],[25.0753,121.5059],[25.0497,121.5049],[25.0428,121.4957],[25.0418,121.4879],[25.0369,121.4837],[25.0111,121.4905],[25.0094,121.4956],[25.0218,121.5106],[25.0198,121.5191],[25.0078,121.5324],[25.0031,121.5342],[24.9979,121.5306],[24.9905,121.5317],[24.9951,121.5352],[24.9885,121.537],[24.9881,121.5441],[24.9836,121.5454],[24.9869,121.5523],[24.9773,121.5539],[24.9647,121.5613],[24.9666,121.5787],[24.9632,121.5857],[24.9642,121.5934],[24.9605,121.5972],[24.9672,121.6196],[24.9735,121.6144],[24.9782,121.5995],[24.9904,121.602],[24.9945,121.5981],[25.0012,121.6004],[25.0045,121.5959],[25.0147,121.5974],[25.0152,121.6027],[25.021,121.6093],[25.0173,121.6233],[25.0256,121.6324],[25.0217,121.6464],[25.0247,121.6649],[25.0299,121.6659],[25.028,121.6468],[25.0351,121.6302],[25.0404,121.6216],[25.048,121.6165],[25.0565,121.6203],[25.0555,121.6243],[25.0639,121.6161],[25.0833,121.628],[25.0961,121.6262],[25.1039,121.6154],[25.1095,121.5975],[25.1141,121.5956],[25.126,121.6017],[25.1302,121.6078],[25.1308,121.6046],[25.1367,121.6057],[25.1403,121.5984],[25.1501,121.5938],[25.1524,121.5894],[25.1559,121.5918],[25.1637,121.5899],[25.1672,121.577],[25.1772,121.5833],[25.182,121.5809],[25.1946,121.5838],[25.1954,121.5717],[25.1997,121.5661],[25.2095,121.5627],[25.2085,121.5549],[25.1979,121.5521],[25.1957,121.5449],[25.1872,121.5407],[25.1793,121.5219],[25.1693,121.5199],[25.1733,121.5026],[25.1514,121.4874],[25.1502,121.4829],[25.1315,121.4656],[25.1243,121.4648],[25.1229,121.4588],[25.1162,121.4609],[25.108,121.4571]];
-// District outlines [lat, lng] for the main map, OSM admin_level 7 relations simplified to ~30 m (Nominatim polygon_threshold=0.0003).
-const DISTRICT_RINGS = {"中正區":[[25.03,121.5041],[25.0249,121.5091],[25.024,121.5128],[25.0217,121.5129],[25.0209,121.5163],[25.0198,121.5191],[25.0184,121.5209],[25.0117,121.5258],[25.0107,121.5272],[25.0099,121.5301],[25.0086,121.532],[25.0108,121.5358],[25.011,121.5372],[25.0132,121.5359],[25.0232,121.5253],[25.0281,121.5217],[25.0325,121.5225],[25.0355,121.5243],[25.0341,121.5272],[25.0336,121.5327],[25.0454,121.5329],[25.0477,121.525],[25.0489,121.5156],[25.0499,121.512],[25.0485,121.5115],[25.0473,121.5096],[25.0361,121.5065],[25.0313,121.5041]],
-  "大同區":[[25.0779,121.5047],[25.0745,121.5062],[25.0704,121.507],[25.0646,121.5068],[25.0594,121.5054],[25.0559,121.5064],[25.054,121.5063],[25.0497,121.5049],[25.0483,121.509],[25.0485,121.5115],[25.0499,121.512],[25.0484,121.519],[25.0502,121.5202],[25.0591,121.5207],[25.0629,121.5194],[25.0661,121.5194],[25.0737,121.5207],[25.0771,121.5223],[25.0802,121.5162],[25.0793,121.5146],[25.0795,121.5132],[25.0782,121.5094]],
-  "中山區":[[25.0484,121.519],[25.0477,121.525],[25.045,121.5345],[25.0446,121.541],[25.0449,121.5438],[25.067,121.5444],[25.0686,121.5411],[25.069,121.5388],[25.0713,121.5386],[25.071,121.5494],[25.0722,121.5497],[25.0723,121.551],[25.0734,121.5522],[25.0758,121.5522],[25.0746,121.5574],[25.0725,121.562],[25.0726,121.5636],[25.0755,121.5681],[25.0758,121.5696],[25.077,121.5702],[25.0788,121.564],[25.0803,121.5626],[25.0843,121.5609],[25.085,121.5594],[25.0845,121.5577],[25.0867,121.5567],[25.0878,121.5574],[25.0892,121.5541],[25.092,121.552],[25.0904,121.5458],[25.0904,121.5449],[25.0917,121.544],[25.0921,121.54],[25.0905,121.5363],[25.0852,121.5308],[25.0846,121.5292],[25.0837,121.5281],[25.0815,121.5263],[25.0813,121.5257],[25.082,121.5251],[25.0814,121.5247],[25.0804,121.5243],[25.0749,121.5259],[25.0742,121.525],[25.0763,121.5238],[25.0771,121.5223],[25.0737,121.5207],[25.0644,121.5193],[25.0629,121.5194],[25.0593,121.5207],[25.0526,121.5205],[25.0502,121.5202]],
-  "松山區":[[25.0694,121.5386],[25.0689,121.5391],[25.0686,121.5411],[25.067,121.5444],[25.0449,121.5438],[25.0451,121.5468],[25.0444,121.5541],[25.0451,121.5578],[25.0477,121.564],[25.0492,121.5693],[25.0495,121.5801],[25.0505,121.5796],[25.0516,121.58],[25.053,121.5798],[25.0519,121.5751],[25.0519,121.5735],[25.0525,121.5722],[25.0538,121.5717],[25.0585,121.5712],[25.064,121.5693],[25.0691,121.5718],[25.0722,121.5719],[25.074,121.5712],[25.0758,121.5696],[25.0755,121.5681],[25.0726,121.5636],[25.0725,121.562],[25.0746,121.5574],[25.0758,121.5522],[25.0734,121.5522],[25.0723,121.551],[25.0722,121.5497],[25.071,121.5494],[25.0713,121.5386]],
-  "大安區":[[25.0281,121.5217],[25.0232,121.5253],[25.0132,121.5359],[25.011,121.5372],[25.0083,121.538],[25.0086,121.5392],[25.0081,121.5418],[25.0087,121.5436],[25.0079,121.5441],[25.0078,121.5447],[25.0083,121.5465],[25.0094,121.5478],[25.0098,121.55],[25.0088,121.5525],[25.0092,121.5536],[25.0113,121.5552],[25.0122,121.5575],[25.0114,121.5593],[25.0081,121.5625],[25.0072,121.5649],[25.0082,121.5659],[25.01,121.5654],[25.0112,121.5637],[25.0132,121.5633],[25.0148,121.5621],[25.0161,121.5606],[25.0173,121.5601],[25.0244,121.5526],[25.0278,121.5564],[25.0294,121.5574],[25.0451,121.5578],[25.0444,121.5538],[25.0451,121.5468],[25.0446,121.541],[25.0448,121.5364],[25.0454,121.5329],[25.0336,121.5327],[25.0341,121.5272],[25.0355,121.5243],[25.0325,121.5225]],
-  "萬華區":[[25.0369,121.4837],[25.0315,121.4849],[25.0272,121.4875],[25.0232,121.4889],[25.0176,121.4887],[25.0121,121.4898],[25.0103,121.4914],[25.0092,121.4934],[25.0094,121.4956],[25.0119,121.5001],[25.0211,121.5084],[25.0218,121.5106],[25.0217,121.5129],[25.024,121.5128],[25.0249,121.5091],[25.03,121.5041],[25.0313,121.5041],[25.0361,121.5065],[25.0473,121.5096],[25.0483,121.5107],[25.0483,121.509],[25.0497,121.5049],[25.0451,121.5003],[25.0428,121.4957],[25.0418,121.4879]],
-  "信義區":[[25.0244,121.5526],[25.0173,121.5601],[25.0161,121.5606],[25.0148,121.5621],[25.0132,121.5633],[25.0112,121.5637],[25.01,121.5654],[25.0082,121.5659],[25.009,121.568],[25.0115,121.5714],[25.0135,121.5721],[25.0132,121.575],[25.0145,121.5761],[25.0141,121.5777],[25.018,121.5815],[25.0188,121.5828],[25.0186,121.5836],[25.0216,121.5844],[25.0223,121.585],[25.0237,121.5851],[25.0267,121.5866],[25.0285,121.5882],[25.0301,121.5914],[25.0313,121.5922],[25.0342,121.5894],[25.0368,121.5893],[25.0397,121.5871],[25.0416,121.5868],[25.0416,121.5855],[25.0442,121.5813],[25.0454,121.5807],[25.0495,121.5801],[25.0492,121.5693],[25.0452,121.5578],[25.0294,121.5574],[25.0278,121.5564]],
-  "士林區":[[25.108,121.4571],[25.1066,121.4578],[25.1039,121.4613],[25.1017,121.4662],[25.1014,121.4785],[25.1009,121.4814],[25.097,121.489],[25.0872,121.4998],[25.0832,121.5025],[25.0779,121.5047],[25.0782,121.5094],[25.0795,121.5132],[25.0793,121.5146],[25.0802,121.5162],[25.0763,121.5238],[25.0742,121.525],[25.0749,121.5259],[25.0804,121.5243],[25.0814,121.5247],[25.082,121.5251],[25.0813,121.5257],[25.0815,121.5263],[25.0837,121.5281],[25.0846,121.5292],[25.0852,121.5308],[25.0905,121.5363],[25.0921,121.54],[25.0917,121.544],[25.0904,121.5449],[25.0904,121.5458],[25.0913,121.5493],[25.0917,121.5495],[25.0917,121.5513],[25.0924,121.5522],[25.0925,121.5544],[25.094,121.5546],[25.0946,121.5562],[25.0961,121.557],[25.0961,121.5579],[25.0971,121.5578],[25.0985,121.5587],[25.0981,121.5591],[25.0978,121.5621],[25.0985,121.5628],[25.0992,121.567],[25.1022,121.5688],[25.1029,121.5687],[25.1047,121.5696],[25.1056,121.5707],[25.1067,121.5737],[25.1067,121.5767],[25.1058,121.577],[25.105,121.5789],[25.1071,121.5804],[25.1068,121.5825],[25.1083,121.5842],[25.1083,121.5853],[25.1139,121.5881],[25.1142,121.5899],[25.1136,121.5903],[25.1152,121.5935],[25.1146,121.5941],[25.1148,121.5948],[25.1142,121.596],[25.1162,121.5975],[25.1201,121.5989],[25.1203,121.5998],[25.1218,121.6008],[25.126,121.6017],[25.1262,121.6027],[25.1255,121.6035],[25.1259,121.6044],[25.1292,121.6075],[25.1302,121.6078],[25.1308,121.6046],[25.1346,121.6046],[25.1367,121.6057],[25.137,121.605],[25.1362,121.6041],[25.1374,121.603],[25.1379,121.6016],[25.1394,121.6005],[25.1403,121.5984],[25.1425,121.5971],[25.1435,121.5957],[25.1449,121.596],[25.1479,121.594],[25.1501,121.5938],[25.1513,121.5907],[25.1524,121.5894],[25.1559,121.5918],[25.1575,121.5918],[25.1605,121.5905],[25.1637,121.5899],[25.163,121.5881],[25.165,121.5844],[25.1656,121.5799],[25.1672,121.577],[25.1703,121.5775],[25.1753,121.5827],[25.1765,121.5827],[25.1772,121.5833],[25.1797,121.5822],[25.1802,121.5814],[25.182,121.5809],[25.1834,121.582],[25.1836,121.5829],[25.1849,121.5827],[25.1864,121.5819],[25.1879,121.5833],[25.1884,121.5828],[25.1888,121.584],[25.1924,121.5835],[25.193,121.5827],[25.194,121.5829],[25.1946,121.5838],[25.1954,121.5812],[25.1944,121.5791],[25.1953,121.5769],[25.1953,121.5759],[25.1946,121.5757],[25.1941,121.5733],[25.192,121.5715],[25.1887,121.5671],[25.1863,121.568],[25.1837,121.5681],[25.1819,121.5664],[25.1782,121.565],[25.1777,121.5627],[25.1745,121.5609],[25.1709,121.5631],[25.1696,121.5632],[25.1683,121.5621],[25.1646,121.5611],[25.1633,121.5612],[25.1611,121.5585],[25.1605,121.5557],[25.1541,121.5531],[25.1512,121.55],[25.1472,121.549],[25.1463,121.5493],[25.1434,121.5479],[25.1429,121.5463],[25.1415,121.5457],[25.1426,121.5426],[25.1416,121.5415],[25.1413,121.5396],[25.1407,121.5393],[25.139,121.5348],[25.1376,121.5332],[25.1371,121.5314],[25.1344,121.5303],[25.1337,121.5312],[25.1321,121.5309],[25.1275,121.5313],[25.1262,121.5298],[25.1242,121.5296],[25.1232,121.5262],[25.1218,121.5256],[25.1208,121.5257],[25.1198,121.5246],[25.1177,121.5236],[25.116,121.525],[25.1146,121.525],[25.1126,121.5258],[25.1114,121.5252],[25.1109,121.5227],[25.1095,121.5225],[25.1088,121.5212],[25.1069,121.5213],[25.1041,121.5198],[25.1035,121.5185],[25.0994,121.5172],[25.0974,121.5105],[25.0959,121.5093],[25.0965,121.5054],[25.0965,121.5014],[25.098,121.4976],[25.1003,121.4969],[25.1071,121.4971],[25.1104,121.4965],[25.1128,121.495],[25.1147,121.4921],[25.1153,121.4901],[25.115,121.4872],[25.1106,121.472],[25.1109,121.4685],[25.1117,121.4668],[25.1162,121.4609],[25.1111,121.4581]],
-  "北投區":[[25.1229,121.4588],[25.1162,121.4609],[25.1141,121.4632],[25.1109,121.4685],[25.1108,121.4735],[25.1153,121.4888],[25.1147,121.4921],[25.1128,121.495],[25.1104,121.4965],[25.1071,121.4971],[25.1003,121.4969],[25.0982,121.4973],[25.0966,121.5007],[25.0959,121.5093],[25.0974,121.5105],[25.0994,121.5172],[25.1035,121.5185],[25.1041,121.5198],[25.1069,121.5213],[25.1088,121.5212],[25.1095,121.5225],[25.1109,121.5227],[25.1114,121.5252],[25.1126,121.5258],[25.1146,121.525],[25.116,121.525],[25.1175,121.5235],[25.1196,121.5244],[25.1208,121.5257],[25.1229,121.526],[25.1236,121.5268],[25.1242,121.5296],[25.1262,121.5298],[25.1275,121.5313],[25.1321,121.5309],[25.1337,121.5312],[25.1344,121.5303],[25.1362,121.5308],[25.1371,121.5315],[25.1376,121.5332],[25.139,121.5348],[25.1402,121.5382],[25.1413,121.5396],[25.1416,121.5415],[25.1426,121.5426],[25.1415,121.5457],[25.1429,121.5463],[25.1434,121.5479],[25.1463,121.5493],[25.1472,121.549],[25.1512,121.55],[25.1541,121.5531],[25.1605,121.5557],[25.1611,121.5585],[25.1633,121.5612],[25.1646,121.5611],[25.1683,121.5621],[25.1696,121.5632],[25.1709,121.5631],[25.1745,121.5609],[25.1777,121.5627],[25.1782,121.565],[25.1819,121.5664],[25.1837,121.5681],[25.1863,121.568],[25.1887,121.5671],[25.192,121.5715],[25.1941,121.5733],[25.1946,121.5757],[25.1955,121.576],[25.195,121.5731],[25.1954,121.5717],[25.1963,121.5707],[25.1973,121.571],[25.1982,121.57],[25.1997,121.5661],[25.2045,121.5645],[25.2074,121.5629],[25.2095,121.5627],[25.2103,121.5592],[25.2087,121.5571],[25.2085,121.5549],[25.2044,121.5533],[25.2037,121.5516],[25.2021,121.5515],[25.2007,121.5528],[25.1989,121.5527],[25.1979,121.5521],[25.1971,121.5508],[25.1982,121.5488],[25.1981,121.5482],[25.197,121.5475],[25.1972,121.5468],[25.1957,121.5449],[25.1938,121.5433],[25.1893,121.5429],[25.1872,121.5407],[25.1867,121.5359],[25.1853,121.5352],[25.1837,121.5333],[25.1835,121.5307],[25.183,121.5293],[25.1831,121.5262],[25.1792,121.5218],[25.1747,121.5226],[25.1693,121.5199],[25.171,121.5136],[25.1708,121.5127],[25.1694,121.5113],[25.1694,121.5104],[25.1712,121.5071],[25.1711,121.5058],[25.1732,121.5049],[25.1733,121.5026],[25.1725,121.5026],[25.1713,121.5017],[25.1693,121.5018],[25.1683,121.5001],[25.1648,121.4986],[25.1604,121.4924],[25.153,121.4876],[25.1514,121.4874],[25.1508,121.4866],[25.1508,121.484],[25.1502,121.4829],[25.1471,121.4809],[25.1439,121.4767],[25.1427,121.4764],[25.1394,121.4727],[25.1375,121.4718],[25.1356,121.469],[25.1344,121.4684],[25.1315,121.4656],[25.1276,121.4643],[25.1243,121.4648],[25.1236,121.4617],[25.123,121.4613]],
-  "內湖區":[[25.092,121.552],[25.0892,121.5541],[25.0878,121.5574],[25.0867,121.5567],[25.0845,121.5577],[25.085,121.5594],[25.0843,121.5609],[25.0803,121.5626],[25.0788,121.564],[25.077,121.5702],[25.0758,121.5696],[25.074,121.5712],[25.0722,121.5719],[25.0691,121.5718],[25.0638,121.5693],[25.0585,121.5712],[25.0538,121.5717],[25.0525,121.5722],[25.0519,121.5735],[25.0535,121.5829],[25.0547,121.5865],[25.0563,121.589],[25.0596,121.5925],[25.0601,121.5937],[25.059,121.5997],[25.0597,121.6071],[25.0611,121.6101],[25.0641,121.6126],[25.0646,121.6139],[25.0639,121.6161],[25.0659,121.6168],[25.0652,121.6179],[25.0676,121.6176],[25.0677,121.6186],[25.0696,121.6215],[25.0732,121.6206],[25.0748,121.6216],[25.0746,121.6227],[25.0772,121.6233],[25.0778,121.6248],[25.0788,121.6251],[25.0781,121.6242],[25.0784,121.6239],[25.0791,121.6245],[25.0803,121.6242],[25.082,121.6259],[25.0826,121.6277],[25.0835,121.628],[25.0848,121.6276],[25.0865,121.6286],[25.0884,121.6281],[25.0905,121.626],[25.0915,121.6263],[25.0937,121.6251],[25.0951,121.6254],[25.0959,121.6263],[25.097,121.6255],[25.0973,121.6222],[25.0983,121.6215],[25.1011,121.6174],[25.1039,121.6154],[25.1052,121.6104],[25.1068,121.608],[25.1073,121.6063],[25.1089,121.5984],[25.1095,121.5975],[25.1113,121.5965],[25.1135,121.5955],[25.1142,121.5957],[25.1152,121.5935],[25.1136,121.5903],[25.1142,121.5899],[25.1139,121.5881],[25.1083,121.5853],[25.1083,121.5842],[25.1068,121.5825],[25.1071,121.5804],[25.105,121.5789],[25.1058,121.577],[25.1067,121.5767],[25.1067,121.5737],[25.1056,121.5707],[25.1047,121.5696],[25.1029,121.5687],[25.1022,121.5688],[25.0992,121.567],[25.0985,121.5628],[25.0978,121.5621],[25.0981,121.5591],[25.0985,121.5587],[25.0971,121.5578],[25.0961,121.5579],[25.0961,121.557],[25.0946,121.5562],[25.094,121.5546],[25.0925,121.5544],[25.0924,121.5522]],
-  "南港區":[[25.0141,121.5777],[25.0133,121.5781],[25.0123,121.5806],[25.0131,121.5837],[25.0139,121.5899],[25.0143,121.5913],[25.0149,121.5917],[25.0146,121.5935],[25.0155,121.5951],[25.0144,121.5972],[25.0148,121.5976],[25.015,121.6023],[25.0156,121.6029],[25.0191,121.6042],[25.0194,121.6082],[25.021,121.6093],[25.0199,121.6102],[25.0196,121.6127],[25.0191,121.6134],[25.0197,121.6161],[25.0184,121.6175],[25.0184,121.6205],[25.0173,121.6233],[25.0186,121.6262],[25.0195,121.6269],[25.0199,121.6289],[25.0222,121.6303],[25.0245,121.6308],[25.0256,121.6324],[25.024,121.6356],[25.0232,121.6357],[25.0241,121.6376],[25.0235,121.6408],[25.0246,121.643],[25.0236,121.6449],[25.0217,121.6462],[25.024,121.6499],[25.0244,121.6538],[25.0232,121.6576],[25.0236,121.6582],[25.0234,121.6607],[25.0227,121.6628],[25.0232,121.6641],[25.0247,121.6649],[25.026,121.6654],[25.0278,121.6648],[25.0299,121.6659],[25.0295,121.6648],[25.0304,121.6608],[25.0289,121.6577],[25.0279,121.6568],[25.0274,121.6551],[25.0279,121.6542],[25.0276,121.6526],[25.0281,121.6518],[25.0276,121.6502],[25.0281,121.6495],[25.0279,121.6488],[25.0286,121.648],[25.028,121.6467],[25.0294,121.6458],[25.0298,121.6443],[25.0305,121.6437],[25.032,121.6399],[25.0337,121.6379],[25.035,121.6349],[25.0348,121.6341],[25.0357,121.6335],[25.0351,121.6302],[25.0367,121.6295],[25.0379,121.6264],[25.0377,121.6249],[25.0396,121.6231],[25.0404,121.6216],[25.0435,121.6191],[25.048,121.6165],[25.0494,121.6162],[25.0508,121.6165],[25.0523,121.6182],[25.0535,121.6209],[25.0542,121.621],[25.0558,121.6202],[25.0566,121.6205],[25.0565,121.6216],[25.055,121.6234],[25.0553,121.6241],[25.0559,121.6242],[25.0603,121.6217],[25.062,121.62],[25.0631,121.6185],[25.0646,121.6139],[25.0641,121.6126],[25.0611,121.6101],[25.0597,121.6071],[25.059,121.5997],[25.0601,121.5937],[25.0596,121.5925],[25.0563,121.589],[25.0547,121.5865],[25.0535,121.5829],[25.053,121.5798],[25.0516,121.58],[25.0505,121.5796],[25.0442,121.5813],[25.0416,121.5855],[25.0416,121.5868],[25.0397,121.5871],[25.0368,121.5893],[25.0342,121.5894],[25.0313,121.5922],[25.0301,121.5914],[25.0285,121.5882],[25.0267,121.5866],[25.0237,121.5851],[25.0223,121.585],[25.0216,121.5844],[25.0186,121.5836],[25.0188,121.5828],[25.018,121.5815]],
-  "文山區":[[24.9979,121.5306],[24.9947,121.5317],[24.9905,121.5317],[24.9929,121.5341],[24.9951,121.5352],[24.9928,121.5369],[24.9918,121.5371],[24.9894,121.5366],[24.9885,121.537],[24.9876,121.5398],[24.9881,121.5441],[24.9873,121.5446],[24.9842,121.5447],[24.9836,121.5454],[24.9837,121.549],[24.9853,121.5508],[24.987,121.5509],[24.9869,121.5523],[24.9845,121.5539],[24.9801,121.5531],[24.9773,121.5539],[24.9765,121.5552],[24.9734,121.5561],[24.972,121.5576],[24.9684,121.5585],[24.9647,121.5613],[24.9646,121.5634],[24.964,121.5652],[24.9645,121.5703],[24.964,121.5727],[24.9652,121.5742],[24.9669,121.5746],[24.9666,121.5787],[24.9647,121.5822],[24.9647,121.5842],[24.9632,121.5857],[24.9637,121.5879],[24.9633,121.5885],[24.9645,121.5912],[24.9639,121.5919],[24.9642,121.5934],[24.9616,121.5948],[24.9605,121.5972],[24.9613,121.5984],[24.9609,121.6013],[24.963,121.6053],[24.9631,121.6083],[24.965,121.6104],[24.9654,121.612],[24.9664,121.6136],[24.9662,121.615],[24.9675,121.6169],[24.9668,121.6182],[24.9674,121.6198],[24.9687,121.6196],[24.9695,121.62],[24.9703,121.6196],[24.9717,121.6162],[24.9735,121.6144],[24.9734,121.6132],[24.9746,121.6112],[24.9742,121.6101],[24.9748,121.6086],[24.9744,121.6052],[24.9755,121.6038],[24.9767,121.6005],[24.9782,121.5995],[24.9787,121.5993],[24.9803,121.6006],[24.9865,121.5998],[24.9878,121.6018],[24.9904,121.602],[24.9917,121.5991],[24.993,121.5994],[24.9935,121.5985],[24.9945,121.5981],[24.9959,121.5988],[24.9964,121.5996],[24.9976,121.5997],[24.9984,121.6006],[25.0007,121.6005],[25.0028,121.5994],[25.0043,121.5977],[25.0044,121.5959],[25.0092,121.5959],[25.0123,121.5967],[25.0134,121.5976],[25.0146,121.5971],[25.0155,121.5953],[25.0146,121.5935],[25.0149,121.5917],[25.0143,121.5913],[25.0139,121.5899],[25.0131,121.5837],[25.0123,121.5806],[25.0133,121.5781],[25.0141,121.5777],[25.0145,121.5761],[25.0132,121.575],[25.0137,121.5725],[25.0115,121.5714],[25.0072,121.5649],[25.0081,121.5625],[25.0099,121.5612],[25.0101,121.5602],[25.0122,121.5583],[25.0117,121.556],[25.0092,121.5536],[25.0088,121.5525],[25.0096,121.5514],[25.0098,121.549],[25.0078,121.5447],[25.0079,121.5441],[25.0087,121.5436],[25.0081,121.5418],[25.0086,121.5392],[25.0083,121.538],[25.011,121.5372],[25.011,121.5362],[25.0086,121.532],[25.0063,121.5325],[25.0031,121.5342],[25.001,121.5314]]};
 const inRing = (la, ln) => { let c = false; for (let i = 0, j = TAIPEI_RING.length - 1; i < TAIPEI_RING.length; j = i++) { const [yi, xi] = TAIPEI_RING[i], [yj, xj] = TAIPEI_RING[j]; if ((yi > la) !== (yj > la) && ln < (xj - xi) * (la - yi) / (yj - yi) + xi) c = !c; } return c; };
 const inTaipei = (lat, lng) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= BOUNDS.lat[0] && lat <= BOUNDS.lat[1] && lng >= BOUNDS.lng[0] && lng <= BOUNDS.lng[1] && inRing(lat, lng);
 // Map layers = the 9 official 1999 main categories (by categories/<id>) + "none". Colors are fixed so a category looks the same on every screen.
@@ -1473,15 +1526,173 @@ function mapMessage(message, retry = false) {
 }
 function initMap() {
   if (mainLM) return;
-  mainLM = L.map("map", TAIPEI_VIEW);
-  addBase(mainLM);
-  // Non-interactive, so long-press and marker clicks still go through
-  for (const ring of Object.values(DISTRICT_RINGS)) L.polygon(ring, { className:"district", interactive:false }).addTo(mainLM);
-  mainLM.attributionControl.addAttribution('區界 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>');
+  mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25 });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
+  drawDistricts();
 }
+
+// City map: the 12 districts as flat colour blocks instead of a street basemap. Five colours, no two neighbours alike.
+// The districts pane sits under the overlay pane, so a raised (bringToFront) district never covers the report markers.
+const DIST_COLOR = { 北投區:"#ff8cc6", 士林區:"#ff9e1b", 內湖區:"#5bd8f5", 中山區:"#d9e35b", 大同區:"#5bd8f5", 松山區:"#ff8cc6",
+  信義區:"#d9e35b", 南港區:"#fff4c8", 大安區:"#ff9e1b", 中正區:"#ff8cc6", 萬華區:"#d9e35b", 文山區:"#5bd8f5" };
+const DIST_STYLE = { weight:1.5, color:"#ffffff", opacity:1, fillOpacity:.9 };
+let distLayers = {}, curDist = "", cityBounds = null, distGeo = null;
+// Which district a point is in, from the boundary file; until it loads, the report's own district field is used.
+const distAt = (lat, lng) => distGeo?.find(x => x.polys.some(p => inPoly(p, lng, lat)))?.d;
+async function drawDistricts() {
+  let gj;
+  try { gj = await tryTwice(async () => { const r = await fetch("districts.geojson"); if (!r.ok) throw new Error("districts " + r.status); return r.json(); }, 10000); }
+  catch { addBase(mainLM); return; } // the artifact build has no boundary file: fall back to the street map
+  mainLM.createPane("districts").style.zIndex = 350;
+  mainLM.createPane("dlabels").style.zIndex = 360; // own pane: inside "districts" the labels sat under the fills
+  distGeo = gj.features.map(f => ({ d:f.properties.district, polys:f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates }));
+  for (const r of markers.values()) { const ll = r.m.getLatLng(); r.dist = distAt(ll.lat, ll.lng) || r.i.district; }
+  L.geoJSON(gj, { pane:"districts", style: f => ({ ...DIST_STYLE, fillColor:DIST_COLOR[f.properties.district] || "#ddd" }),
+    onEachFeature: (f, l) => {
+      const d = f.properties.district;
+      distLayers[d] = l;
+      l.bindTooltip(d, { permanent:true, direction:"center", className:"dlabel", pane:"dlabels", opacity:1 });
+      l.on("mouseover", () => { if (curDist) return; l.getElement()?.classList.add("hot"); l.bringToFront(); l.setTooltipContent(`${d}・點擊查看各里`); l.getTooltip().getElement()?.classList.add("hot"); });
+      l.on("mouseout", () => { l.getElement()?.classList.remove("hot"); l.setTooltipContent(d); l.getTooltip().getElement()?.classList.remove("hot"); });
+      l.on("click", () => openDistrict(d));
+    } }).addTo(mainLM);
+  cityBounds = L.geoJSON(gj).getBounds(); mainLM.fitBounds(cityBounds, { padding:[12, 12] });
+  mainLM.attributionControl.addAttribution("里界 © 臺北市政府民政局");
+}
+function openDistrict(d) {
+  const l = distLayers[d]; if (!l) return;
+  curDist = d;
+  for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
+  l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone"); mapMode();
+  mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
+  $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
+  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
+  loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
+}
+function closeDistrict() {
+  curDist = ""; curLi = "";
+  for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
+  liGroup?.clearLayers(); liLayers = {}; mapMode();
+  $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
+  cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
+  $("distBack").hidden = true;
+}
+$("distBack").addEventListener("click", closeDistrict);
+// Phones: inside a district the map gets shorter and the 里 list / 里 page follows it directly (CSS .indist / .inli);
+// the map is resized before any fly so the new bounds use the new height.
+function mapMode() {
+  const v = $("v-map"); v.classList.toggle("indist", !!curDist); v.classList.toggle("inli", !!curLi);
+  mainLM.invalidateSize({ pan:false });
+  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:"smooth" }), 600);
+}
+
+// Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
+let liGeo = null, liP = null, liGroup = null, liLayers = {}, curLi = "";
+const LI_STYLE = { weight:1, color:"#ffffff", opacity:.9, fillColor:"#ffffff", fillOpacity:0 };
+function loadLi() {
+  return liP ||= tryTwice(async () => { const r = await fetch("li.geojson"); if (!r.ok) throw new Error("li " + r.status); return r.json(); }, 15000)
+    .then(gj => { liGeo = gj.features.map(f => ({ ...f.properties, polys: f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates, f }));
+      for (const x of liGeo) { const pts = x.polys.flat(2); x.box = [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))]; } })
+    .catch(e => { liP = null; throw e; });
+}
+// Even-odd over all rings of a polygon, so holes count as outside. GeoJSON rings are [lng, lat].
+const inPoly = (rings, x, y) => { let c = false; for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const liAt = (lat, lng) => liGeo?.find(x => lng >= x.box[0] && lng <= x.box[2] && lat >= x.box[1] && lat <= x.box[3] && x.polys.some(p => inPoly(p, lng, lat)));
+function drawLi(d) {
+  if (!liGroup) { mainLM.createPane("li").style.zIndex = 355; liGroup = L.layerGroup().addTo(mainLM); }
+  liGroup.clearLayers(); liLayers = {};
+  for (const x of liGeo.filter(x => x.district === d)) {
+    const l = L.geoJSON(x.f, { pane:"li", style:LI_STYLE }).getLayers()[0];
+    l.bindTooltip(x.li, { sticky:true, className:"lilabel" });
+    l.on("mouseover", () => { if (curLi !== x.li) l.setStyle({ fillOpacity:.35 }); });
+    l.on("mouseout", () => { if (curLi !== x.li) l.setStyle(LI_STYLE); });
+    l.on("click", () => selectLi(x.li));
+    liLayers[x.li] = l; liGroup.addLayer(l);
+  }
+}
+function selectLi(li) {
+  const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  curLi = li; const l = liLayers[li]; if (!l) return;
+  l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront(); mapMode();
+  mainLM.flyToBounds(l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
+  for (const b of document.querySelectorAll("#liList button")) b.setAttribute("aria-current", b.dataset.li === li);
+  $("liPanel").hidden = true; $("liDetail").hidden = false; renderLiDetail();
+}
+function backToList() {
+  const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList(); mapMode();
+  if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
+}
+$("liBack").onclick = backToList;
+
+// Contacts: data/li-contacts.json (one row per 里, keyed by code) and data/councilors.json (6 election zones).
+// Teammates fill the names and office phones; an empty row shows "資料待補". Loaded once, on the first 里 detail.
+let contactsP = null, liContacts = {}, councilors = [];
+const getJson = f => tryTwice(async () => { const r = await fetch(f); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); }, 10000);
+function loadContacts() {
+  return contactsP ||= Promise.all([getJson("li-contacts.json").catch(() => []), getJson("councilors.json").catch(() => [])]).then(([rows, cs]) => {
+    for (const r of Array.isArray(rows) ? rows : []) if (r && isStr(r.code)) liContacts[r.code] = r;
+    councilors = Array.isArray(cs) ? cs : [];
+  });
+}
+const telHref = p => "tel:" + String(p).replace(/[^\d+#]/g, "");
+const contactRow = (role, name, phone) => `<div class="ldrow"><div class="who"><span class="role">${esc(role)}</span><b>${name ? esc(name) : '<span class="note">資料待補</span>'}</b>${phone ? `<span class="tel">${esc(phone)}</span>` : ""}</div>${phone ? `<a class="btn sm" href="${esc(telHref(phone))}">撥打</a>` : ""}</div>`;
+// Key events = every report in the 里: unfinished first, then most +1, then status (處理中 before 已受理), then newest.
+function liEvents(x) {
+  const c = counts(), rank = { progress:0, open:1, fixed:2 };
+  return issues.filter(i => inTaipei(i.lat, i.lng) && liAt(i.lat, i.lng) === x)
+    .map(i => ({ i, v:c[i.id] || 0 }))
+    .sort((a, b) => (a.i.status === "fixed") - (b.i.status === "fixed") || b.v - a.v || (rank[a.i.status] ?? 1) - (rank[b.i.status] ?? 1) || String(b.i.createdAt).localeCompare(String(a.i.createdAt)));
+}
+function renderLiDetail() {
+  const x = liGeo?.find(y => y.district === curDist && y.li === curLi); if (!x) return;
+  $("ldName").textContent = x.li; $("ldDist").textContent = x.district;
+  const draw = () => {
+    if (curLi !== x.li) return;
+    const ct = liContacts[x.code] || {}, zone = councilors.find(z => Array.isArray(z.districts) && z.districts.includes(x.district));
+    const ms = (zone && Array.isArray(zone.members) ? zone.members : []).filter(m => m && (m.name || m.phone));
+    $("ldContacts").innerHTML = contactRow("里長", ct.chief, ct.phone) +
+      (ms.length ? ms.map(m => contactRow(`議員（${zone.zone}）${m.party ? "・" + m.party : ""}`, m.name, m.phone)).join("") : contactRow(`議員${zone ? `（${zone.zone}）` : ""}`, "", ""));
+  };
+  draw(); loadContacts().then(draw);
+  const ev = liEvents(x);
+  $("ldNone").hidden = ev.length > 0;
+  $("ldEvents").innerHTML = ev.slice(0, 6).map(({ i, v }) => { const st = STATUS[i.status] || STATUS.open;
+    return `<li><button type="button" data-go="${esc(i.id)}"><span class="t">${esc(i.title)}</span><span class="chip" style="--c:${st[1]}">${esc(st[0])}</span>
+      <span class="meta">#${esc(i.n)} · ${ago(i.createdAt)}${v ? ` · +${v}` : ""}</span></button></li>`; }).join("") +
+    (ev.length > 6 ? `<li class="note more">另有 ${ev.length - 6} 件，可在陳情列表查看</li>` : "");
+}
+$("ldEvents").addEventListener("click", goIssue);
+// Report from a 里: a point inside its polygon (bounds centre, else the first inside point on a 9×9 grid) with the district preset
+$("ldReport").onclick = () => {
+  const x = liGeo?.find(y => y.district === curDist && y.li === curLi); if (!x) return;
+  const [w, so, e, n] = x.box, inside = (lng, lat) => x.polys.some(p => inPoly(p, lng, lat));
+  let pt = [(so + n) / 2, (w + e) / 2];
+  if (!inside(pt[1], pt[0])) for (let a = 1; a < 10 && !inside(pt[1], pt[0]); a++) for (let b = 1; b < 10; b++) { const q = [so + (n - so) * a / 10, w + (e - w) * b / 10]; if (inside(q[1], q[0])) { pt = q; break; } }
+  const [lat, lng] = pt;
+  reportAt({ lat, lng }, "里", { district:x.district });
+  lookup(lat, lng).then(g => { if (g && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo({ ...g, district:x.district }, lat, lng); });
+};
+// Unfinished = not fixed. Reports without a point, or outside every 里, are left out of the 里 counts.
+function liOpen(d) {
+  const by = {};
+  for (const i of issues) if (i.status !== "fixed" && inTaipei(i.lat, i.lng)) { const x = liAt(i.lat, i.lng); if (x && x.district === d) (by[x.li] ||= []).push(i); }
+  return by;
+}
+function renderLiList() {
+  if (!curDist || !liGeo) return;
+  if (curLi) renderLiDetail();
+  const all = liGeo.filter(x => x.district === curDist), by = liOpen(curDist);
+  const rows = all.filter(x => by[x.li]).sort((a, b) => by[b.li].length - by[a.li].length || a.code.localeCompare(b.code));
+  const total = rows.reduce((n, x) => n + by[x.li].length, 0);
+  $("liSum").textContent = `${all.length} 里・未完成 ${total} 件`;
+  $("liList").innerHTML = rows.map(x => `<li><button type="button" data-li="${esc(x.li)}" aria-current="${x.li === curLi}"><span class="nm">${esc(x.li)}</span><span class="cnt">${by[x.li].length}</span><span class="chev" aria-hidden="true">›</span></button></li>`).join("");
+  $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有未完成陳情` : "";
+}
+$("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
+
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
   <div class="meta">座標 ${coordText(lat, lng)}</div>${ok ? `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" type="button" data-askok>確認通報</button><button class="btn" type="button" data-askno>取消</button></div>` : ""}`;
@@ -1539,9 +1750,15 @@ if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
 function markerStyle(i, votes, key) {
-  const color = LAYERS.find(l => l.id === key).color, fixed = i.status === "fixed";
-  return { radius:7 + Math.min(4, votes), color, weight:2, opacity:fixed ? .5 : 1, fillColor:color, fillOpacity:fixed ? .25 : .75 };
+  return { color:LAYERS.find(l => l.id === key).color, fixed:i.status === "fixed", h:28 + 2 * Math.min(4, votes) };
 }
+// Report marker: a map pin in the category colour; more +1 votes make it a little taller, fixed cases are faded.
+const pinIcon = ({ color, fixed, h }) => L.divIcon({ className:"rpin" + (fixed ? " fixed" : ""), iconSize:[h * .75, h], iconAnchor:[h * .375, h], popupAnchor:[0, -h + 4],
+  html:`<svg viewBox="0 0 24 32" width="${h * .75}" height="${h}" aria-hidden="true"><path d="M12 31s10-11.2 10-19A10 10 0 0 0 2 12c0 7.8 10 19 10 19z" fill="${color}" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>` });
+// Live pins are added to the map one by one: in a district, all of its pins; on the city map, only the ticked layers.
+const pinVisible = r => !histOn && (curDist ? r.dist === curDist : layerOn[r.key] === true);
+const setPin = r => { const want = pinVisible(r); if (want !== mainLM.hasLayer(r.m)) want ? r.m.addTo(mainLM) : r.m.remove(); };
+const setPins = () => { if (mainLM) for (const r of markers.values()) setPin(r); };
 function popupHtml(id) {
   const r = markers.get(id); if (!r) return "";
   const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
@@ -1552,6 +1769,7 @@ function popupHtml(id) {
 // Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
 function syncMap() {
   if (!mainLM || histOn) return;
+  renderLiList();
   const c = counts(), live = new Set(), tally = {}, now = Date.now();
   for (const i of issues) {
     if (!inTaipei(i.lat, i.lng)) continue;
@@ -1560,19 +1778,19 @@ function syncMap() {
     tally[key] = (tally[key] || 0) + 1;
     let r = markers.get(i.id);
     if (!r) {
-      r = { m:L.circleMarker([i.lat, i.lng], st), key, sig, votes, i };
+      r = { m:L.marker([i.lat, i.lng], { icon:pinIcon(st), keyboard:false, riseOnHover:true }), key, sig, votes, i, dist:distAt(i.lat, i.lng) || i.district };
       r.m.bindPopup(""); r.m.on("popupopen", () => r.m.setPopupContent(popupHtml(i.id)));
-      markers.set(i.id, r); groups[key].addLayer(r.m);
+      markers.set(i.id, r); setPin(r);
       if (now - (fresh.get(i.id) || 0) < 3000) pulse(r.m);
       continue;
     }
-    if (r.key !== key) { groups[r.key].removeLayer(r.m); groups[key].addLayer(r.m); r.key = key; }
-    if (r.sig !== sig) { r.m.setStyle(st); r.sig = sig; }
-    const ll = r.m.getLatLng(); if (ll.lat !== i.lat || ll.lng !== i.lng) r.m.setLatLng([i.lat, i.lng]);
+    if (r.key !== key) { r.key = key; setPin(r); }
+    if (r.sig !== sig) { r.m.setIcon(pinIcon(st)); r.sig = sig; }
+    const ll = r.m.getLatLng(); if (ll.lat !== i.lat || ll.lng !== i.lng) { r.m.setLatLng([i.lat, i.lng]); r.dist = distAt(i.lat, i.lng) || i.district; setPin(r); }
     r.i = i; r.votes = votes;
     if (r.m.isPopupOpen()) r.m.setPopupContent(popupHtml(i.id));
   }
-  for (const [id, r] of markers) if (!live.has(id)) { groups[r.key].removeLayer(r.m); markers.delete(id); }
+  for (const [id, r] of markers) if (!live.has(id)) { r.m.remove(); markers.delete(id); }
   const sig = LAYERS.map(l => tally[l.id] || 0).join() + cats.map(x => x.name).join() + issues.length;
   if (sig === layerSig) return;
   layerSig = sig;
@@ -1581,10 +1799,19 @@ function syncMap() {
 }
 function layerPanel(tally, foot) {
   $("mapLayers").innerHTML = LAYERS.map(l => { const name = l.id === "none" ? "未分類" : (cats.find(x => x.id === l.id) || {}).name || l.id;
-    return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === false ? "" : "checked"}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
-  $("mapFoot").textContent = foot;
+    return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === true ? "checked" : ""}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
+  $("mapFoot").textContent = foot; allBtn();
 }
-// Flash a new marker for 3s via CSS (.mk-new on its SVG path). A hidden layer has no element, so there is nothing to flash.
+const allBtn = () => { const on = LAYERS.every(l => layerOn[l.id] === true); $("layerAll").textContent = on ? "全不選" : "全選"; $("layerAll").setAttribute("aria-pressed", String(on)); };
+$("layerAll").onclick = () => {
+  const on = !LAYERS.every(l => layerOn[l.id] === true);
+  for (const l of LAYERS) layerOn[l.id] = on;
+  for (const b of document.querySelectorAll("[data-layer]")) b.checked = on;
+  if (histOn) for (const l of LAYERS) on ? mainLM.addLayer(histGroups[l.id]) : mainLM.removeLayer(histGroups[l.id]);
+  else setPins();
+  allBtn();
+};
+// Flash a new pin for 3s via CSS (.mk-new on its icon). A hidden pin has no element, so there is nothing to flash.
 function pulse(m) { const el = m.getElement(); if (!el) return; el.classList.add("mk-new"); setTimeout(() => el.classList.remove("mk-new"), 3000); }
 // Issues that appear after the first complete load are "new"; the first load is the baseline.
 function trackNew() {
@@ -1602,7 +1829,8 @@ function trackNew() {
 $("mapLayers").addEventListener("change", e => {
   const g = b => (histOn ? histGroups : groups)[b.dataset.layer];
   const b = e.target.closest("[data-layer]"); if (!b || !g(b)) return;
-  layerOn[b.dataset.layer] = b.checked;
+  layerOn[b.dataset.layer] = b.checked; allBtn();
+  if (!histOn) return setPins();
   b.checked ? mainLM.addLayer(g(b)) : mainLM.removeLayer(g(b));
 });
 // Popup button: jump to Issues with that case expanded. Filters are cleared so the case is certain to be listed.
@@ -1618,8 +1846,9 @@ function goIssue(e) {
 
 // ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
 // The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
-let histFn = null, hist = null, histDays = [], histGroups = {}, histR = null, histTimer = null;
+let histFn = null, hist = null, histDays = [], histGroups = {}, histIcons = {}, histSaved = null, histTimer = null;
 let histWanted = false, histIntentVersion = 0, histLoadP = null, histApplyP = null;
+const setLayers = f => { for (const l of LAYERS) layerOn[l.id] = f(l.id); for (const b of document.querySelectorAll("[data-layer]")) b.checked = layerOn[b.dataset.layer]; allBtn(); };
 const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
 const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(Date.UTC(+y, m - 1, +d)).getUTCDay()]}）`; };
 function setHist(on) {
@@ -1633,12 +1862,10 @@ function setHist(on) {
     $("histRow").hidden = $("histSrc").hidden = true;
     $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
     if (!mainLM) return;
-    for (const l of LAYERS) {
-      if (histGroups[l.id]) mainLM.removeLayer(histGroups[l.id]);
-      if (layerOn[l.id] !== false) mainLM.addLayer(groups[l.id]);
-    }
+    for (const l of LAYERS) if (histGroups[l.id]) mainLM.removeLayer(histGroups[l.id]);
+    if (histSaved) { const was = histSaved; histSaved = null; setLayers(id => was[id] === true); }
     for (const g of Object.values(histGroups)) g.clearLayers();
-    layerSig = ""; syncMap();
+    layerSig = ""; syncMap(); setPins();
     return;
   }
 
@@ -1675,12 +1902,15 @@ function activateHistory(request = histIntentVersion) {
     }
     if (request !== histIntentVersion || !histWanted || !mainLM || curView !== "map") return;
     $("histDay").value = histDays.length - 1; // every opening starts on the newest day
+    // The timeline opens with every layer ticked; closing it puts back the ticks the citizen had on the live map.
+    if (!histOn) { histSaved = { ...layerOn }; setLayers(() => true); }
     histOn = true;
     for (const l of LAYERS) {
       histGroups[l.id] ||= L.layerGroup();
       const [show, hide] = [histGroups[l.id], groups[l.id]];
-      mainLM.removeLayer(hide); if (layerOn[l.id] !== false) mainLM.addLayer(show);
+      mainLM.removeLayer(hide); if (layerOn[l.id] === true) mainLM.addLayer(show);
     }
+    setPins();
     $("histRow").hidden = $("histSrc").hidden = false;
     $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
     drawHist();
@@ -1694,12 +1924,12 @@ function activateHistory(request = histIntentVersion) {
 }
 function drawHist() {
   const key = histDays[+$("histDay").value], list = hist.days[key] || [], tally = {};
-  histR ||= L.canvas({ padding:.3 }); // ~470 points a day: canvas keeps panning smooth on phones
   for (const g of Object.values(histGroups)) g.clearLayers();
   list.forEach(([ri, ii, hm], k) => {
     const rd = hist.roads[ri], it = hist.items[ii], lay = groups[it[1]] ? it[1] : "none", spread = rd[4] ? .0012 : .006;
     const color = (LAYERS.find(l => l.id === lay) || {}).color;
-    const m = L.circleMarker([rd[2] + noise(ri * 7919 + k) * spread, rd[3] + noise(ri * 104729 + k) * spread], { renderer:histR, radius:5, weight:1, color:"#fff", fillColor:color, fillOpacity:.85 });
+    // Same pin as live reports, a bit smaller; one shared icon per colour (~470 pins a day)
+    const m = L.marker([rd[2] + noise(ri * 7919 + k) * spread, rd[3] + noise(ri * 104729 + k) * spread], { icon:histIcons[color] ||= pinIcon({ color, fixed:false, h:22 }), keyboard:false });
     m.bindPopup(`<b>${esc(it[0])}</b><div class="meta">${esc(rd[0] + rd[1])} · ${dayLabel(key)} ${String(hm).padStart(4, "0").replace(/(..)$/, ":$1")}</div><div class="meta">${rd[4] ? "路段" : "行政區"}概略位置</div>`);
     histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
   });
@@ -1742,7 +1972,8 @@ $("liveList").addEventListener("click", e => {
   const b = e.target.closest("[data-live]"); if (!b) return;
   const r = markers.get(b.dataset.live);
   if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
-  if (!mainLM.hasLayer(groups[r.key])) { layerOn[r.key] = true; mainLM.addLayer(groups[r.key]); const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; }
+  if (curDist && r.dist !== curDist) closeDistrict();
+  if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
   $("map").scrollIntoView({ block:"center", behavior:"smooth" });
   mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
 });
@@ -2005,8 +2236,8 @@ const themeLabel = () => { $("themeBtn").textContent = darkNow() ? "淺色模式
 $("themeBtn").onclick = () => { const t = darkNow() ? "light" : "dark"; document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch {} themeLabel(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeLabel);
 themeLabel();
-// Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
-const homeView = () => issueIdFromHash() !== null ? "issues" : VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
+// Every visitor lands on the district map; a #view or a shared case link in the URL still opens that view.
+const homeView = () => issueIdFromHash() !== null ? "issues" : VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "map";
 function syncLocation() {
   if (syncedLocation === location.href) return;
   syncedLocation = location.href;
