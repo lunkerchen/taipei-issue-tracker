@@ -5,7 +5,8 @@ const MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5" };
 // Move prompt building into the Worker if the endpoint gets abused.
 const PREFIXES = ["你是台北市 1999 陳情分派員", "你是台北市政府的工程師"];
 const err = (status, error) => Response.json({ error }, { status });
-const PATH = /^[\w:-]{1,80}\/[\w:-]{1,80}$/, BODY_MAX = 40000;
+// Doc ids may contain dots (release tags are v<year>.<week>); "." and ".." stay rejected.
+const PATH = /^[\w:-]{1,80}\/(?!\.{1,2}$)[\w:.-]{1,80}$/, BODY_MAX = 40000;
 const enc = new TextEncoder();
 const hub = env => env.HUB.get(env.HUB.idFromName("main"));
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
@@ -30,8 +31,12 @@ async function writeDb(req, env) {
   let b;
   try { if (text.length > BODY_MAX) return err(413, "too_large"); b = JSON.parse(text); } catch { return err(400, "bad_json"); }
   const { op, path, data } = b || {};
-  if (!["set", "update", "delete"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
-  if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
+  if (!["set", "update", "delete", "append-note", "append-addendum", "create-report"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
+  if (op === "append-note" || op === "create-report") {
+    if (admin || path !== `reports/${id}`) return err(403, "forbidden");
+  } else if (op === "append-addendum") {
+    if (admin || path !== `addenda/${id}`) return err(403, "forbidden");
+  } else if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 
