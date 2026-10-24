@@ -1,4 +1,4 @@
-// Attach the GPT Image demo photos to the 40 seed cases.
+// Attach the GPT Image demo photos to the seed cases (demo-01 … demo-57).
 // Usage: node scripts/demo-photos.mjs <dir with demo-XX.png>
 //   1. converts each PNG to a 1280x960 JPEG (sips), 2. uploads it to R2 as demo/demo-XX.jpg (wrangler, remote),
 //   3. adds photos:["demo/demo-XX.jpg"] to worker/data.json, 4. with ADMIN and BASE set, writes the same into the live Hub.
@@ -23,7 +23,11 @@ for (const key of Object.keys(items).sort()) {
   const png = join(dir, key + ".png");
   if (!existsSync(png)) { console.log("skip (no image)", key); continue; }
   const jpg = join(tmp, key + ".jpg");
-  execFileSync("sips", ["-s", "format", "jpeg", "-s", "formatOptions", "80", "-z", "960", "1280", png, "--out", jpg], { stdio: "ignore" });
+  // Busy scenes (branches, leaves) can pass 650 KB at quality 80, so step the quality down
+  for (const q of ["80", "70", "60"]) {
+    execFileSync("sips", ["-s", "format", "jpeg", "-s", "formatOptions", q, "-z", "960", "1280", png, "--out", jpg], { stdio: "ignore" });
+    if (readFileSync(jpg).length < 650 * 1024) break;
+  }
   assert.ok(readFileSync(jpg).length < 650 * 1024, key + " jpeg too large");
   execFileSync("npx", ["wrangler", "r2", "object", "put", `taipei-issue-photos/demo/${key}.jpg`, "--file", jpg, "--content-type", "image/jpeg", "--remote"],
     { cwd: worker, stdio: "ignore", timeout: 120000 });

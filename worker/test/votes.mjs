@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const src = readFileSync(new URL("../../taipei-issues.html", import.meta.url), "utf8");
-const handler = src.slice(src.indexOf("async function setVote("), src.indexOf("function heatmap()"));
+const handler = src.slice(src.indexOf("function setVote("), src.indexOf("function heatmap()"));
 const make = new Function("db", "initial", `
   let myVotes = { ...initial }, me = "visitor";
+  const pendingVoteWrites = new Map();
   const render = () => {}, fail = () => {};
   ${handler}
   return { vote: setVote, state: () => myVotes };
