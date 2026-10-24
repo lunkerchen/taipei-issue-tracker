@@ -52,6 +52,20 @@ try {
   assert.match(status, /重設沒有完成/, "snapshot reset failure explains what happened");
   assert.equal(await page.locator("#resetBtn").isEnabled(), true, "snapshot reset button is usable again");
   await page.close();
+
+  // 3) The reset succeeds, but the follow-up reload fails: the status must still report success.
+  page = await newPage();
+  await page.route("**/api/reset", route => route.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify({ ok: true, docs: 78, removed: 6, seq: 999 }) }));
+  await page.route("**/api/db", route => route.request().method() === "GET"
+    ? route.fulfill({ status: 500, contentType: "application/json", body: '{"error":"qa"}' }) : route.continue());
+  await page.locator("#seedBtn").click();
+  await page.locator("#seedBtn").click();
+  await page.locator("#snapStatus").filter({ hasText: "已重設模擬資料" }).waitFor({ timeout: 10000 });
+  status = await page.locator("#snapStatus").textContent();
+  assert.match(status, /78 份文件/, "a successful reset keeps its result when the reload fails");
+  assert.doesNotMatch(await page.locator("#toast").textContent(), /連不上伺服器/, "no false failure toast");
+  await page.close();
   console.log("reset failures clear their status");
 } finally {
   await browser.close();
