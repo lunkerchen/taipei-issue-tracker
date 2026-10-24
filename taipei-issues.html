@@ -57,6 +57,9 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .repo h1{color:var(--link)}
 .vote:disabled{cursor:default}
 .detail{grid-column:2/4;display:flex;flex-direction:column;gap:10px;padding:6px 0 4px}
+.share-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.share-url{flex:1 1 260px;min-width:0}
+.share-notice{padding:10px 14px;text-align:left;color:var(--fg);border-bottom:1px solid var(--line)}
 .detail .body{white-space:pre-wrap;max-width:68ch}
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .photos a{flex:0 1 180px;min-width:0}
@@ -64,6 +67,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .contact{border:0;padding:0;margin:0 0 10px;display:grid;gap:6px}.contact[hidden]{display:none}.contact .row input{flex:1 1 140px;min-width:0}
 .addl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.addnote{display:grid;gap:6px;margin:0 0 12px}.addnote textarea{width:100%;box-sizing:border-box;min-height:56px;font:inherit}
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
+.doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
+.doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
 .lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
 .lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
 .lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
@@ -171,7 +176,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;height:calc(100vh - var(--hdr,170px));min-height:420px}
 .mapbox{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:0;isolation:isolate}
 #map{position:absolute;inset:0}
-.mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
+.mapmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
@@ -334,6 +339,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
     <button type="button" data-view="releases">Releases</button>
     <button type="button" data-view="admin" id="navAdmin" hidden>後台</button>
   </nav>
+  <div class="empty share-notice" id="shareNotice" role="status" hidden></div>
 
   <div class="view" id="v-issues">
 
@@ -368,14 +374,16 @@ Switched to branch 'taipei'
         <span class="status" id="locStatus" role="status"></span>
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
-      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有負責局處看得到，不會公開）</legend>
+      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有管理者看得到，不會公開）</legend>
         <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼"></div>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。不勾選時，身分只用於聯繫查證，不會告知被檢舉人。</label>
       </fieldset>
+      <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
+      <label class="note"><input type="checkbox" id="agree" required> 我已閱讀<a href="#privacy" data-doc="privacy">隱私權告知</a>與<a href="#terms" data-doc="terms">使用條款</a>，同意本站依告知內容蒐集、處理及利用我填寫的資料。</label>
       <div class="row">
         <select id="newDistrict" aria-label="行政區"></select>
-        <button class="btn primary" id="submitBtn" type="submit">Submit new issue</button>
-        <button class="btn" type="button" id="cancelBtn">Cancel</button>
+        <button class="btn primary" id="submitBtn" type="submit">預覽通報</button>
+        <button class="btn" type="button" id="cancelBtn">取消</button>
         <span class="status" id="newStatus" role="status"></span>
       </div>
     </form>
@@ -409,7 +417,7 @@ Switched to branch 'taipei'
       <div class="mapcol">
       <div class="mapbox">
         <div id="map" role="application" aria-label="陳情地圖"></div>
-        <div class="mapmsg" id="mapMsg"></div>
+        <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
         <button class="btn distback" type="button" id="distBack" hidden></button>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
@@ -497,11 +505,68 @@ Switched to branch 'taipei'
     </div></div>
   </section>
 
-  <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
+  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
+<dialog class="doc" id="privacy" aria-labelledby="privacyH">
+  <h2 id="privacyH">隱私權告知</h2>
+  <p class="note">依個人資料保護法第 8 條告知。最後更新：2026-10-24。</p>
+  <h3>誰蒐集你的資料</h3>
+  <p>本站由 Laban Chen 個人開發與營運，不是臺北市政府。聯絡信箱：<a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
+  <h3>目的</h3>
+  <p>受理與顯示市民通報的市政問題、聯繫通報人查證，以及防止濫用。</p>
+  <h3>蒐集哪些資料、誰看得到</h3>
+  <ul>
+    <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
+    <li><b>不公開</b>：姓名、手機，以及是否實名檢舉。只有本站管理者看得到。</li>
+    <li><b>訪客 ID</b>：存在你的瀏覽器（localStorage），用來辨識「我的陳情」。清除瀏覽器資料後，就無法再補充原本的陳情。</li>
+    <li><b>IP 位址</b>：用於限流與防洗版，約 24 小時後刪除。Cloudflare 的服務紀錄依 Cloudflare 的政策保存。</li>
+    <li><b>瀏覽器暫存</b>：深色或淺色模式設定（localStorage）；本次填寫的姓名與手機（sessionStorage，關閉分頁後清除）。</li>
+  </ul>
+  <h3>第三方處理與跨境傳輸</h3>
+  <ul>
+    <li>Anthropic（美國）：處理已遮蔽個資的陳情文字，做 AI 分類。照片、姓名與手機不會送出。</li>
+    <li>Cloudflare：網站主機、資料庫與照片儲存，機房可能在臺灣以外。</li>
+    <li>OpenStreetMap Nominatim：由本站伺服器代查地址與座標。</li>
+    <li>內政部國土測繪中心：地圖圖磚由你的瀏覽器直接下載，對方會收到你的 IP。</li>
+  </ul>
+  <h3>保存期間</h3>
+  <p>保存到本服務停止營運為止。上傳後沒有送出的照片目前不會自動刪除。你可以隨時來信要求刪除。</p>
+  <h3>你的權利</h3>
+  <p>你可以依個資法第 3 條，請求查詢、閱覽、複製、補充或更正、停止蒐集處理利用，以及刪除你的資料。請寄信到上面的信箱，並附上陳情編號。</p>
+  <h3>不提供資料的影響</h3>
+  <p>姓名與手機是必填。不提供時，無法送出陳情。</p>
+  <form method="dialog"><button class="btn">關閉</button></form>
+</dialog>
+<dialog class="doc" id="terms" aria-labelledby="termsH">
+  <h2 id="termsH">使用條款</h2>
+  <p class="note">最後更新：2026-10-24。</p>
+  <h3>非官方服務</h3>
+  <p>本站是個人開發的示範專案，不是臺北市政府或 1999 市民當家熱線的網站，也沒有受市府委託。陳情不會轉給市府或任何局處。網站上的局處、案件狀態、修繕單與 SLA 都是模擬，不代表市府的實際處理。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
+  <h3>你張貼的內容</h3>
+  <ul>
+    <li>你要為自己送出的內容負責。只寫你親眼看到的事實。</li>
+    <li>不要張貼不實指控、他人個資、可辨識的人臉或車牌、廣告，或違法內容。</li>
+    <li>涉及特定店家或個人時，只描述事實，不要加上評論或推測。</li>
+  </ul>
+  <h3>管理</h3>
+  <p>管理者可以不經通知隱藏、改派或刪除內容。對處理方式有意見，請寄信到 <a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
+  <h3>AI 分類</h3>
+  <p>分類、負責局處與重複判斷由 Claude 自動產生，可能出錯。</p>
+  <h3>服務與責任</h3>
+  <p>本站依現狀提供，可能隨時中斷、修改或停止，不保證資料完整或持續保存。</p>
+  <h3>資料來源與授權</h3>
+  <ul>
+    <li>歷史 1999 派工：<a href="https://data.taipei/" target="_blank" rel="noopener">臺北市政府資料開放平台</a>，依政府資料開放授權條款第 1 版使用。</li>
+    <li>底圖：內政部國土測繪中心臺灣通用電子地圖。</li>
+    <li>地址與座標：© OpenStreetMap contributors，ODbL 授權。</li>
+    <li>跑馬燈：Bing News、PTT Taipei 板，版權屬原作者。</li>
+    <li>示範照片由 AI 生成，不是真實現場。</li>
+  </ul>
+  <form method="dialog"><button class="btn">關閉</button></form>
+</dialog>
 <dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
@@ -594,6 +659,7 @@ const ICON = {
 
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
+let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -620,6 +686,9 @@ function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
   $("newBtn").hidden = $("navReport").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
+  $("cancelBtn").textContent = admin ? "Cancel" : "取消";
+  $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -737,6 +806,7 @@ function build(checkMine) {
   issues = all.filter(i => admin || !hiddenFor(i));
   if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
   if (checkMine) mine = null;
+  if (pendingShareId !== null) resolveShareRoute();
   render();
 }
 
@@ -761,11 +831,17 @@ async function act(i, list, patch = {}) {
 }
 
 async function setVote(id, on) {
-  const prev = myVotes, next = { ...myVotes };
-  if (on) next[id] = true; else delete next[id];
-  myVotes = next; render();
-  try { await db.collection("votes").doc(me).set({ issues: next }); }
-  catch (e) { myVotes = prev; fail(e); render(); }
+  const prev = myVotes[id];
+  myVotes = { ...myVotes, [id]: on }; render();
+  try {
+    const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
+    if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
+    else await ref.set(patch);
+  }
+  catch (e) {
+    if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+    fail(e); render();
+  }
 }
 
 function heatmap() {
@@ -810,6 +886,8 @@ function render() {
   const q = $("q").value.trim().toLowerCase();
   const dept = $("deptFilter").value;
   const openN = issues.filter(i => i.status !== "fixed").length;
+  $("shareNotice").textContent = shareNotice;
+  $("shareNotice").hidden = !shareNotice;
   $("tabOpen").innerHTML = ICON.open + `${openN} ${admin ? "Open" : "未完成"}`;
   $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
@@ -841,8 +919,16 @@ function render() {
   if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
-  const typed = {}, focused = document.activeElement && document.activeElement.id;
+  const typed = {}, active = document.activeElement;
+  const focused = active && $("list").contains(active) ? {
+    id: active.id, open: active.dataset.open, vote: active.dataset.vote,
+    share: active.dataset.share, shareUrl: active.dataset.shareUrl,
+    start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection
+  } : null;
   document.querySelectorAll("#list input[id^=pr-],#list textarea[id^=note-]").forEach(x => typed[x.id] = x.value);
+  const shareFields = new Map([...document.querySelectorAll("#list [data-share-url]")].map(x => [x.dataset.shareUrl, {
+    value:x.value, hidden:x.hidden, status:x.closest(".detail")?.querySelector("[data-share-status]")?.textContent || ""
+  }]));
   $("list").innerHTML = rows.map(i => {
     const st = STATUS[i.status] || STATUS.open;
     const mine = !!myVotes[i.id];
@@ -861,14 +947,18 @@ function render() {
       </div>
       <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
+        <div class="share-row"><button class="btn" type="button" data-share="${esc(i.id)}">複製案件連結</button>
+          <input class="share-url" type="text" readonly hidden data-share-url="${esc(i.id)}" aria-label="案件分享連結">
+          <span class="status" role="status" data-share-status></span></div>
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
         ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
-          <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明"></textarea>
-          <div class="phprev">${(notePics.get(i.id) || []).map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
-          <div class="row">${photoFn && (notePics.get(i.id) || []).length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple></label>` : ""}
-            <button class="btn" type="submit">新增補充</button><span class="status" role="status"></span></div>
+          ${(() => { const s = noteStates.get(i.id) || {}; const busy = s.uploading || s.sending; const pics = notePics.get(i.id) || [];
+            return `<textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${s.sending ? "disabled" : ""}></textarea>
+          <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
+          <div class="row">${photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
+            <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
         </form>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
         ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
@@ -893,7 +983,23 @@ function render() {
     </div>`;
   }).join("");
   for (const id in typed) if ($(id)) $(id).value = typed[id];
-  if (focused && focused.startsWith("pr-") && $(focused)) $(focused).focus();
+  document.querySelectorAll("#list [data-share-url]").forEach(x => {
+    const saved = shareFields.get(x.dataset.shareUrl);
+    if (saved) {
+      x.value = saved.value; x.hidden = saved.hidden;
+      x.closest(".detail").querySelector("[data-share-status]").textContent = saved.status;
+    }
+  });
+  if (focused) {
+    const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
+      focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : focused.share ? document.querySelector(`[data-share="${CSS.escape(focused.share)}"]`) :
+      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) : null;
+    if (target) {
+      target.focus({ preventScroll: true });
+      if (typeof target.setSelectionRange === "function" && Number.isInteger(focused.start))
+        target.setSelectionRange(focused.start, focused.end, focused.direction);
+    }
+  }
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
@@ -902,7 +1008,18 @@ function render() {
 
 async function onListClick(e) {
   const o = e.target.closest("[data-open]");
-  if (o) { const id = o.dataset.open; view.open.has(id) ? view.open.delete(id) : view.open.add(id); return render(); }
+  if (o) {
+    const id = o.dataset.open, closing = view.open.has(id);
+    if (closing) {
+      view.open.delete(id);
+      if (issueIdFromHash() === id) { activeShareId = null; replaceHash("#issues"); }
+    } else {
+      view.open.add(id); activeShareId = id; replaceHash(issueHash(id));
+    }
+    return render();
+  }
+  const share = e.target.closest("[data-share]");
+  if (share) return copyIssueLink(share);
   const v = e.target.closest("[data-vote]");
   if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
   const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide],[data-contact]");
@@ -934,11 +1051,31 @@ $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
 let formFrom = "issues";
 $("newBtn").onclick = () => {
-  if ($("newBox").hidden) formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
-  if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
+  if ($("newBox").hidden) {
+    formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
+    const active = document.activeElement;
+    formOpener = active && active !== document.body && !$("newBox").contains(active) ? active : $("newBtn");
+  }
+  if (histWanted || histOn || $("histOn").checked) setHist(false); // a new report is today's: show the live map again
   renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
 };
-$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); clearShots(); if (formFrom === "map") show("map"); };
+function restoreFormFocus() {
+  const visible = el => el && el.isConnected && !el.hidden && el.getClientRects().length;
+  const target = visible(formOpener) ? formOpener : visible($("newBtn")) ? $("newBtn") : null;
+  formOpener = null;
+  target && target.focus({ preventScroll:true });
+}
+function clearReportFlow() {
+  reportRevision++; previewRun++; pending = null; reportAttempt = null;
+  $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+  if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
+}
+$("cancelBtn").onclick = () => {
+  if (reportCreating) return;
+  clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
+  if (formFrom === "map") show("map");
+  restoreFormFocus();
+};
 
 async function triage(text, district, aspect) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
@@ -990,6 +1127,9 @@ const contactText = c => c ? `聯絡人：${esc(c.name)} · ${esc(c.phone)} · $
 const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|佔用|攤販|油煙|污染|排放|食品|過期|擾民|施工/;
 // Follow-up photos upload as soon as they are picked, so a live re-render of the list cannot drop them
 const notePics = new Map();
+const noteStates = new Map();
+const noteAttempts = new Map();
+const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 const photoUrl = k => photoFn ? photoFn.url(k) : "";
@@ -1010,78 +1150,111 @@ function clearShots(only) {
   shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
   $("photoIn").value = ""; drawShots();
 }
+function reportInputStamp() {
+  const aspect = document.querySelector("#aspects input:checked");
+  return JSON.stringify({
+    text:$("newText").value, district:$("newDistrict").value, aspect:aspect ? aspect.value : "",
+    location:picked ? { lat:picked.lat, lng:picked.lng, loc:picked.loc, address:picked.address || "" } : null,
+    contact:contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""),
+      realName:!$("cRealRow").hidden && $("cReal").checked } : null,
+    photos:shots.map(s => s.key)
+  });
+}
+function invalidateReportPreview() {
+  const stamp = reportInputStamp();
+  if (reportAttempt && reportAttempt.signature !== stamp) reportAttempt = null;
+  reportRevision++; previewRun++; pending = null;
+  $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+  if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
+}
+const reportInputChanged = e => {
+  if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
+};
+$("newForm").addEventListener("input", reportInputChanged);
+$("newForm").addEventListener("change", e => {
+  if (e.target.matches("#newDistrict,#cReal,#aspects input")) reportInputChanged(e);
+});
 $("photoIn").addEventListener("change", () => {
   // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
   if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
+  invalidateReportPreview();
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     for (const f of files) {
       if (shots.length >= PHOTO_MAX || gen !== shotGen) break;
-      try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ blob, url:URL.createObjectURL(blob) }); drawShots(); }
+      try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
       catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
     }
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
-$("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); });
+$("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!db || !canWrite || $("submitBtn").disabled) return;
-  $("submitBtn").disabled = true; await shrinking; $("submitBtn").disabled = false; // photos still shrinking belong to this report
-  const m = maskPII($("newText").value.trim()), text = m.text;
-  if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
-  if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
-  if (contactFn) {
-    if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
-    if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
-    try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
-  }
-  maskedN = m.count;
-  $("newText").value = text;
+  if (!db || !canWrite || $("submitBtn").disabled || reportCreating || supplementBusy) return;
+  const run = ++previewRun, revision = reportRevision;
+  const current = () => run === previewRun && revision === reportRevision;
+  const finish = () => { if (run === previewRun) $("submitBtn").disabled = false; };
   $("submitBtn").disabled = true;
-  const note = m.count ? `已遮蔽 ${m.count} 項個資。` : "";
-  $("newStatus").textContent = note + (sample ? "taipei-bot 正在分類…" : "送出中…");
-  const t = await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
-  // Not Taipei, or too vague to dispatch: ask before creating a case, but let the citizen send anyway (AI can be wrong)
-  if (t.outside || t.vague) {
-    pending = { t, text };
+  try {
+    await shrinking; // Photos still shrinking belong to this report.
+    if (!current()) return;
+    const m = maskPII($("newText").value.trim()), text = m.text;
+    if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
+    if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
+    if (contactFn) {
+      if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
+    }
+    $("newText").value = text;
+    const signature = reportInputStamp();
+    const stillCurrent = () => current() && signature === reportInputStamp();
+    const cached = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
+    maskedN = cached ? cached.maskedN : m.count;
+    const note = maskedN ? `已遮蔽 ${maskedN} 項個資。` : "";
+    $("newStatus").textContent = note + (sample && !cached ? "taipei-bot 正在分類…" : "");
+    const t = cached ? cached.t : await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
+    if (!stillCurrent()) return;
+    // Not Taipei, or too vague to dispatch: ask before creating a case, but let the citizen send anyway (AI can be wrong).
+    if (t.outside || t.vague) {
+      pending = { t, text, signature };
+      $("newStatus").textContent = note;
+      $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
+        <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
+        <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+      $("dupBox").hidden = false;
+      return;
+    }
+    if (t.dup) {
+      $("newStatus").textContent = note;
+      showDup(t, text, true, undefined, signature);
+      return;
+    }
+    // Preview what taipei-bot decided; nothing is created until the citizen confirms.
+    pending = { t, text, signature };
     $("newStatus").textContent = note;
-    $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
-      <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
-      <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+    const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
+    $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
+      <dl class="pv"><dt>標題</dt><dd>${esc(t.title)}</dd>
+      <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
+      <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
+      <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
+      ${addr || picked ? `<dt>地點</dt><dd>${esc(addr || "地圖標記位置")}${picked ? `（${coordText(picked.lat, picked.lng)}）` : ""}</dd>` : ""}
+      ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
+      ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
+      ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
+      <div class="row"><button class="btn primary" type="button" data-dup="new">確認送出</button>
+      <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
-    $("submitBtn").disabled = false;
-    return;
-  }
-  if (t.dup) {
-    $("newStatus").textContent = note;
-    showDup(t, text, true);
-    $("submitBtn").disabled = false;
-    return;
-  }
-  // Preview what taipei-bot decided; nothing is created until the citizen confirms
-  pending = { t, text };
-  $("newStatus").textContent = note;
-  const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
-  $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
-    <dl class="pv"><dt>標題</dt><dd>${esc(t.title)}</dd>
-    <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
-    <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
-    <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
-    ${addr ? `<dt>地點</dt><dd>${esc(addr)}</dd>` : ""}
-    ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
-    ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
-    ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
-    <div class="row"><button class="btn primary" type="button" data-dup="new">確認送出</button>
-    <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
-  $("dupBox").hidden = false;
-  $("submitBtn").disabled = false;
-  $("dupBox").querySelector("[data-dup=new]").focus();
+    $("dupBox").querySelector("[data-dup=new]").focus();
+  } catch (err) { if (current()) { $("newStatus").textContent = ""; fail(err); } }
+  finally { finish(); }
 });
 
 // Same or similar case found (AI dup, or the server refused an exact copy): add this text/photos to that case, +1 it,
 // or still send a new one (not offered when the server already refused the copy).
-function showDup(t, text, canNew, photos) {
-  pending = { t, text, photos };
+function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
+  pending = { t, text, photos, signature };
   $("dupBox").innerHTML = `<div>${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
     <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
     <div class="row"><button class="btn primary" type="button" data-dup="add">補充到 #${esc(t.dup.n)}</button>
@@ -1091,27 +1264,84 @@ function showDup(t, text, canNew, photos) {
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
 function doneReport(openId) {
-  view.open.add(openId); view.closed = false;
+  clearReportFlow();
+  supplementAttempts.clear(); view.open.add(openId); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
+  restoreFormFocus();
 }
 // A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
-async function supplement(t, text, photos) {
-  $("submitBtn").disabled = true; $("newStatus").textContent = "補充中…";
+async function supplement(t, text, photos, signature) {
+  if (text.length > 500) { $("newStatus").textContent = "補充內容最多 500 字，請縮短後再補充"; return; }
+  const startRevision = reportRevision, attemptKey = JSON.stringify([t.dup.id, signature]);
+  let attempt = supplementAttempts.get(attemptKey);
+  if (!attempt) {
+    attempt = { id:crypto.randomUUID(), target:t.dup.id, text, photoKeys:new Map(), photos:null };
+    supplementAttempts.set(attemptKey, attempt);
+  }
+  const unchanged = () => startRevision === reportRevision && signature === reportInputStamp();
+  supplementBusy = true; $("submitBtn").disabled = true; $("newStatus").textContent = "補充中…";
   try {
-    if (!photos) { await shrinking; photos = await Promise.all(shots.map(x => photoFn(x.blob))); }
-    await db.doc("addenda/" + me).update({ items:{ [crypto.randomUUID()]:{ target:t.dup.id, t:new Date().toISOString(), text, photos } } });
-    if (!myVotes[t.dup.id]) setVote(t.dup.id, true);
-    doneReport(t.dup.id); toast(`已補充到 #${t.dup.n}`);
-  } catch (e) { $("newStatus").textContent = ""; fail(e); } finally { $("submitBtn").disabled = false; }
+    await shrinking;
+    if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    if (photos !== undefined && !attempt.photos && photos.every(k => k.startsWith(me + "/"))) {
+      attempt.photos = [...photos];
+      shots.forEach((shot, i) => { if (photos[i]) attempt.photoKeys.set(shot.key, photos[i]); });
+    }
+    if (!attempt.photos) {
+      const uploaded = [];
+      for (const shot of shots) {
+        let key = attempt.photoKeys.get(shot.key);
+        if (!key) {
+          key = await photoFn(shot.blob, true);
+          attempt.photoKeys.set(shot.key, key);
+        }
+        uploaded.push(key);
+        if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      }
+      attempt.photos = uploaded;
+    }
+    if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    if (attempt.photos.length > PHOTO_MAX || attempt.photos.some(k => !PHOTO_RE.test(k) || !k.startsWith(me + "/"))) {
+      $("newStatus").textContent = "照片無法安全附加，請重新選擇照片"; return;
+    }
+    supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
+    const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
+    if (typeof db.appendAddendum === "function") {
+      const result = await db.appendAddendum("addenda/" + me, item);
+      if (!result || typeof result.created !== "boolean") throw new Error("bad_addendum_response");
+    } else {
+      const ref = db.doc("addenda/" + me), snap = await ref.get(), items = snap.exists && isObj(snap.data().items) ? snap.data().items : {};
+      const stored = items[attempt.id];
+      if (stored && (stored.target !== item.target || stored.text !== item.text || JSON.stringify(stored.photos) !== JSON.stringify(item.photos)))
+        throw Object.assign(new Error("idempotency_conflict"), { status:409 });
+      if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }) : ref.set({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }));
+    }
+    if (!myVotes[attempt.target]) setVote(attempt.target, true);
+    supplementAttempts.delete(attemptKey);
+    if (unchanged()) doneReport(attempt.target);
+    else { $("newStatus").textContent = "補充已送出；目前修改中的內容已保留"; render(); }
+    toast(`已補充到 #${t.dup.n}`);
+  } catch (e) { $("newStatus").textContent = ""; fail(e); }
+  finally {
+    supplementBusy = false; reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false;
+  }
 }
 $("dupBox").addEventListener("click", e => {
   const b = e.target.closest("[data-dup]");
   if (!b || !pending) return;
-  const { t, text, photos } = pending;
+  const { t, text, photos, signature } = pending;
+  if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
-  if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return shrinking.then(() => create({ ...t, dup: null }, text)).finally(() => $("submitBtn").disabled = false); }
-  if (b.dataset.dup === "add") return supplement(t, text, photos);
+  if (b.dataset.dup === "new") {
+    const revision = reportRevision;
+    reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
+    return shrinking.then(() => {
+      if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      return create({ ...t, dup:null }, text, signature, maskedN);
+    }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
+  }
+  if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
   setVote(t.dup.id, true);
   doneReport(t.dup.id);
 });
@@ -1131,36 +1361,68 @@ async function locate(address, district) {
   return { lat:+(la + j()).toFixed(5), lng:+(ln + j()).toFixed(5), loc:"district" };
 }
 
-async function create(t, text) {
-  const { dup, address, outside, vague, ...fields } = t;
-  const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
-  const sent = shots.slice(); // picks are refused while submitBtn is disabled, so this is the report's full set
-  let photos = [];
-  try { photos = await Promise.all(sent.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
-  catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
-  const where = await locate(address, fields.district);
-  // n is ignored on read (build() numbers citizen items), kept only as a hint
-  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
-  const full = `${me}:${id}`;
-  if (contactFn) try { await contactFn.save(id, { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), realName:!$("cRealRow").hidden && $("cReal").checked }); }
-  catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
-  const ref = db.doc("reports/" + me);
+function completeCreatedReport(attempt) {
+  const { id, item, signature } = attempt, full = `${me}:${id}`;
+  reportAttempt = null;
+  if (!all.some(i => i.id === full)) mine = full;
+  if (!admin) show("mine"); // Phones land on 我的陳情, not the 20th row of the list.
+  view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
+  const unchanged = signature === reportInputStamp();
+  if (unchanged) {
+    clearReportFlow();
+    $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true;
+    $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); restoreFormFocus();
+  } else {
+    pending = null; $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+    $("newStatus").textContent = "通報已送出；目前修改中的內容已保留";
+  }
+  render();
+  if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
+  else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
+}
+async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN) {
+  const startRevision = reportRevision;
+  let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
+  if (!attempt) {
+    const { dup, address, outside, vague, ...fields } = t;
+    const addr = (picked && picked.address) || address;
+    let photos = [];
+    try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); }
+    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; return; }
+    const where = await locate(address, fields.district);
+    if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    const id = crypto.randomUUID();
+    const item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
+    const contact = contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), realName:!$("cRealRow").hidden && $("cReal").checked } : null;
+    attempt = { id, item, t, text, photos, contact, signature, maskedN:maskedCount };
+    reportAttempt = attempt;
+  }
+  const { id, item, contact } = attempt, full = `${me}:${id}`, ref = db.doc("reports/" + me);
   try {
-    const snap = await ref.get();
-    // db.updateCreates (Worker): update creates the doc atomically, so two tabs of one visitor cannot both set() it
-    await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
-    // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
-    if (!all.some(i => i.id === full)) mine = full;
-    if (!admin) show("mine"); // phones land on 我的陳情, not the 20th row of the list
-    view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
-    $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
-    render();
-    if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
-    else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
+    if (db.createReport) {
+      if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      // The Worker creates this report ID only once; a retry cannot replace a report or later additions.
+      // A prior attempt may be more than ten minutes old. The server keeps the
+      // original createdAt when this ID already exists, while a still-missing
+      // report can be created with a fresh timestamp on a later manual retry.
+      item.createdAt = new Date().toISOString();
+      const result = await db.createReport("reports/" + me, id, item, contact);
+      if (!result || typeof result.created !== "boolean") throw new Error("bad_create_report_response");
+      completeCreatedReport(attempt);
+    } else {
+      if (contactFn) try { await contactFn.save(id, contact); }
+      catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
+      const snap = await ref.get(), stored = snap.exists && (snap.data().items || {})[id];
+      // Older shims can recognize an existing cached item, then avoid replacing it.
+      if (stored) { completeCreatedReport(attempt); return; }
+      if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
+      completeCreatedReport(attempt);
+    }
   } catch (e) {
     mine = null; $("newStatus").textContent = "";
     const twin = e && e.error === "duplicate_report" && issues.find(i => i.id !== full && normBody(i.body) === normBody(text));
-    if (twin) return showDup({ ...t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, photos);
+    if (twin) { reportAttempt = null; return showDup({ ...attempt.t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, attempt.photos, signature); }
     fail(e);
   }
 }
@@ -1208,13 +1470,28 @@ addEventListener("resize", () => { if (curView === "map") { sizeMap(); mainLM &&
 async function openMap() {
   sizeMap();
   if (!mainLM) {
-    $("mapMsg").textContent = "正在載入地圖…";
+    mapMessage("正在載入地圖…");
     mapP ||= loadLeaflet().then(initMap).finally(() => mapP = null);
-    try { await mapP; } catch { $("mapMsg").textContent = "地圖載入失敗（網路不通或被擋下），切換分頁再回來可重試。"; return; }
+    try { await mapP; } catch {
+      mapMessage(histWanted ? "地圖載入失敗。按下方按鈕重試，成功後會繼續載入歷史派工。" : "地圖載入失敗（網路不通或被擋下）。請按下方按鈕重試。", true);
+      if (histWanted) $("histCount").textContent = "地圖載入失敗，重試地圖後會繼續載入歷史。";
+      return;
+    }
   }
-  $("mapMsg").textContent = "";
+  mapMessage("");
   if (curView !== "map") return;
   mainLM.invalidateSize(); syncMap(); // show() already unhid the view, so layout is current
+  if (histWanted && !histOn) void activateHistory(histIntentVersion);
+}
+function mapMessage(message, retry = false) {
+  const box = $("mapMsg");
+  box.replaceChildren();
+  if (message) { const text = document.createElement("span"); text.textContent = message; box.append(text); }
+  if (retry) {
+    const button = document.createElement("button"); button.id = "mapRetry"; button.type = "button";
+    button.className = "btn"; button.textContent = "重試載入地圖"; button.addEventListener("click", () => openMap());
+    box.append(button);
+  }
 }
 function initMap() {
   if (mainLM) return;
@@ -1406,8 +1683,10 @@ function reportAt({ lat, lng }, how, geo) {
   $("newBox").scrollIntoView({ block:"start" });
 }
 function applyGeo(geo, lat, lng) {
+  const before = reportInputStamp();
   if (geo && geo.address) picked.address = geo.address.slice(0, 100);
   if (geo && DISTRICTS.includes(geo.district) && !$("newDistrict").value) $("newDistrict").value = geo.district;
+  if (reportInputStamp() !== before) invalidateReportPreview();
   setLoc(`位置：${geo && geo.address ? `${geo.address}（${coordText(lat, lng)}）` : geo === undefined ? `${coordText(lat, lng)}，地址查詢中…` : coordText(lat, lng)}，可按「在地圖上標記位置」調整`);
 }
 // Locate button: blue dot + accuracy circle, popup offers to report right there
@@ -1527,40 +1806,87 @@ function goIssue(e) {
   const i = issues.find(x => x.id === b.dataset.go); if (!i) return;
   view.open.add(i.id); view.closed = i.status === "fixed";
   $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
-  show("issues"); render();
+  show("issues"); activeShareId = i.id; replaceHash(issueHash(i.id)); render();
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
 }
 
 // ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
 // The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
 let histFn = null, hist = null, histDays = [], histGroups = {}, histIcons = {}, histSaved = null, histTimer = null;
+let histWanted = false, histIntentVersion = 0, histLoadP = null, histApplyP = null;
 const setLayers = f => { for (const l of LAYERS) layerOn[l.id] = f(l.id); for (const b of document.querySelectorAll("[data-layer]")) b.checked = layerOn[b.dataset.layer]; allBtn(); };
 const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
 const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(Date.UTC(+y, m - 1, +d)).getUTCDay()]}）`; };
-async function setHist(on) {
+function setHist(on) {
   stopPlay();
-  if (on && !hist) {
-    $("histCount").textContent = "載入中…";
-    hist = await histFn().catch(() => null);
-    if (!hist || !hist.days) { hist = null; $("histOn").checked = false; $("histCount").textContent = "歷史資料載入失敗，請稍後再試"; return; }
-    histDays = Object.keys(hist.days).sort();
-    $("histDay").max = histDays.length - 1; $("histDay").value = histDays.length - 1;
-    if (!$("histOn").checked) { $("histCount").textContent = ""; return; } // unticked (or Live pressed) while the file was loading
+  histWanted = on;
+  const request = ++histIntentVersion;
+  $("histOn").checked = on;
+  if (!on) {
+    histOn = false;
+    $("histDate").textContent = $("histCount").textContent = "";
+    $("histRow").hidden = $("histSrc").hidden = true;
+    $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
+    if (!mainLM) return;
+    for (const l of LAYERS) if (histGroups[l.id]) mainLM.removeLayer(histGroups[l.id]);
+    if (histSaved) { const was = histSaved; histSaved = null; setLayers(id => was[id] === true); }
+    for (const g of Object.values(histGroups)) g.clearLayers();
+    layerSig = ""; syncMap(); setPins();
+    return;
   }
-  if (on) $("histDay").value = histDays.length - 1; // every opening starts on the newest day
-  // The timeline opens with every layer ticked; closing it puts back the ticks the citizen had on the live map.
-  if (on && !histOn) { histSaved = { ...layerOn }; setLayers(() => true); }
-  else if (!on && histOn && histSaved) { const was = histSaved; histSaved = null; setLayers(id => was[id] === true); }
-  histOn = on;
-  for (const l of LAYERS) {
-    histGroups[l.id] ||= L.layerGroup();
-    const [show, hide] = on ? [histGroups[l.id], groups[l.id]] : [groups[l.id], histGroups[l.id]];
-    mainLM.removeLayer(hide); if (on && layerOn[l.id] === true) mainLM.addLayer(show);
+
+  if (!mainLM) {
+    $("histCount").textContent = "地圖載入中，完成後會自動載入歷史派工…";
+    return;
   }
-  setPins();
-  $("histRow").hidden = $("histSrc").hidden = !on;
-  $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
-  if (on) drawHist(); else { $("histDate").textContent = $("histCount").textContent = ""; for (const g of Object.values(histGroups)) g.clearLayers(); layerSig = ""; syncMap(); }
+  void activateHistory(request);
+}
+async function ensureHistory() {
+  if (hist) return hist;
+  if (!histLoadP) histLoadP = Promise.resolve().then(() => histFn()).then(data => {
+    const days = data && data.days && Object.keys(data.days).sort();
+    if (!data || !Array.isArray(data.roads) || !Array.isArray(data.items) || !days || !days.length) throw new Error("history data");
+    hist = data; histDays = days;
+    $("histDay").max = histDays.length - 1;
+    return hist;
+  }).finally(() => histLoadP = null);
+  return histLoadP;
+}
+function activateHistory(request = histIntentVersion) {
+  if (histApplyP) return histApplyP;
+  const task = (async () => {
+    $("histCount").textContent = "歷史資料載入中…";
+    try { await ensureHistory(); }
+    catch {
+      if (request === histIntentVersion && histWanted) {
+        histWanted = false; ++histIntentVersion; histOn = false;
+        $("histOn").checked = false; $("histDate").textContent = "";
+        $("histRow").hidden = $("histSrc").hidden = true;
+        $("histCount").textContent = "歷史資料載入失敗，請重新勾選重試。";
+      }
+      return;
+    }
+    if (request !== histIntentVersion || !histWanted || !mainLM || curView !== "map") return;
+    $("histDay").value = histDays.length - 1; // every opening starts on the newest day
+    // The timeline opens with every layer ticked; closing it puts back the ticks the citizen had on the live map.
+    if (!histOn) { histSaved = { ...layerOn }; setLayers(() => true); }
+    histOn = true;
+    for (const l of LAYERS) {
+      histGroups[l.id] ||= L.layerGroup();
+      const [show, hide] = [histGroups[l.id], groups[l.id]];
+      mainLM.removeLayer(hide); if (layerOn[l.id] === true) mainLM.addLayer(show);
+    }
+    setPins();
+    $("histRow").hidden = $("histSrc").hidden = false;
+    $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
+    drawHist();
+  })();
+  histApplyP = task;
+  task.finally(() => {
+    if (histApplyP === task) histApplyP = null;
+    if (request !== histIntentVersion && histWanted && !histOn && mainLM && curView === "map") queueMicrotask(() => activateHistory(histIntentVersion));
+  }).catch(() => {});
+  return task;
 }
 function drawHist() {
   const key = histDays[+$("histDay").value], list = hist.days[key] || [], tally = {};
@@ -1579,7 +1905,7 @@ function drawHist() {
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
 const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
-$("histOn").onchange = () => mainLM ? setHist($("histOn").checked) : ($("histOn").checked = false);
+$("histOn").onchange = () => setHist($("histOn").checked);
 $("histDay").addEventListener("input", () => { stopPlay(); drawHist(); });
 $("histPrev").onclick = () => { stopPlay(); stepDay(-1); };
 $("histNext").onclick = () => { stopPlay(); stepDay(1); };
@@ -1603,7 +1929,7 @@ function renderLive() {
     <div class="meta">${esc(new Date(i.createdAt).toLocaleString("zh-TW", { ...(dayKey(i.createdAt) === today ? {} : { month:"numeric", day:"numeric" }), hour:"2-digit", minute:"2-digit", timeZone:"Asia/Taipei" }))} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${esc(st[0])}${sub ? ` · 1999：${esc(sub.name)}` : ""}</div></button></li>`; }).join("");
 }
 $("liveBtn").onclick = () => {
-  if (histOn || $("histOn").checked) { $("histOn").checked = false; setHist(false); } // Live is about today; leave (or cancel loading) the history view
+  if (histWanted || histOn || $("histOn").checked) setHist(false); // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
   if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
@@ -1624,6 +1950,7 @@ let picked = null, pickLM = null, pinM = null;
 const setLoc = msg => $("locStatus").textContent = msg;
 function setPicked(lat, lng, loc) {
   picked = { lat:+lat.toFixed(5), lng:+lng.toFixed(5), loc };
+  invalidateReportPreview();
   $("clrLoc").hidden = false; setLoc(loc === "gps" ? "已使用你的位置" : "已標記位置，可拖曳調整");
 }
 function placePin(lat, lng) {
@@ -1637,10 +1964,11 @@ function placePin(lat, lng) {
 }
 function clearPick() {
   picked = null; setLoc(""); $("clrLoc").hidden = true;
+  invalidateReportPreview();
   if (pinM) { pinM.remove(); pinM = null; }
   $("pickMap").hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
 }
-$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; setLoc(""); $("clrLoc").hidden = true; };
+$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; invalidateReportPreview(); setLoc(""); $("clrLoc").hidden = true; };
 $("gpsBtn").onclick = () => {
   if (!navigator.geolocation) return setLoc("這個瀏覽器不支援定位，請改在地圖上標記位置");
   setLoc("定位中…");
@@ -1671,7 +1999,9 @@ $("pinBtn").onclick = async () => {
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
 let newsItems = [], tkTimer = 0, tkI = 0;
 const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
-const tkItem = (n, hid) => { const t = `<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
+// PTT gives "10/24"; Bing and Threads give an ISO time, shown as the Taipei date
+const tkDate = s => { const m = /^\s*(\d{1,2})\/(\d{1,2})/.exec(s), t = Date.parse(s); return m ? `${+m[1]}/${+m[2]}` : t ? new Intl.DateTimeFormat("en-US", { timeZone:"Asia/Taipei", month:"numeric", day:"numeric" }).format(t) : ""; };
+const tkItem = (n, hid) => { const t = `${n.date ? `<span class="src">${n.date}</span>` : ""}<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
   return /^https?:\/\//i.test(n.url) ? `<a href="${esc(n.url)}" target="_blank" rel="noopener"${hid ? ' tabindex="-1"' : ""}>${t}</a>` : `<span class="it">${t}</span>`; };
 function drawTicker() {
   clearInterval(tkTimer);
@@ -1692,7 +2022,7 @@ async function loadNews() {
   try {
     const r = await tryTwice(() => newsFn(), 12000);
     newsItems = (Array.isArray(r) ? r : []).filter(n => isObj(n) && isStr(n.title) && n.title.trim()).slice(0, 30)
-      .map(n => ({ title:n.title.slice(0, 120), url:isStr(n.url) ? n.url : "", source:isStr(n.source) ? n.source.slice(0, 30) : "" }));
+      .map(n => ({ title:n.title.slice(0, 120), url:isStr(n.url) ? n.url : "", source:isStr(n.source) ? n.source.slice(0, 30) : "", date:isStr(n.time) ? tkDate(n.time) : "" }));
   } catch {} // keep the last good list
   drawTicker();
 }
@@ -1700,9 +2030,24 @@ async function loadNews() {
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
 // Each view is a history entry (#map, #issues…), so the phone's back button returns to the previous view instead of leaving
 const wantAdmin = location.hash === "#admin";
-function show(v, replace) {
+const issueHash = id => `#issue/${encodeURIComponent(id)}`;
+let syncedLocation = null;
+function issueIdFromHash(hash = location.hash) {
+  if (!hash.startsWith("#issue/")) return null;
+  try { return decodeURIComponent(hash.slice(7)); } catch { return ""; }
+}
+let pendingShareId = issueIdFromHash(), activeShareId = null, shareNotice = "";
+if (pendingShareId !== null) shareNotice = "正在載入分享案件…";
+function replaceHash(hash) {
+  try { window.history.replaceState(null, "", location.pathname + location.search + hash); } catch {}
+  syncedLocation = location.href;
+}
+function show(v, replace, preserveHash = false, preserveNotice = false) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
-  if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
+  if (!preserveHash && location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
+  syncedLocation = location.href;
+  if (!preserveHash) pendingShareId = null;
+  if (!preserveNotice) shareNotice = "";
   const wasMine = view.mine; curView = v; view.mine = v === "mine"; const page = view.mine ? "issues" : v;
   if (v !== "map") stopPlay();
   $("wrap").classList.toggle("wide", v === "map");
@@ -1710,6 +2055,50 @@ function show(v, replace) {
   $("v-issues").classList.toggle("mine", view.mine); if (wasMine !== view.mine && db) render();
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (v === "map") openMap();
+}
+function resolveShareRoute() {
+  if (pendingShareId === null || !gotReports || !gotTriage) return false;
+  const id = pendingShareId, issue = issues.find(x => x.id === id);
+  pendingShareId = null;
+  $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
+  view.mine = false; view.open.clear();
+  if (!issue) {
+    activeShareId = null; view.closed = false;
+    show("issues", true, false, true);
+    shareNotice = "找不到這個公開案件；連結可能已失效或案件目前無法公開。你可以從下方列表重新搜尋。";
+    return true;
+  }
+  view.closed = issue.status === "fixed"; view.open.add(id); activeShareId = id; scrollTo = id;
+  show("issues", true, true, true);
+  shareNotice = "";
+  return true;
+}
+function currentShareDetail(id) {
+  if ($("v-issues").hidden || !view.open.has(id)) return null;
+  const issue = issues.find(x => x.id === id);
+  if (!issue || hiddenFor(issue)) return null;
+  const button = [...$("list").querySelectorAll("[data-share]")].find(x => x.dataset.share === id);
+  return button?.closest(".detail") || null;
+}
+async function copyIssueLink(button) {
+  const id = button.dataset.share, detail = currentShareDetail(id);
+  if (!detail) return;
+  const url = `${location.origin}${location.pathname}${issueHash(id)}`;
+  detail.querySelector("[data-share-status]").textContent = "";
+  try {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("clipboard_unavailable");
+    await navigator.clipboard.writeText(url);
+    const currentDetail = currentShareDetail(id);
+    if (!currentDetail) return;
+    currentDetail.querySelector("[data-share-status]").textContent = "已複製案件連結";
+    toast("已複製案件連結");
+  } catch {
+    const currentDetail = currentShareDetail(id);
+    if (!currentDetail) return;
+    const input = currentDetail.querySelector("[data-share-url]");
+    input.value = url; input.hidden = false; input.focus(); input.select();
+    currentDetail.querySelector("[data-share-status]").textContent = "無法自動複製，請選取上方連結後手動複製。";
+  }
 }
 // Lightbox: any photo link opens in a native <dialog> (Esc closes it); arrows step through that case's photos.
 let lbList = [], lbAt = 0;
@@ -1723,30 +2112,68 @@ $("lbClose").onclick = () => $("lb").close();
 $("lb").addEventListener("click", e => { if (e.target === $("lb")) $("lb").close(); });
 $("lb").addEventListener("keydown", e => { if (lbList.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) (e.key === "ArrowLeft" ? $("lbPrev") : $("lbNext")).click(); });
 // 補充：the reporter adds text and/or photos to their own case (an update of their own reports doc)
+const noteState = id => {
+  let state = noteStates.get(id);
+  if (!state) { state = { uploading:false, sending:false, status:"" }; noteStates.set(id, state); }
+  return state;
+};
 $("list").addEventListener("change", async e => {
   const inp = e.target.closest("[data-notepic]"); if (!inp || !photoFn) return;
-  const id = inp.dataset.notepic, st = inp.closest("form").querySelector(".status"), files = [...inp.files];
-  st.textContent = "照片上傳中…";
-  try { for (const f of files) { const cur = notePics.get(id) || []; if (cur.length >= PHOTO_MAX) break; notePics.set(id, [...cur, await photoFn(await shrink(f))]); } st.textContent = ""; }
-  catch (err) { st.textContent = err && err.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "有一張照片無法上傳，請改用 JPEG 或 PNG"; }
-  render();
+  const id = inp.dataset.notepic, files = [...inp.files], state = noteState(id);
+  if (state.uploading || state.sending || !files.length) return;
+  const selected = files.slice(0, Math.max(0, PHOTO_MAX - (notePics.get(id) || []).length));
+  if (!selected.length) { state.status = "最多可加入三張照片"; render(); return; }
+  state.uploading = true; state.status = "照片上傳中…"; render();
+  let uploaded = 0;
+  try {
+    for (const file of selected) {
+      const key = await photoFn(await shrink(file), true);
+      notePics.set(id, [...(notePics.get(id) || []), key]); uploaded++;
+      state.status = `照片上傳中…（已完成 ${uploaded}/${selected.length} 張）`;
+      render();
+    }
+    state.status = files.length > selected.length ? "最多可加入三張照片，其餘照片未加入" : "";
+  } catch (err) {
+    const left = selected.length - uploaded;
+    state.status = err && err.status === 429
+      ? `照片上傳太頻繁；已保留 ${uploaded} 張，${left} 張尚未上傳，請稍後重試。`
+      : `有照片無法上傳；已保留 ${uploaded} 張，${left} 張尚未上傳，請改用 JPEG 或 PNG 後重選。`;
+  } finally {
+    state.uploading = false;
+    render();
+  }
 });
 $("list").addEventListener("submit", async e => {
   const f = e.target.closest("[data-note]"); if (!f) return; e.preventDefault();
-  const id = f.dataset.note, i = issues.find(x => x.id === id), btn = f.querySelector("[type=submit]"), st = f.querySelector(".status");
-  if (!i || i.author !== me || btn.disabled) return;
+  const id = f.dataset.note, i = issues.find(x => x.id === id), state = noteState(id);
+  if (!i || i.author !== me || state.uploading || state.sending) return;
   const ta = f.querySelector("textarea"), m = maskPII(ta.value.trim()), pics = notePics.get(id) || [];
-  if (!m.text && !pics.length) { st.textContent = "請寫下補充說明或加入照片"; ta.focus(); return; }
-  btn.disabled = true; st.textContent = "送出中…";
+  if (!m.text && !pics.length) { state.status = "請寫下補充說明或加入照片"; render(); $("note-" + id)?.focus(); return; }
+  const signature = JSON.stringify([m.text, pics]);
+  let attempt = noteAttempts.get(id);
+  if (!attempt || attempt.signature !== signature) {
+    attempt = { signature, id:crypto.randomUUID() };
+    noteAttempts.set(id, attempt);
+  }
+  state.sending = true; state.status = "送出中…"; render();
   try {
-    // update() replaces a whole item, so write the stored item back with the note appended
-    const key = id.slice(me.length + 1), note = { t:new Date().toISOString(), text:m.text, photos:pics }, ref = db.doc("reports/" + me);
-    const snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
-    if (!raw) throw new Error("not_found");
-    await ref.update({ items:{ [key]:{ ...raw, notes:[...(Array.isArray(raw.notes) ? raw.notes : []), note].slice(-10) } } });
+    const key = id.slice(me.length + 1), note = { id:attempt.id, text:m.text, photos:pics };
+    if (typeof db.appendNote === "function") await db.appendNote("reports/" + me, key, note);
+    else {
+      const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
+      if (!raw) throw new Error("not_found");
+      const notes = Array.isArray(raw.notes) ? raw.notes : [];
+      if (notes.length >= 10) throw new Error("note_limit");
+      await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
+    }
     // a live re-render may already have replaced this form: clear the current one by id
-    notePics.delete(id); const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
-  } catch (err) { st.textContent = ""; fail(err); } finally { btn.disabled = false; }
+    notePics.delete(id); noteAttempts.delete(id); noteStates.delete(id);
+    const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
+  } catch (err) {
+    state.sending = false;
+    state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
+    render(); fail(err);
+  }
 });
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 $("navReport").onclick = () => $("newBtn").click();
@@ -1756,10 +2183,28 @@ const themeLabel = () => { $("themeBtn").textContent = darkNow() ? "淺色模式
 $("themeBtn").onclick = () => { const t = darkNow() ? "light" : "dark"; document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch {} themeLabel(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeLabel);
 themeLabel();
-// Every visitor lands on the district map; a #view in the URL still opens that view.
-const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "map";
-show(homeView(), true);
-addEventListener("popstate", () => show(homeView(), true));
+// Every visitor lands on the district map; a #view or a shared case link in the URL still opens that view.
+const homeView = () => issueIdFromHash() !== null ? "issues" : VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "map";
+function syncLocation() {
+  if (syncedLocation === location.href) return;
+  syncedLocation = location.href;
+  const id = issueIdFromHash();
+  if (id !== null) {
+    if (activeShareId && activeShareId !== id) view.open.delete(activeShareId);
+    activeShareId = null; pendingShareId = id; shareNotice = "正在載入分享案件…";
+    show("issues", true, true, true); resolveShareRoute(); render();
+    return;
+  }
+  if (activeShareId) view.open.delete(activeShareId);
+  activeShareId = null; pendingShareId = null;
+  const hash = location.hash.slice(1), unknown = !!hash && !VIEWS.includes(hash);
+  show(homeView(), true, false, true);
+  shareNotice = unknown ? "無法辨識這個連結，已回到首頁。你可以從分頁重新瀏覽案件。" : "";
+  render();
+}
+syncLocation();
+addEventListener("popstate", syncLocation);
+addEventListener("hashchange", syncLocation);
 
 const coLines = ["# .github/CODEOWNERS", "# 每類陳情的負責局處。taipei-bot 依這份規則分派，跨類時選最主要的。", "",
   ...TAGS.map(t => `/${t}/`.padEnd(10, "\u3000") + " @" + CODEOWNERS[t]), "", "# 判斷不出來的，先交給 1999 人工分派", "*".padEnd(10, "\u3000") + " @1999-待分派"];
@@ -1963,8 +2408,10 @@ $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl
   const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""]; $("newText").value = g[b.dataset.tpl]; $("newText").dispatchEvent(new Event("input")); $("newText").focus(); });
 
 // GitHub-style keyboard shortcuts.
+// Privacy notice and terms: any [data-doc] link opens that <dialog>
+document.addEventListener("click", e => { const a = e.target.closest("[data-doc]"); if (a) { e.preventDefault(); $(a.dataset.doc).showModal(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !$("newBox").hidden) return $("cancelBtn").click();
+  if (e.key === "Escape" && !$("newBox").hidden && !document.querySelector("dialog[open]")) return $("cancelBtn").click();
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
   if (e.key === "/") { e.preventDefault(); show("issues"); $("q").focus(); }
   else if (e.key === "c" && !$("newBtn").hidden) { e.preventDefault(); $("newBtn").click(); }
@@ -1992,6 +2439,10 @@ document.addEventListener("keydown", e => {
   admin = user ? await user.canEdit() : false;
   canWrite = !!me;
   applyRole();
+  if (typeof user?.storageBlocked === "function" && await user.storageBlocked()) {
+    const message = "瀏覽器無法保留你的通報身分。請允許網站儲存資料後重新整理，再開始通報。";
+    $("who").textContent = message; toast(message);
+  }
   const lost = () => { loadErr = true; render(); };
   db.collection("reports").onSnapshot(s => { loadErr = false; reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count

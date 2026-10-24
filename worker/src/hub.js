@@ -5,6 +5,9 @@ import { DurableObject } from "cloudflare:workers";
 import seed from "../data.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
+const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
+const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
 const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;
@@ -14,11 +17,12 @@ const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
 // Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
 const BING_NEWS = "https://www.bing.com/news/search?q=" + encodeURIComponent("臺北") + "&format=rss&setlang=zh-TW&cc=TW";
 const PTT = "https://www.ptt.cc/bbs/Taipei/index.html";
-// Threads has no open search: a hand-picked list of 台北 posts (picked 2026-10-24, read only). Edit by hand to refresh.
+// Threads has no open search: a hand-picked list of 台北 posts (picked 2026-10-24, read only). Edit by hand to refresh;
+// time is the post date, decoded from the post code (id >> 23 = ms since 2011-08-24).
 const THREADS = [
-  { title: "台北市的自來水真的不能直接燒水喝嗎", url: "https://www.threads.com/@rouninnmew__/post/De19teMmqwD", source: "Threads" },
-  { title: "桃園台北通勤，下雨天遲到被老闆問：你怎麼不搭機捷？", url: "https://www.threads.com/@vos_non_scitis/post/Dexyji9n5ay", source: "Threads" },
-  { title: "信義區深夜遇陌生男子搭訕、尾隨，提醒大家注意安全", url: "https://www.threads.com/@ariellhsu_/post/DesOwlGEv3X", source: "Threads" }
+  { title: "台北市的自來水真的不能直接燒水喝嗎", url: "https://www.threads.com/@rouninnmew__/post/De19teMmqwD", source: "Threads", time: "2026-10-23T16:15:30Z" },
+  { title: "桃園台北通勤，下雨天遲到被老闆問：你怎麼不搭機捷？", url: "https://www.threads.com/@vos_non_scitis/post/Dexyji9n5ay", source: "Threads", time: "2026-10-22T01:21:04Z" },
+  { title: "信義區深夜遇陌生男子搭訕、尾隨，提醒大家注意安全", url: "https://www.threads.com/@ariellhsu_/post/DesOwlGEv3X", source: "Threads", time: "2026-10-19T21:32:04Z" }
 ];
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
@@ -102,12 +106,25 @@ export class Hub extends DurableObject {
   contactPut(k, v) { this.sql.exec("INSERT OR REPLACE INTO contacts VALUES (?, ?)", k, JSON.stringify(v)); return { ok: true }; }
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
+  publicCase(target) {
+    if (typeof target !== "string" || target.length > 140 || !CASE_ID.test(target)) return false;
+    const colon = target.indexOf(":"), owner = colon < 0 ? "demo-seed" : target.slice(0, colon), key = colon < 0 ? target : target.slice(colon + 1);
+    if (colon >= 0 && !VISITOR_ID.test(owner)) return false;
+    const report = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${owner}`).toArray()[0];
+    const item = report && JSON.parse(report.data).items?.[key];
+    if (!isObj(item) || !REPORT_ITEM.test(key) || typeof item.title !== "string" || typeof item.body !== "string" || !Number.isFinite(Date.parse(item.createdAt))) return false;
+    if (owner !== "demo-seed" && item.author !== owner) return false;
+    const triage = this.sql.exec("SELECT data FROM docs WHERE path = ?", `triage/${target}`).toArray()[0];
+    const status = triage ? JSON.parse(triage.data) : {};
+    return status.hidden !== true && !(item.flagged === true && status.hidden !== false);
+  }
+
   // The Worker has already checked who may write where; this checks the data and applies it.
   // New report items in a visitor write: at most one per write, fresh createdAt, not a copy of a recent report, within quota.
   floodCheck(path, oldDoc, doc, ip) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
-    const fresh = Object.keys(items).filter(k => !(k in old));
+    const fresh = Object.keys(items).filter(k => !Object.hasOwn(old, k));
     if (!fresh.length) return null;
     if (fresh.length > 1) return { status: 400, error: "one_report_per_write" };
     const it = items[fresh[0]], now = Date.now(), t = Date.parse(it?.createdAt);
@@ -128,22 +145,82 @@ export class Hub extends DurableObject {
 
   write(op, path, data, admin, ip = "") {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
+    const creating = op === "create-report";
+    let reportContact = null, contactKey = null;
+    if (creating) {
+      if (admin || !path.startsWith("reports/") || !isObj(data) || !REPORT_ITEM.test(data.key || "") || !isObj(data.item) || data.item.author !== path.slice(8))
+        return { status: 400, error: "bad_request" };
+      const current = row ? JSON.parse(row.data) : {};
+      if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
+      if (data.contact !== undefined && data.contact !== null) {
+        const c = data.contact;
+        const name = typeof c?.name === "string" ? c.name.trim() : "";
+        const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
+        if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || typeof c.realName !== "boolean")
+          return { status: 400, error: "bad_contact" };
+        reportContact = { name, phone, realName: c.realName, t: new Date().toISOString() };
+        contactKey = `${path.slice(8)}:${data.key}`;
+      }
+      data = { items: { [data.key]: data.item } }; op = "update";
+    }
     let doc = null;
-    if (op !== "delete") {
+    if (op === "append-note") {
+      if (admin || !path.startsWith("reports/") || !isObj(data) || !REPORT_ITEM.test(data.key || "") || !NOTE_ID.test(data.id || "")) return { status: 400, error: "bad_request" };
+      if (!row) return { status: 404, error: "not_found" };
+      const owner = path.slice(8), current = JSON.parse(row.data), item = current.items?.[data.key];
+      if (!isObj(current.items) || !isObj(item) || item.author !== owner) return { status: 404, error: "not_found" };
+      if (item.notes !== undefined && !Array.isArray(item.notes)) return { status: 400, error: "bad_data" };
+      const notes = item.notes || [];
+      if (notes.some(n => isObj(n) && n.id === data.id)) return { status: 200, data: current, seq: this.seq };
+      const text = typeof data.text === "string" ? data.text.trim() : "", photos = data.photos;
+      if (typeof data.text !== "string" || data.text.length > 500 || !Array.isArray(photos) || photos.length > 3 ||
+          photos.some(k => typeof k !== "string" || !PHOTO_KEY.test(k) || !k.startsWith(owner + "/")) || (!text && !photos.length))
+        return { status: 400, error: "bad_note" };
+      if (notes.length >= 10) return { status: 400, error: "note_limit" };
+      doc = { ...current, items: { ...current.items, [data.key]: { ...item, notes: [...notes, { id: data.id, t: new Date().toISOString(), text, photos }] } } };
+      if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
+      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+    } else if (op === "append-addendum") {
+      if (admin || !path.startsWith("addenda/") || path !== `addenda/${path.slice(8)}` || !VISITOR_ID.test(path.slice(8)) ||
+          !isObj(data) || !NOTE_ID.test(data.id || "")) return { status: 400, error: "bad_request" };
+      const owner = path.slice(8), current = row ? JSON.parse(row.data) : {}, items = isObj(current.items) ? current.items : {};
+      const text = typeof data.text === "string" ? data.text : "", photos = data.photos;
+      if (typeof data.target !== "string" || data.target.length > 140 || typeof data.text !== "string" || text.length > 500 ||
+          !Array.isArray(photos) || photos.length > 3 ||
+          photos.some(k => typeof k !== "string" || !PHOTO_KEY.test(k) || !k.startsWith(owner + "/")) || (!text.trim() && !photos.length))
+        return { status: 400, error: "bad_addendum" };
+      const old = items[data.id];
+      if (old !== undefined) {
+        const same = isObj(old) && old.target === data.target && old.text === text && Array.isArray(old.photos) &&
+          old.photos.length === photos.length && old.photos.every((k, i) => k === photos[i]);
+        return same ? { status: 200, data: current, seq: this.seq, created: false } : { status: 409, error: "idempotency_conflict" };
+      }
+      if (!this.publicCase(data.target)) return { status: 404, error: "not_found" };
+      if (Object.keys(items).length >= ITEMS_MAX) return { status: 400, error: "too_many_items" };
+      const addendum = { target:data.target, t:new Date().toISOString(), text, photos:[...photos] };
+      doc = { ...current, items:{ ...items, [data.id]:addendum } };
+      if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
+      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+    } else if (op !== "delete") {
       if (!isObj(data)) return { status: 400, error: "bad_data" };
       doc = op === "update" ? merge(row ? JSON.parse(row.data) : {}, data) : data;
       // ponytail: admin skips the size caps so seeding big demo docs works; visitors are capped.
       if (!admin) {
         if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
-        const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f;
       }
-      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+      const failure = this.ctx.storage.transactionSync(() => {
+        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f; }
+        this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+        if (reportContact) this.contactPut(contactKey, reportContact);
+        return null;
+      });
+      if (failure) return failure;
     } else this.sql.exec("DELETE FROM docs WHERE path = ?", path);
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
     const msg = JSON.stringify({ path, data: doc, seq: this.seq });
     for (const ws of this.ctx.getWebSockets()) try { ws.send(msg); } catch {}
-    return { status: 200, data: doc, seq: this.seq };
+    return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 
   fetch(req) {
