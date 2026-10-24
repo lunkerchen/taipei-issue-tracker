@@ -1152,7 +1152,7 @@ $("newForm").addEventListener("submit", async e => {
       <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
       <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
       <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
-      ${addr ? `<dt>地點</dt><dd>${esc(addr)}</dd>` : ""}
+      ${addr || picked ? `<dt>地點</dt><dd>${esc(addr || "地圖標記位置")}${picked ? `（${coordText(picked.lat, picked.lng)}）` : ""}</dd>` : ""}
       ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
       ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
       ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
