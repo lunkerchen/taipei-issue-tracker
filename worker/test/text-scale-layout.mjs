@@ -74,6 +74,29 @@ try {
       assert.ok(m.maxScroll > 200, `${label} page scrolls`);
       assert.ok(m.last, `${label} has issue cards`);
       assert.ok(m.last.bottom <= m.tick.top + 1, `${label} last card ends above the ticker (card ${m.last.bottom.toFixed(1)}, ticker ${m.tick.top.toFixed(1)})`);
+
+      // A control placed under the fixed bars must scroll above them when it gets keyboard focus.
+      const focused = await page.evaluate(() => {
+        const buttons = [...document.querySelectorAll("#list [data-open]")].filter(b => b.getClientRects().length);
+        const target = buttons[Math.floor(buttons.length / 2)];
+        document.activeElement?.blur();
+        const tick = document.querySelector("#ticker").getBoundingClientRect();
+        window.scrollTo(0, target.getBoundingClientRect().top + scrollY - (tick.top + 20));
+        const placed = target.getBoundingClientRect().top;
+        target.focus();
+        return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+          const live = document.querySelector(`[data-open="${CSS.escape(target.dataset.open)}"]`);
+          const r = live.getBoundingClientRect(), t = document.querySelector("#ticker").getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width / 2, Math.min(r.bottom - 2, innerHeight - 1));
+          resolve({ placed, top:r.top, bottom:r.bottom, tickTop:t.top, hitOk:!!hit && (hit === live || live.contains(hit)),
+            scrollPad:parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0 });
+        })));
+      });
+      assert.ok(focused.placed > focused.tickTop, `${label} focus check starts under the ticker`);
+      assert.ok(focused.bottom <= focused.tickTop + 1, `${label} focused card stays above the ticker (bottom ${focused.bottom.toFixed(1)}, ticker ${focused.tickTop.toFixed(1)})`);
+      assert.ok(focused.hitOk, `${label} focused card is not covered`);
+      assert.ok(focused.scrollPad >= m.nav.height + m.tick.height, `${label} scroll padding ${focused.scrollPad} covers both bars`);
+
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.waitForTimeout(80);
       console.log(`${label} nav=${m.nav.height.toFixed(1)} ticker=${m.tick.height.toFixed(1)} pad=${m.wrapPad.toFixed(1)} last=${m.last.bottom.toFixed(1)}/${m.tick.top.toFixed(1)}`);

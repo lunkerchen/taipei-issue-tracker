@@ -335,7 +335,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .has-tk .wrap{padding-bottom:104px}
 /* Fixed ticker and mobile nav must not cover a focused control or the last buttons. */
 html{scroll-padding-bottom:32px}
-@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(58px + env(safe-area-inset-bottom))}html.citizen.has-tk{scroll-padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
+@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + 2px)}html.citizen.has-tk{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + var(--tkh,33px) + 2px)}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
