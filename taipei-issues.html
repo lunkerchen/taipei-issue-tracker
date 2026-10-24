@@ -1147,7 +1147,11 @@ async function onListClick(e) {
   const share = e.target.closest("[data-share]");
   if (share) return copyIssueLink(share);
   const v = e.target.closest("[data-vote]");
-  if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
+  // A double tap must add one vote, not add and then remove it: the second tap reads the first one's optimistic state.
+  if (v && canWrite) {
+    if (e.detail > 1 || pendingVoteWrites.has(v.dataset.vote)) return;
+    return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
+  }
   const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide],[data-contact]");
   if (!btn || btn.disabled) return;
   if (btn.dataset.contact) return run(btn, async () => { contactCache.set(btn.dataset.contact, await contactFn.get(btn.dataset.contact)); render(); });
