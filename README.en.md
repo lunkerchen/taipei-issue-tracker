@@ -32,7 +32,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides telephone numbers, email addresses and ID numbers before it sends the report. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**. Purple dashed lines show the boundaries of the 12 districts.
-- **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. Each point shows only the road section. It does not show the house number.
+- **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
 - **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases.
@@ -156,6 +156,12 @@ BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
 node worker/test/addendum-flow.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
+```
+
+The history map loading test uses sample dispatch data. It checks a delayed Leaflet load, cancellation, and retry:
+
+```bash
+HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-loading.mjs
 ```
 
 ```bash

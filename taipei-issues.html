@@ -176,7 +176,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;height:calc(100vh - var(--hdr,170px));min-height:420px}
 .mapbox{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:0;isolation:isolate}
 #map{position:absolute;inset:0}
-.mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
+.mapmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
@@ -363,7 +363,7 @@ Switched to branch 'taipei'
       <div class="mapcol">
       <div class="mapbox">
         <div id="map" role="application" aria-label="陳情地圖"></div>
-        <div class="mapmsg" id="mapMsg"></div>
+        <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
@@ -1003,7 +1003,7 @@ $("newBtn").onclick = () => {
     const active = document.activeElement;
     formOpener = active && active !== document.body && !$("newBox").contains(active) ? active : $("newBtn");
   }
-  if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
+  if (histWanted || histOn || $("histOn").checked) setHist(false); // a new report is today's: show the live map again
   renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
 };
 function restoreFormFocus() {
@@ -1417,13 +1417,28 @@ addEventListener("resize", () => { if (curView === "map") { sizeMap(); mainLM &&
 async function openMap() {
   sizeMap();
   if (!mainLM) {
-    $("mapMsg").textContent = "正在載入地圖…";
+    mapMessage("正在載入地圖…");
     mapP ||= loadLeaflet().then(initMap).finally(() => mapP = null);
-    try { await mapP; } catch { $("mapMsg").textContent = "地圖載入失敗（網路不通或被擋下），切換分頁再回來可重試。"; return; }
+    try { await mapP; } catch {
+      mapMessage(histWanted ? "地圖載入失敗。按下方按鈕重試，成功後會繼續載入歷史派工。" : "地圖載入失敗（網路不通或被擋下）。請按下方按鈕重試。", true);
+      if (histWanted) $("histCount").textContent = "地圖載入失敗，重試地圖後會繼續載入歷史。";
+      return;
+    }
   }
-  $("mapMsg").textContent = "";
+  mapMessage("");
   if (curView !== "map") return;
   mainLM.invalidateSize(); syncMap(); // show() already unhid the view, so layout is current
+  if (histWanted && !histOn) void activateHistory(histIntentVersion);
+}
+function mapMessage(message, retry = false) {
+  const box = $("mapMsg");
+  box.replaceChildren();
+  if (message) { const text = document.createElement("span"); text.textContent = message; box.append(text); }
+  if (retry) {
+    const button = document.createElement("button"); button.id = "mapRetry"; button.type = "button";
+    button.className = "btn"; button.textContent = "重試載入地圖"; button.addEventListener("click", () => openMap());
+    box.append(button);
+  }
 }
 function initMap() {
   if (mainLM) return;
@@ -1570,28 +1585,78 @@ function goIssue(e) {
 // ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
 // The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
 let histFn = null, hist = null, histDays = [], histGroups = {}, histR = null, histTimer = null;
+let histWanted = false, histIntentVersion = 0, histLoadP = null, histApplyP = null;
 const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
 const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(Date.UTC(+y, m - 1, +d)).getUTCDay()]}）`; };
-async function setHist(on) {
+function setHist(on) {
   stopPlay();
-  if (on && !hist) {
-    $("histCount").textContent = "載入中…";
-    hist = await histFn().catch(() => null);
-    if (!hist || !hist.days) { hist = null; $("histOn").checked = false; $("histCount").textContent = "歷史資料載入失敗，請稍後再試"; return; }
-    histDays = Object.keys(hist.days).sort();
-    $("histDay").max = histDays.length - 1; $("histDay").value = histDays.length - 1;
-    if (!$("histOn").checked) { $("histCount").textContent = ""; return; } // unticked (or Live pressed) while the file was loading
+  histWanted = on;
+  const request = ++histIntentVersion;
+  $("histOn").checked = on;
+  if (!on) {
+    histOn = false;
+    $("histDate").textContent = $("histCount").textContent = "";
+    $("histRow").hidden = $("histSrc").hidden = true;
+    $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
+    if (!mainLM) return;
+    for (const l of LAYERS) {
+      if (histGroups[l.id]) mainLM.removeLayer(histGroups[l.id]);
+      if (layerOn[l.id] !== false) mainLM.addLayer(groups[l.id]);
+    }
+    for (const g of Object.values(histGroups)) g.clearLayers();
+    layerSig = ""; syncMap();
+    return;
   }
-  if (on) $("histDay").value = histDays.length - 1; // every opening starts on the newest day
-  histOn = on;
-  for (const l of LAYERS) {
-    histGroups[l.id] ||= L.layerGroup();
-    const [show, hide] = on ? [histGroups[l.id], groups[l.id]] : [groups[l.id], histGroups[l.id]];
-    mainLM.removeLayer(hide); if (layerOn[l.id] !== false) mainLM.addLayer(show);
+
+  if (!mainLM) {
+    $("histCount").textContent = "地圖載入中，完成後會自動載入歷史派工…";
+    return;
   }
-  $("histRow").hidden = $("histSrc").hidden = !on;
-  $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
-  if (on) drawHist(); else { $("histDate").textContent = $("histCount").textContent = ""; for (const g of Object.values(histGroups)) g.clearLayers(); layerSig = ""; syncMap(); }
+  void activateHistory(request);
+}
+async function ensureHistory() {
+  if (hist) return hist;
+  if (!histLoadP) histLoadP = Promise.resolve().then(() => histFn()).then(data => {
+    const days = data && data.days && Object.keys(data.days).sort();
+    if (!data || !Array.isArray(data.roads) || !Array.isArray(data.items) || !days || !days.length) throw new Error("history data");
+    hist = data; histDays = days;
+    $("histDay").max = histDays.length - 1;
+    return hist;
+  }).finally(() => histLoadP = null);
+  return histLoadP;
+}
+function activateHistory(request = histIntentVersion) {
+  if (histApplyP) return histApplyP;
+  const task = (async () => {
+    $("histCount").textContent = "歷史資料載入中…";
+    try { await ensureHistory(); }
+    catch {
+      if (request === histIntentVersion && histWanted) {
+        histWanted = false; ++histIntentVersion; histOn = false;
+        $("histOn").checked = false; $("histDate").textContent = "";
+        $("histRow").hidden = $("histSrc").hidden = true;
+        $("histCount").textContent = "歷史資料載入失敗，請重新勾選重試。";
+      }
+      return;
+    }
+    if (request !== histIntentVersion || !histWanted || !mainLM || curView !== "map") return;
+    $("histDay").value = histDays.length - 1; // every opening starts on the newest day
+    histOn = true;
+    for (const l of LAYERS) {
+      histGroups[l.id] ||= L.layerGroup();
+      const [show, hide] = [histGroups[l.id], groups[l.id]];
+      mainLM.removeLayer(hide); if (layerOn[l.id] !== false) mainLM.addLayer(show);
+    }
+    $("histRow").hidden = $("histSrc").hidden = false;
+    $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
+    drawHist();
+  })();
+  histApplyP = task;
+  task.finally(() => {
+    if (histApplyP === task) histApplyP = null;
+    if (request !== histIntentVersion && histWanted && !histOn && mainLM && curView === "map") queueMicrotask(() => activateHistory(histIntentVersion));
+  }).catch(() => {});
+  return task;
 }
 function drawHist() {
   const key = histDays[+$("histDay").value], list = hist.days[key] || [], tally = {};
@@ -1610,7 +1675,7 @@ function drawHist() {
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
 const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
-$("histOn").onchange = () => mainLM ? setHist($("histOn").checked) : ($("histOn").checked = false);
+$("histOn").onchange = () => setHist($("histOn").checked);
 $("histDay").addEventListener("input", () => { stopPlay(); drawHist(); });
 $("histPrev").onclick = () => { stopPlay(); stepDay(-1); };
 $("histNext").onclick = () => { stopPlay(); stepDay(1); };
@@ -1634,7 +1699,7 @@ function renderLive() {
     <div class="meta">${esc(new Date(i.createdAt).toLocaleString("zh-TW", { ...(dayKey(i.createdAt) === today ? {} : { month:"numeric", day:"numeric" }), hour:"2-digit", minute:"2-digit", timeZone:"Asia/Taipei" }))} · ${esc(i.district || "未填行政區")} · ${esc(i.dept)} · ${esc(st[0])}${sub ? ` · 1999：${esc(sub.name)}` : ""}</div></button></li>`; }).join("");
 }
 $("liveBtn").onclick = () => {
-  if (histOn || $("histOn").checked) { $("histOn").checked = false; setHist(false); } // Live is about today; leave (or cancel loading) the history view
+  if (histWanted || histOn || $("histOn").checked) setHist(false); // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
   if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
