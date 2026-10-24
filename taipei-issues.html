@@ -1081,7 +1081,7 @@ function invalidateReportPreview() {
   if (!reportCreating) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
-  if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#aspects input")) invalidateReportPreview();
+  if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
 };
 $("newForm").addEventListener("input", reportInputChanged);
 $("newForm").addEventListener("change", e => {

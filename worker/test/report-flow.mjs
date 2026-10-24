@@ -66,6 +66,10 @@ try {
   await page.locator("#newBox").waitFor({ state:"visible" });
   await page.locator("#cName").fill("合成測試市民");
   await page.locator("#cPhone").fill("0912345678");
+  await page.locator("#newText").fill("A 交通號誌故障，行人無法安全通過");
+  await page.locator("#submitBtn").click();
+  assert.equal(sampleCount, 0, "no preview before the citizen agrees to the privacy notice and terms");
+  await page.locator("#agree").check();
 
   await page.locator("#newText").fill("A 交通號誌故障，行人無法安全通過");
   await page.locator("#submitBtn").click();
