@@ -161,6 +161,7 @@ assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:"demo/a.jpg" }, 
 // Accessibility wiring: required contact fields, a focus ring for the clipped photo input, and an announced preview.
 assert.match(html, /id="cName"[^>]*aria-required="true"/);
 assert.match(html, /id="cPhone"[^>]*aria-required="true"/);
+assert.match(html, /id="cEmail"[^>]*aria-required="true"/);
 assert.match(html, /#photoIn:focus-visible\+#photoLbl/);
 assert.match(html, /<dl class="pv" id="dupDetails">/);
 assert.match(html, /data-dup="new" aria-describedby="dupDetails">確認送出/);

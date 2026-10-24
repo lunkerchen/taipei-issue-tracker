@@ -149,6 +149,7 @@ try {
     await page.locator("#newBox").waitFor({ state:"visible" });
     await page.locator("#cName").fill("合成回歸測試市民");
     await page.locator("#cPhone").fill("0912345678");
+    await page.locator("#cEmail").fill("citizen@example.com");
     await page.locator("#newText").fill(text);
     await page.locator("#agree").check();
     nextDuplicate = target;

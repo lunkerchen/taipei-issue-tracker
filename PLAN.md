@@ -161,3 +161,22 @@
 - [ ] P5-3｜Opus 主控｜scripts/、worker/data.json｜40 件示範案件各一張 GPT Image 生成的 4:3 現場照（無文字、無可辨識人臉與車牌），上傳 R2 `demo/`，種子資料與線上資料庫加上 photos｜
 - [x] P5-4｜reviewer + gpt-6.1-sol｜唯讀｜依以上條件驗收；`node check.mjs`、worker smoke test 通過｜
   - 驗收紀錄：reviewer 通過；gpt-6.1-sol 三輪。第 3 輪剩 APP0 縮圖可夾帶 EXIF（主控已改為一律換成標準 JFIF 標頭）與「熵資料未解碼、可存無法顯示的 JPEG」（接受，無隱私風險）。修正後未再送 GPT。
+
+## PLAN 6：回報表單 E-MAIL 必填（2026-10-24）
+
+目的：收集通報人 E-MAIL，供之後寄送案件處理進度通知。本次只收集與保存，不寄信。
+
+- [x] P6-1｜implementer｜taipei-issues.html、worker/src/hub.js、worker/src/index.js、worker/build.mjs（只改註解）、worker/test/*.mjs、check.mjs（如需）、README.en.md、README.md｜見 P6 驗收｜已完成
+- [x] P6-2｜reviewer → gpt-6.1-sol｜唯讀｜依 P6 驗收逐條判定｜已完成
+  - 驗收紀錄：reviewer 第 1 輪通過（建議補 hub.js 註解、report-flow 去空白測試，主控已補並重跑通過）；gpt-6.1-sol 第 1 輪 PASS。
+
+### P6 驗收
+
+1. 表單 `#contactBox` 在手機欄位後加 `#cEmail`（`type="text" inputmode="email" autocomplete="email" maxlength="254" aria-label="Email" aria-required="true"`，placeholder 說明用途：接收處理進度通知），不使用瀏覽器原生 email 驗證，沿用 `aria-invalid` + `#newStatus` + focus 的錯誤流程。
+2. 前端驗證：trim 後必須符合 `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` 且長度 ≤ 254；錯誤訊息「請填寫 Email（用來通知處理進度）」並 focus。`clearReportFlow`、`reportInputStamp`、`reportInputChanged` 選擇器、sessionStorage 存取（存與還原）、送出的 contact 物件全部帶 `email`。
+3. 管理者 `contactText` 顯示 Email；舊資料沒有 email 時不顯示 `undefined`。
+4. Worker 兩個入口（`hub.js` `create-report` 的 contact 驗證、`index.js` `/api/contact` POST）都要求 email，規則同第 2 點；缺少或格式錯回 400，不建立案件也不留聯絡資料。保存的聯絡資料含 `email`。`/api/db` 快照與 WebSocket 不含 email。
+5. 隱私權告知（`#privacy`）：目的加「通知你案件處理進度」；不公開、瀏覽器暫存、Anthropic 不會送出、必填各段都列入 Email。
+6. 測試：`report-contact.mjs`、`smoke.mjs` 的 contact 帶 email 並各加一個缺 email／格式錯 → 400 的案例；Playwright 測試（report-flow、addendum-flow、coordinate-preview、phone-mask、report-error-focus）填 `#cEmail`，phone-mask 與 report-flow 斷言 contact 含 email 且不出現在公開資料。
+7. README.en.md（ASD-STE100）先改，再同步 README.md：聯絡資料段、鍵盤無障礙段、`/api/contact` 架構圖說明。
+8. 實測：`node check.mjs`、本機 `wrangler dev` 下 `smoke.mjs`、`report-contact.mjs`、上述 Playwright 測試全過。

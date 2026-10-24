@@ -57,7 +57,10 @@ assert.equal((await write({ "x-visitor": A.token }, "set", `reports/${A.id}`, { 
 // anti-flood on new reports: one per write, fresh createdAt, 3 per visitor per 10 min, no copy of a recent report
 const F = await visitor(), G = await visitor(), tag = Date.now().toString(36), now = () => new Date().toISOString();
 const R = await visitor(), reportKey = "retry-case", originalReport = { title: "原始通報", body: `重試建案 ${tag}`, createdAt: now(), author: R.id };
-const createReport = (headers, item = originalReport) => write(headers, "create-report", `reports/${R.id}`, { key: reportKey, item });
+const reporter = { name: "測試員", phone: "0912000111", email: "smoke@example.com", realName: false };
+const createReport = (headers, item = originalReport, contact = reporter) => write(headers, "create-report", `reports/${R.id}`, { key: reportKey, item, contact });
+assert.equal((await write({ "x-visitor": R.token }, "create-report", `reports/${R.id}`, { key: reportKey, item: originalReport })).status, 400, "create-report without contact is refused");
+assert.equal((await createReport({ "x-visitor": R.token }, originalReport, null)).status, 400, "create-report with a null contact is refused");
 assert.equal((await createReport({ "x-visitor": F.token })).status, 403, "another visitor cannot create in this report document");
 assert.equal((await createReport({ "x-admin": admin })).status, 403, "create-report requires the citizen identity");
 assert.equal((await createReport({ "x-visitor": R.token }, { ...originalReport, author: F.id })).status, 400, "report author must match the visitor");
@@ -77,7 +80,7 @@ assert.equal(retryResult.data.items[reportKey].notes[0].text, retryNote.text, "r
 assert.equal((await write({ "x-admin": admin }, "delete", `reports/${R.id}`)).status, 200);
 const K = await visitor();
 const createKey = (key, createdAt = now()) => write({ "x-visitor": K.token }, "create-report", `reports/${K.id}`, {
-  key, item: { author: K.id, title: "邊界測試", body: `繼承屬性測試 ${tag} ${key}`, createdAt }
+  key, item: { author: K.id, title: "邊界測試", body: `繼承屬性測試 ${tag} ${key}`, createdAt }, contact: reporter
 });
 assert.equal((await createKey("constructor", "2020-01-01T00:00:00Z")).status, 400, "inherited property names do not bypass creation time checks");
 for (const key of ["constructor", "__proto__", "toString"]) assert.equal((await createKey(key)).status, 200, "fresh inherited-name report " + key);
@@ -223,15 +226,19 @@ assert.equal((await fetch(BASE + "/api/photo/../hub.js")).status, 404, "bad key"
 assert.equal((await fetch(BASE + "/api/photo/" + A.id + "/nope.jpg")).status, 404, "missing photo");
 
 // Reporter contact: visitor saves its own, only the admin reads it, and it never shows up in /api/db
-const CV = await visitor(), cbody = { item: "smoke-1", name: "測試員", phone: "0912-000-111", realName: false };
+const CV = await visitor(), cbody = { item: "smoke-1", name: "測試員", phone: "0912-000-111", email: "smoke@example.com", realName: false };
 assert.equal((await post("/api/contact", {}, cbody)).status, 403, "anonymous contact");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, phone: "12345" })).status, 400, "bad phone");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, name: "" })).status, 400, "empty name");
+assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, email: "not-an-email" })).status, 400, "bad email");
+assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, email: undefined })).status, 400, "missing email");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, cbody)).status, 200, "save contact");
 const cget = h => fetch(`${BASE}/api/contact?id=${CV.id}:smoke-1`, { headers: h, signal: AbortSignal.timeout(8000) });
 assert.equal((await cget({ "x-visitor": CV.token })).status, 403, "visitor cannot read contacts");
 assert.deepEqual((await (await cget({ "x-admin": admin })).json()).contact.phone, "0912000111", "admin reads contact");
+assert.equal((await (await cget({ "x-admin": admin })).json()).contact.email, "smoke@example.com", "admin reads email");
 assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("0912000111"), "contact not in public snapshot");
+assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("smoke@example.com"), "email not in public snapshot");
 
 wa.ws.close(); wb.ws.close();
 console.log("OK");

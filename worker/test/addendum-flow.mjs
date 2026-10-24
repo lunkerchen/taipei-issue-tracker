@@ -91,6 +91,7 @@ try {
   await page.locator("#agree").check();
   await page.locator("#cName").fill("本機合成測試者");
   await page.locator("#cPhone").fill("0912345678");
+  await page.locator("#cEmail").fill("citizen@example.com");
 
   const png = async (label, color) => {
     const data = await page.evaluate(async ({ label, color }) => {
