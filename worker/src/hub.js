@@ -7,7 +7,8 @@ import offices from "../../data/offices.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20, ADMIN_DOC_MAX = 256 * 1024;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
+const VISITOR_ID = /^[\da-f]{16}$/;
+export const CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 export const validEmail = e => {
   if (e.length > 254) return false;
@@ -34,7 +35,7 @@ const THREADS = [
 ];
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
-const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+export const isObj = v => v && typeof v === "object" && !Array.isArray(v);
 // A case number is a positive integer below 1e6; the page uses the same range.
 const caseNo = v => Number.isInteger(v) && v >= 1 && v < 1e6;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -196,6 +197,21 @@ export class Hub extends DurableObject {
     return Math.min(999999, max + 1);
   }
 
+  // Release notes name cases by number; a case hidden after the release still must not reach visitors.
+  // Cached per seq: every doc write bumps seq, and a snapshot calls this once per release doc.
+  hiddenCaseNumbers() {
+    if (this.hiddenCache?.seq === this.seq) return this.hiddenCache.out;
+    const out = new Set();
+    for (const r of this.sql.exec("SELECT path, data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
+      const owner = r.path.slice(8), items = JSON.parse(r.data).items;
+      if (!isObj(items)) continue;
+      for (const [key, item] of Object.entries(items))
+        if (isObj(item) && caseNo(item.n) && !this.publicCase(owner === "demo-seed" ? key : `${owner}:${key}`)) out.add(item.n);
+    }
+    this.hiddenCache = { seq: this.seq, out };
+    return out;
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
@@ -208,9 +224,30 @@ export class Hub extends DurableObject {
     if (path.startsWith("triage/")) return this.publicCase(path.slice(7)) ? doc : null;
     if (path.startsWith("addenda/")) {
       if (!isObj(doc) || !isObj(doc.items)) return {};
+      const owner = path.slice("addenda/".length);
       const items = {};
-      for (const [id, addendum] of Object.entries(doc.items)) if (isObj(addendum) && this.publicCase(addendum.target)) items[id] = addendum;
+      for (const [id, addendum] of Object.entries(doc.items)) {
+        if (!isObj(addendum) || !this.publicCase(addendum.target)) continue;
+        if (typeof addendum.text !== "string" || addendum.text.length > 500) continue;
+        const photos = Array.isArray(addendum.photos) ? addendum.photos : [];
+        if (photos.length > 3 || photos.some(k => typeof k !== "string" || !PHOTO_KEY.test(k) || !k.startsWith(owner + "/"))) continue;
+        items[id] = addendum;
+      }
       return { ...doc, items };
+    }
+    if (path.startsWith("releases/")) {
+      if (!isObj(doc)) return doc;
+      const hidden = this.hiddenCaseNumbers();
+      if (!hidden.size) return doc;
+      const ref = new RegExp(`#(?:${[...hidden].join("|")})(?!\\d)`);
+      const fixed = Array.isArray(doc.fixed) ? doc.fixed.filter(n => !hidden.has(n)) : null;
+      const count = fixed ? `本週修好 ${fixed.length} 件` : null;
+      const clean = s => String(s ?? "").split("\n").filter(line => !ref.test(line)).join("\n")
+        .replace(/本週修好\s*\d+\s*件/g, count ?? "$&");
+      const out = { ...doc, body: clean(doc.body) };
+      if (typeof doc.title === "string") out.title = clean(doc.title);
+      if (fixed) out.fixed = fixed;
+      return out;
     }
     return doc;
   }
