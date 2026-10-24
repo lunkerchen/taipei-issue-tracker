@@ -1258,11 +1258,14 @@ $("photoIn").addEventListener("change", () => {
   invalidateReportPreview();
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
+    const problems = [];
     for (const f of files) {
-      if (shots.length >= PHOTO_MAX || gen !== shotGen) break;
+      if (gen !== shotGen) break;
+      if (shots.length >= PHOTO_MAX) { problems.push("最多 3 張照片，其餘未加入"); break; }
       try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
-      catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
+      catch (err) { problems.push(err && err.message === "too_large" ? "有一張照片太大，請改用較小的圖片" : "有一張照片無法讀取，請改用 JPEG 或 PNG"); }
     }
+    if (gen === shotGen && problems.length) $("newStatus").textContent = problems.join("；");
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
