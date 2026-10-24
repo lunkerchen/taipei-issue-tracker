@@ -228,6 +228,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapside .foot{padding:10px 14px;border-top:1px solid var(--line)}
 .mapbox .leaflet-container{font:inherit;background:var(--hover)}
 .mapbox .leaflet-popup-content-wrapper,.mapbox .leaflet-popup-tip{background:var(--panel);color:var(--fg)}
+/* A landscape phone map is short even when its width is over 760px; cap the popup to the map and let long content scroll.
+   At 200% text the attribution control can cover the close button, so the popup pane sits above the controls. */
+@media (max-height:500px){.mapbox .leaflet-popup-content{max-height:max(96px,calc(100svh - 260px));overflow-y:auto}}
+.mapbox .leaflet-popup-pane{z-index:801}
 .mapbox .leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.5}
 .mapbox .leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted)}
 .mapbox .leaflet-control-attribution a{color:var(--link)}
