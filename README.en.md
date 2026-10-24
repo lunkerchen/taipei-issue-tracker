@@ -72,7 +72,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
-- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". If the data cannot load, the back office shows a connection error and no zero counts.
+- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
@@ -260,6 +260,12 @@ BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
 ```bash
 cd worker && node test/sync.mjs
 ```
+
+```bash
+BASE=http://localhost:8788 node worker/test/admin-queue.mjs
+```
+
+The admin queue test uses a desktop viewport and administrator mode. It creates 22 cases without a department and 2 cases for review. It checks that each queue shows all its cases after 顯示更多, and that a quick second click does not change the next case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
