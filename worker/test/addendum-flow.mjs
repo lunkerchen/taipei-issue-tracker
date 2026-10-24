@@ -22,6 +22,8 @@ assert.ok(publicTarget, "the local seed has an open public case");
 const visitor = await (await post("/api/visitor")).json();
 const [visitorId] = visitor.id.split(".");
 const mineKey = "addendum-flow-own-case";
+assert.equal((await post("/api/contact", { "x-visitor":visitor.id }, { item:mineKey, name:"回歸測試", phone:"0912000000",
+  email:"addendum@example.com", realName:false })).status, 200, "save contact before creating a case");
 const own = { title:"補充流程測試者自己的案件", body:`本機瀏覽器回歸 ${crypto.randomUUID()}`,
   createdAt:new Date().toISOString(), author:visitorId, dept:"1999 待分派", tags:[], photos:[], notes:[] };
 assert.equal((await write(visitor.id, "update", `reports/${visitorId}`, { items:{ [mineKey]:own } })).status, 200,

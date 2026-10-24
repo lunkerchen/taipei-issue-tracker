@@ -7,8 +7,8 @@ for (const [, code] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Funct
 const grab = name => { const m = html.match(new RegExp(`^function ${name}\\b[\\s\\S]*?^}`, "m")); assert(m, `${name} not found`); return m[0]; };
 // const declarations run to the first line that ends in ";"
 const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\\s\\S]*?;[ \\t]*$`, "m")); assert(m, `${name} not found`); return m[0]; };
-const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
-const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
+const { maskPII, isoWeek } = new Function("DAY", `${grabConst("MASKED_MARK")}\n${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
+const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","caseNo","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
 // 食住行育樂醫 of a report (pop-up icon and district filter): sub-category name first, then the 1999 main category
 const aspectOf = new Function("SUBS", `${grabConst("ASP_MID")}
