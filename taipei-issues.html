@@ -756,7 +756,12 @@ const dayKey = d => new Date(d).toLocaleDateString("sv-SE", { timeZone:"Asia/Tai
 const lastAct = i => Math.max(...evs(i).map(e => +new Date(e.t)));
 // Stale is derived on read, so the bot needs no writes or schedule.
 const isStale = i => i.status !== "fixed" && Date.now() - lastAct(i) > STALE_DAYS * DAY;
-const closedAt = i => { const e = evs(i).find(e => e.type === "merged" || (e.type === "status" && e.to === "fixed")); return e && +new Date(e.t); };
+// A case that was reopened is open again; only the current fixed state counts. Use the latest fix event, not the first.
+const closedAt = i => {
+  if (i.status !== "fixed") return undefined;
+  const ts = evs(i).filter(e => e.type === "merged" || (e.type === "status" && e.to === "fixed")).map(e => +new Date(e.t));
+  return ts.length ? Math.max(...ts) : undefined;
+};
 const prs = () => issues.flatMap(i => { const ev = evs(i), done = new Set(ev.filter(e => e.type === "merged").map(e => e.pr));
   return ev.filter(e => e.type === "pr").map(e => ({ ...e, issue:i, merged:done.has(e.n), mergedAt:(ev.find(m => m.type === "merged" && m.pr === e.n) || {}).t })); });
 const fmtDate = d => new Date(d).toLocaleDateString("zh-TW", { year:"numeric", month:"long", day:"numeric", timeZone:"Asia/Taipei" });
