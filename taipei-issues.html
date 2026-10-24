@@ -1828,7 +1828,15 @@ function joinIssue(id) {
   const i = issues.find(x => x.id === id); if (!i || !canWrite) return;
   $("newBtn").click(); invalidateReportPreview(); setJoin({ id:i.id, n:i.n, title:i.title });
 }
-$("joinVote").onclick = () => { const t = joinTarget; if (!t) return; if (!myVotes[t.id]) setVote(t.id, true); toast(`已幫 #${t.n} +1`); $("cancelBtn").click(); };
+$("joinVote").onclick = async () => {
+  const t = joinTarget, btn = $("joinVote"); if (!t || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    // Keep the join form and its draft when the write fails; setVote already shows the error.
+    if (!myVotes[t.id] && !await setVote(t.id, true)) return;
+    toast(`已幫 #${t.n} +1`); $("cancelBtn").click();
+  } finally { btn.disabled = false; }
+};
 $("joinOff").onclick = () => { setJoin(null); invalidateReportPreview(); $("newText").focus(); };
 
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
