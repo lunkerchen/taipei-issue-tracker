@@ -229,6 +229,22 @@ export class Hub extends DurableObject {
     return status.hidden !== true && !(item.flagged === true && status.hidden !== false);
   }
 
+  // Hidden items never reach the public snapshot, so the owner gets a count to explain an empty 我的陳情 list.
+  hiddenCount(owner) {
+    if (typeof owner !== "string" || !VISITOR_ID.test(owner)) return 0;
+    const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${owner}`).toArray()[0];
+    const items = row && JSON.parse(row.data).items;
+    if (!isObj(items)) return 0;
+    let n = 0;
+    for (const [key, item] of Object.entries(items)) {
+      if (!isObj(item) || item.author !== owner) continue;
+      const t = this.sql.exec("SELECT data FROM docs WHERE path = ?", `triage/${owner}:${key}`).toArray()[0];
+      const triage = t ? JSON.parse(t.data) : {};
+      if (triage.hidden === true || (item.flagged === true && triage.hidden !== false)) n++;
+    }
+    return n;
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes

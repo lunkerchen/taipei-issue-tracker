@@ -183,6 +183,13 @@ export default {
       if (!(await limited(env, req, true))) return err(429, "rate_limited");
       return Response.json(await hub(env).resetSeed());
     }
+    if (pathname === "/api/mine") {
+      if (req.method !== "GET") return err(405, "method_not_allowed");
+      const id = await visitorId(env, req.headers.get("x-visitor"));
+      if (!id) return err(403, "forbidden");
+      if (!(await env.VISITOR_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+      return Response.json({ hidden: await hub(env).hiddenCount(id) }, { headers: { "cache-control": "no-store" } });
+    }
     if (pathname === "/api/visitor") {
       if (req.method !== "POST") return err(405, "method_not_allowed");
       if (!env.VISITOR_SECRET) return err(503, "no_secret");

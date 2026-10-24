@@ -50,11 +50,11 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
   While a +1 is saving, the site checks that the report preview is still current. If the visitor changes the draft, cancels the form, or opens a new report, the site keeps the current state and confirms that the +1 was saved.
 
   An addition to your own case shows as "citizen addition". Additions from other visitors show as "addition from another citizen". The website keeps each addition in `addenda/<visitor ID>`.
-- **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
+- **My reports and additions**: "My reports" shows the cases that you sent. If an administrator hides your case, the page says that the case is not public. It does not say that you did not send a case. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, and only the administrator with the key can read them. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
-- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports. If report data cannot load, the map shows a connection error and a reload button. It does not show an empty city as if there were no reports. The zoom buttons are 44px, so they are easy to tap.
+- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports. If report data cannot load, the map shows a connection error and a reload button. It does not show an empty city as if there were no reports. The zoom buttons are 44px, so they are easy to tap. On a short screen, the map is at least 320px tall. The page scrolls below the map.
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. If a village page is open, clicking a district closes it and shows the village list of that district. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
 - **Village page**: Click a village to see its page in the side panel. **聯絡窗口** shows the village chief and the city councillors of the election zone, with a **撥打** (call) button when there is a phone number. The party emblem of each councillor shows after the name. A councillor without a party emblem (for example 無黨籍) shows the party name as text. **重大事件** lists the reports in the village: unfinished first, then most +1. Click a report to open it in the list. **回報這個里的問題** opens the report form with the district and a point in the village. Names and phone numbers come from `data/li-contacts.json` and `data/councilors.json`; empty entries show "資料待補".
@@ -73,7 +73,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `#admin=<ADMIN_TOKEN>` (a URL fragment, not a query). The page ignores a key in `?admin=`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
 
-- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". If the data cannot load, the back office shows a connection error and no zero counts.
+- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen (key only).
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
@@ -95,6 +95,7 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table; only the administrator with ADMIN_TOKEN can read it)
   ├─ send_email ──────── Progress notices to the citizen (Cloudflare Email Sending; wrangler dev only simulates them)
+  ├─ /api/mine ───────── Owner only: the number of your cases that an administrator hid (signed visitor token)
   ├─ /api/reset ──────── Administrator only: puts the database back to worker/data.json
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
@@ -233,6 +234,12 @@ The accessibility semantics test checks one main landmark, the skip link, the re
 
 The form open focus test uses a phone viewport. It opens the report form with the `c` shortcut and checks that Escape returns focus to 通報. It also opens the form at 320px and checks that the description heading and the focused field stay in view. Set `BASE` to use another local URL. The test does not write data.
 
+```bash
+BASE=http://localhost:8788 node worker/test/mine-hidden-empty.mjs
+```
+
+The hidden case test uses a 390px phone viewport. It creates a case for a test visitor and hides the case as the administrator. It checks that My reports says the case is not public, on the live update and after a reload. It also checks that a visitor with no reports gets the first-report message. Set `BASE` to use another local URL. The test writes one private case and one triage record and deletes them when it ends.
+
 The pop-up edge test uses 390px and 320px phone viewports. It opens the north-most case, which has photos. The test checks that the pop-up, its title, and the close button stay inside the viewport. Use a separate local Worker persistence directory. The test writes one private case and deletes it when it ends.
 
 ```bash
@@ -252,6 +259,12 @@ BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
+```
+
+The short viewport test uses 320×568, 640×400, 512×384 and 390×844 viewports. It checks that the district map is at least 300px tall, that all 12 district labels show, and that the labels rarely overlap. It also opens a district from the map and goes back. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
@@ -262,6 +275,12 @@ BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
 ```bash
 cd worker && node test/sync.mjs
 ```
+
+```bash
+BASE=http://localhost:8788 node worker/test/admin-queue.mjs
+```
+
+The admin queue test uses a desktop viewport and administrator mode. It creates 22 cases without a department and 2 cases for review. It checks that each queue shows all its cases after 顯示更多, and that a quick second click does not change the next case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
 `worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test and the progress notice test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
 
