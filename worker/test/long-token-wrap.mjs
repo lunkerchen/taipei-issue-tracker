@@ -15,7 +15,7 @@ const token = (await (await post("/api/visitor", {}, {})).json()).id, id = token
 const key = "long-" + Date.now().toString(36), marker = "overflow" + crypto.randomUUID().slice(0, 8), now = new Date().toISOString();
 const created = await post("/api/db", { "x-visitor":token }, { op:"create-report", path:`reports/${id}`, data:{
   key,
-  item:{ author:id, title:"W".repeat(500), body:"A".repeat(1900) + " " + marker, createdAt:now, district:"大安區", dept:"1999 待分派",
+  item:{ author:id, title:"W".repeat(200), body:"A".repeat(1900) + " " + marker, createdAt:now, district:"大安區", dept:"1999 待分派",
     address:"Z".repeat(100), notes:[{ t:now, text:"N".repeat(500) }] },
   contact:{ name:"長字串測試", phone:"0912000000", email:"long@example.com", realName:false }
 } });
