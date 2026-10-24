@@ -1144,10 +1144,12 @@ $("newBtn").onclick = () => {
   }
   if (histWanted || histOn || $("histOn").checked) setHist(false); // a new report is today's: show the live map again
   renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
+  // Focus can scroll the heading out of a short viewport; show the start of the form again.
+  if ($("newBox").getBoundingClientRect().top < 0) $("newBox").scrollIntoView({ block:"start" });
 };
 function restoreFormFocus() {
   const visible = el => el && el.isConnected && !el.hidden && el.getClientRects().length;
-  const target = visible(formOpener) ? formOpener : visible($("newBtn")) ? $("newBtn") : null;
+  const target = [formOpener, $("newBtn"), $("navReport"), $("reportBtn")].find(visible) || null;
   formOpener = null;
   target && target.focus({ preventScroll:true });
 }
