@@ -35,15 +35,47 @@ async function writeDb(req, env) {
   return reply(await hub(env).write(op, path, data, admin));
 }
 
-// Photos: upload by a signed visitor or the admin, read by anyone. The browser already resized and re-encoded them (EXIF gone).
-const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.(jpg|webp)$/, PHOTO_MAX = 700 * 1024, PHOTO_TYPES = { jpg: "image/jpeg", webp: "image/webp" };
+// Photos: upload by a signed visitor or the admin, read by anyone. JPEG only; the browser already resized and re-encoded it,
+// and stripJpeg() drops metadata segments again so a direct API upload cannot publish EXIF/GPS either.
+const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/, PHOTO_MAX = 700 * 1024;
+// Read at most `max` bytes, cancelling the stream as soon as it is exceeded (no Content-Length needed)
+async function readCapped(body, max) {
+  const parts = [], reader = body.getReader(); let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if ((n += value.length) > max) { await reader.cancel(); return null; }
+    parts.push(value);
+  }
+  const out = new Uint8Array(n); let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+// Keep SOI, APP0 (JFIF) and APP14 (Adobe colour); drop APP1–APP13/APP15 (EXIF, XMP, IPTC…) and COM. null = not a well-formed JPEG.
+function stripJpeg(b) {
+  if (b[0] !== 0xff || b[1] !== 0xd8) return null;
+  const keep = [b.subarray(0, 2)]; let i = 2;
+  while (i + 4 <= b.length) {
+    if (b[i] !== 0xff) return null;
+    const mk = b[i + 1];
+    if (mk === 0xda) { keep.push(b.subarray(i)); break; } // start of scan: image data to the end
+    const len = (b[i + 2] << 8) | b[i + 3];
+    if (len < 2 || i + 2 + len > b.length) return null;
+    const meta = (mk >= 0xe1 && mk <= 0xef && mk !== 0xee) || mk === 0xfe;
+    if (!meta) keep.push(b.subarray(i, i + 2 + len));
+    i += 2 + len;
+  }
+  if (keep.length < 2 || keep.at(-1)[1] !== 0xda) return null;
+  const out = new Uint8Array(keep.reduce((s, p) => s + p.length, 0)); let o = 0;
+  for (const p of keep) { out.set(p, o); o += p.length; }
+  return out;
+}
 async function photo(req, env, key) {
   if (req.method === "GET" || req.method === "HEAD") {
-    const m = PHOTO_KEY.exec(key);
-    if (!m) return err(404, "not_found");
+    if (!PHOTO_KEY.test(key)) return err(404, "not_found");
     const o = await env.PHOTOS.get(key);
     if (!o) return err(404, "not_found");
-    return new Response(req.method === "HEAD" ? null : o.body, { headers: { "content-type": PHOTO_TYPES[m[1]], "cache-control": "public, max-age=31536000, immutable",
+    return new Response(req.method === "HEAD" ? null : o.body, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable",
       "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'", etag: o.httpEtag } });
   }
   if (req.method !== "POST" || key) return err(405, "method_not_allowed");
@@ -52,15 +84,13 @@ async function photo(req, env, key) {
   const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
   if (!id) return err(403, "forbidden");
   if (!admin && !(await env.PHOTO_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
-  if (+(h.get("content-length") || 0) > PHOTO_MAX) return err(413, "too_large");
-  const b = new Uint8Array(await req.arrayBuffer());
-  if (b.length > PHOTO_MAX) return err(413, "too_large");
-  // Trust the bytes, not the declared type
-  const ext = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "jpg"
-    : String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP" ? "webp" : null;
-  if (!ext) return err(415, "unsupported_type");
-  const k = `${id}/${crypto.randomUUID()}.${ext}`;
-  await env.PHOTOS.put(k, b, { httpMetadata: { contentType: PHOTO_TYPES[ext] } });
+  if (+(h.get("content-length") || 0) > PHOTO_MAX || !req.body) return err(413, "too_large");
+  const raw = await readCapped(req.body, PHOTO_MAX);
+  if (!raw) return err(413, "too_large");
+  const b = stripJpeg(raw); // trust the bytes, not the declared type
+  if (!b) return err(415, "unsupported_type");
+  const k = `${id}/${crypto.randomUUID()}.jpg`;
+  await env.PHOTOS.put(k, b, { httpMetadata: { contentType: "image/jpeg" } });
   return Response.json({ key: k });
 }
 

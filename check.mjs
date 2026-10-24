@@ -81,7 +81,7 @@ assert.equal(withoutTemplate("地點:\n狀況（不亮、閃爍、白天也亮�
 assert.notEqual(withoutTemplate("敦化南路紅綠燈一直閃黃燈"), "");
 // Photos: own folder (or demo/ for the seed) only, at most 3
 const pbase = { title:"t", body:"b", createdAt:"2026-10-01T00:00:00Z" }, me16 = "0123456789abcdef";
-assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:[`${me16}/a.jpg`, "fedcba9876543210/b.jpg", "demo/c.jpg", "../x.jpg", `${me16}/d.webp`, `${me16}/e.jpg`, `${me16}/f.jpg`] }, me16).photos, [`${me16}/a.jpg`, `${me16}/d.webp`, `${me16}/e.jpg`]);
+assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:[`${me16}/a.jpg`, "fedcba9876543210/b.jpg", "demo/c.jpg", "../x.jpg", `${me16}/d.webp`, `${me16}/e.jpg`, `${me16}/f.jpg`, `${me16}/g.jpg`] }, me16).photos, [`${me16}/a.jpg`, `${me16}/e.jpg`, `${me16}/f.jpg`]);
 assert.deepEqual(cleanItem("x", { ...pbase, n:1, photos:["demo/demo-01.jpg", "javascript:alert(1)"] }, "demo-seed").photos, ["demo/demo-01.jpg"]);
 assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:"demo/a.jpg" }, me16).photos, []);
 console.log("OK");

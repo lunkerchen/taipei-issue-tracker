@@ -832,8 +832,9 @@ ${text}${picked && picked.address ? `\n市民在地圖上標記的位置：${pic
 
 let maskedN = 0;
 // ---- Photos: resized and re-encoded in the browser (long edge 1600, JPEG), which also drops EXIF such as GPS ----
-let photoFn = null, shots = [];
-const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.(?:jpg|webp)$/;
+// shotGen invalidates shrinks still running when the form is cleared; shrinking lets submit wait for them
+let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
+const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 const photoUrl = k => photoFn ? photoFn.url(k) : "";
 async function shrink(file) {
   const bmp = await createImageBitmap(file, { imageOrientation:"from-image" });
@@ -847,20 +848,26 @@ function drawShots() {
   $("photoPrev").innerHTML = shots.map((s, n) => `<figure><img src="${s.url}" alt="待上傳照片 ${n + 1}"><button type="button" data-rmshot="${n}" aria-label="移除照片 ${n + 1}">×</button></figure>`).join("");
   $("photoLbl").hidden = shots.length >= PHOTO_MAX;
 }
-function clearShots() { shots.forEach(s => URL.revokeObjectURL(s.url)); shots = []; $("photoIn").value = ""; drawShots(); }
-$("photoIn").addEventListener("change", async () => {
-  const files = [...$("photoIn").files]; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
-  for (const f of files) {
-    if (shots.length >= PHOTO_MAX) break;
-    try { const blob = await shrink(f); shots.push({ blob, url:URL.createObjectURL(blob) }); }
-    catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
-  }
-  $("photoIn").disabled = false; drawShots();
+function clearShots(only) {
+  const gone = only || shots; gone.forEach(s => URL.revokeObjectURL(s.url));
+  shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
+  $("photoIn").value = ""; drawShots();
+}
+$("photoIn").addEventListener("change", () => {
+  const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
+  shrinking = (async () => {
+    for (const f of files) {
+      if (shots.length >= PHOTO_MAX || gen !== shotGen) break;
+      try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ blob, url:URL.createObjectURL(blob) }); drawShots(); }
+      catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
+    }
+  })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); });
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled) return;
+  $("submitBtn").disabled = true; await shrinking; $("submitBtn").disabled = false; // photos still shrinking belong to this report
   const m = maskPII($("newText").value.trim()), text = m.text;
   if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
   if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
@@ -904,7 +911,7 @@ $("dupBox").addEventListener("click", e => {
   if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return create({ ...t, dup: null }, text).finally(() => $("submitBtn").disabled = false); }
   setVote(t.dup.id, true);
   view.open.add(t.dup.id); view.closed = false;
-  $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; render();
+  $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; clearPick(); clearShots(); render();
 });
 
 // Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.
@@ -925,8 +932,9 @@ async function locate(address, district) {
 async function create(t, text) {
   const { dup, address, outside, vague, ...fields } = t;
   const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
+  const sent = shots.slice(); // this report's photos; ones added while it uploads stay for the next one
   let photos = [];
-  try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
+  try { photos = await Promise.all(sent.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
   catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
   const where = await locate(address, fields.district);
   // n is ignored on read (build() numbers citizen items), kept only as a hint
@@ -940,7 +948,7 @@ async function create(t, text) {
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
     view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
-    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
+    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(sent);
     render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);

@@ -62,7 +62,9 @@ assert.equal((await write({ "x-admin": admin }, "delete", `votes/${B.id}`)).stat
 await write({ "x-admin": admin }, "delete", `votes/${A.id}`);
 
 // photos: visitor uploads a JPEG into its own folder, anyone reads it; wrong type / no identity / bad key refused
-const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+// SOI, APP0 (JFIF), APP1 "Exif" with a fake GPS payload, SOS + data, EOI
+const app0 = [0xff, 0xe0, 0, 6, 0x4a, 0x46, 0x49, 0x46], exif = [0xff, 0xe1, 0, 10, 0x45, 0x78, 0x69, 0x66, 0, 0, 0x47, 0x50], sos = [0xff, 0xda, 0, 4, 1, 2, 9, 9, 0xff, 0xd9];
+const jpg = new Uint8Array([0xff, 0xd8, ...app0, ...exif, ...sos]), clean = new Uint8Array([0xff, 0xd8, ...app0, ...sos]);
 const up = (headers, body) => fetch(BASE + "/api/photo", { method: "POST", headers: { "content-type": "image/jpeg", ...headers }, body, signal: AbortSignal.timeout(8000) });
 const pr = await up({ "x-visitor": A.token }, jpg);
 assert.equal(pr.status, 200, "photo upload");
@@ -70,7 +72,13 @@ const { key } = await pr.json();
 assert.match(key, new RegExp(`^${A.id}/[\\w-]+\\.jpg$`), "photo key in own folder");
 const got = await fetch(BASE + "/api/photo/" + key);
 assert.equal(got.status, 200); assert.equal(got.headers.get("content-type"), "image/jpeg"); assert.equal(got.headers.get("x-content-type-options"), "nosniff");
-assert.deepEqual(new Uint8Array(await got.arrayBuffer()), jpg, "photo bytes round-trip");
+assert.deepEqual(new Uint8Array(await got.arrayBuffer()), clean, "EXIF segment stripped, image kept");
+assert.equal((await up({ "x-visitor": A.token }, new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 "))).status, 415, "webp refused (JPEG only)");
+assert.equal((await up({ "x-visitor": A.token }, new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 99]))).status, 415, "truncated jpeg refused");
+// no Content-Length (streamed): still capped
+const big = new ReadableStream({ start(c) { for (let i = 0; i < 12; i++) c.enqueue(new Uint8Array(64 * 1024).fill(0xff)); c.close(); } });
+const sr = await fetch(BASE + "/api/photo", { method: "POST", headers: { "content-type": "image/jpeg", "x-visitor": A.token }, body: big, duplex: "half", signal: AbortSignal.timeout(8000) });
+assert.equal(sr.status, 413, "streamed oversize refused");
 assert.equal((await up({ "x-visitor": A.token }, new TextEncoder().encode("<svg onload=alert(1)>"))).status, 415, "non-image refused");
 assert.equal((await up({}, jpg)).status, 403, "anonymous upload refused");
 assert.equal((await up({ "x-visitor": forged }, jpg)).status, 403, "forged visitor refused");
