@@ -1437,7 +1437,8 @@ function goIssue(e) {
 
 // ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
 // The file holds roads [district, road, lat, lng, geocoded?], items [name, main category], days {"YYYY-MM-DD": [[road, item, hhmm], …]}.
-let histFn = null, hist = null, histDays = [], histGroups = {}, histR = null, histTimer = null;
+let histFn = null, hist = null, histDays = [], histGroups = {}, histIcons = {}, histSaved = null, histTimer = null;
+const setLayers = f => { for (const l of LAYERS) layerOn[l.id] = f(l.id); for (const b of document.querySelectorAll("[data-layer]")) b.checked = layerOn[b.dataset.layer]; allBtn(); };
 const noise = n => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) - .5; }; // stable jitter so a day redraws the same
 const dayLabel = k => { const [y, m, d] = k.split("-"); return `${y}/${+m}/${+d}（${"日一二三四五六"[new Date(Date.UTC(+y, m - 1, +d)).getUTCDay()]}）`; };
 async function setHist(on) {
@@ -1451,6 +1452,9 @@ async function setHist(on) {
     if (!$("histOn").checked) { $("histCount").textContent = ""; return; } // unticked (or Live pressed) while the file was loading
   }
   if (on) $("histDay").value = histDays.length - 1; // every opening starts on the newest day
+  // The timeline opens with every layer ticked; closing it puts back the ticks the citizen had on the live map.
+  if (on && !histOn) { histSaved = { ...layerOn }; setLayers(() => true); }
+  else if (!on && histOn && histSaved) { const was = histSaved; histSaved = null; setLayers(id => was[id] === true); }
   histOn = on;
   for (const l of LAYERS) {
     histGroups[l.id] ||= L.layerGroup();
@@ -1464,12 +1468,12 @@ async function setHist(on) {
 }
 function drawHist() {
   const key = histDays[+$("histDay").value], list = hist.days[key] || [], tally = {};
-  histR ||= L.canvas({ padding:.3 }); // ~470 points a day: canvas keeps panning smooth on phones
   for (const g of Object.values(histGroups)) g.clearLayers();
   list.forEach(([ri, ii, hm], k) => {
     const rd = hist.roads[ri], it = hist.items[ii], lay = groups[it[1]] ? it[1] : "none", spread = rd[4] ? .0012 : .006;
     const color = (LAYERS.find(l => l.id === lay) || {}).color;
-    const m = L.circleMarker([rd[2] + noise(ri * 7919 + k) * spread, rd[3] + noise(ri * 104729 + k) * spread], { renderer:histR, radius:5, weight:1, color:"#fff", fillColor:color, fillOpacity:.85 });
+    // Same pin as live reports, a bit smaller; one shared icon per colour (~470 pins a day)
+    const m = L.marker([rd[2] + noise(ri * 7919 + k) * spread, rd[3] + noise(ri * 104729 + k) * spread], { icon:histIcons[color] ||= pinIcon({ color, fixed:false, h:22 }), keyboard:false });
     m.bindPopup(`<b>${esc(it[0])}</b><div class="meta">${esc(rd[0] + rd[1])} · ${dayLabel(key)} ${String(hm).padStart(4, "0").replace(/(..)$/, ":$1")}</div><div class="meta">${rd[4] ? "路段" : "行政區"}概略位置</div>`);
     histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
   });
