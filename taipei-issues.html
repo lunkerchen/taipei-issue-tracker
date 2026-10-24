@@ -742,6 +742,15 @@ function applyRole() {
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
 async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
 
+// Same domain rule as the Worker: one @, a dot, and no empty or hyphen-edged domain label.
+function validEmail(s) {
+  if (s.length > 254) return false;
+  const at = s.indexOf("@");
+  if (at < 1 || at !== s.lastIndexOf("@") || /\s/.test(s)) return false;
+  const domain = s.slice(at + 1);
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+}
+
 // Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
 function maskPII(s) {
   // Match on an NFKC copy (full-width digits, @ and so on) but cut the original text, so other characters stay as typed.
@@ -1303,7 +1312,7 @@ $("newForm").addEventListener("submit", async e => {
       if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("cPhone").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { $("cEmail").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫 Email（用來通知處理進度）"; $("cEmail").focus(); return; }
+      if (!validEmail(mail)) { $("cEmail").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫 Email（用來通知處理進度）"; $("cEmail").focus(); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
