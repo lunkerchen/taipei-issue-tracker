@@ -19,7 +19,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 
 - **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
 - **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its private contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. Only the administrator can read it. The website does not show it to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
-- **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, a retry of the same report uses the same case ID.
+- **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
   - "Add to #N": The website adds your text and photos to that case and gives it +1. For a retry, the Worker uses the same addition ID and uploaded photo keys. It creates the addition once and keeps the other additions.
@@ -28,9 +28,9 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 
   The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
-- **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm.
+- **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
-- **Personal data mask**: The website hides telephone numbers, email addresses and ID numbers before it sends the report. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
+- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash separators and the `+886` and `00886` mobile prefixes, email addresses and ID numbers before it sends a report or an addition. Contact fields stay private. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**.
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
@@ -155,14 +155,16 @@ node worker/test/votes.mjs
 node worker/test/visitor.mjs
 ```
 
-Browser regression tests need Playwright and a running local Worker. Install Playwright in your test environment. You can set `PLAYWRIGHT_MODULE` to a module path and `CHROME_EXECUTABLE_PATH` to an installed Chrome executable.
+Browser regression tests need Playwright and a running local Worker. Install Playwright in your test environment. You can set `PLAYWRIGHT_MODULE` to a module path and `CHROME_EXECUTABLE_PATH` to an installed Chrome executable. The phone mask test uses port 8788 by default; set `PHONE_MASK_BASE` to use another local URL. Set `PHONE_MASK_EVIDENCE_DIR` to save a browser screenshot.
 
 ```bash
 node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
 node worker/test/addendum-flow.mjs
+node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
+BASE=http://localhost:8808 node worker/test/location-request-race.mjs
 ```
 
 The history map loading test uses sample dispatch data. It checks a delayed Leaflet load, cancellation, and retry:
@@ -170,6 +172,8 @@ The history map loading test uses sample dispatch data. It checks a delayed Leaf
 ```bash
 HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-loading.mjs
 ```
+
+The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs

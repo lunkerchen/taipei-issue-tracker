@@ -672,15 +672,25 @@ const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
   return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
 
 let toastTimer;
-function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").textContent = "", 5000); }
+function toast(msg, hideFromAT = false) {
+  const el = $("toast");
+  el.textContent = msg;
+  if (hideFromAT) el.setAttribute("aria-hidden", "true"); else el.removeAttribute("aria-hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.textContent = ""; el.removeAttribute("aria-hidden"); }, 5000);
+}
 // A rejected write from a non-admin means the rules only give this viewer read access: drop to read-only.
-function fail(e) {
-  if (e && e.code === "invalid_argument" && canWrite && !admin) { canWrite = false; applyRole(); render(); return toast("你目前只能檢視"); }
-  if (e && e.error === "report_quota") return toast("短時間內送出太多陳情，請稍後再試（每人每 10 分鐘 3 件、每天 10 件）");
-  if (e && e.error === "duplicate_report") return toast("剛才已經有人送出相同內容的陳情，請直接在那件按 +1");
-  if (e && e.status === 429) return toast("操作太頻繁，請 1 分鐘後再試");
-  if (e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false)) return toast("目前連不上伺服器，請稍後再試（你輸入的內容已保留）");
-  toast(e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試");
+function fail(e, statusNode = null) {
+  const readOnly = e && e.code === "invalid_argument" && canWrite && !admin;
+  if (readOnly) { canWrite = false; applyRole(); render(); }
+  const message = readOnly ? "你目前只能檢視"
+    : e && e.error === "report_quota" ? "短時間內送出太多陳情，請稍後再試（每人每 10 分鐘 3 件、每天 10 件）"
+    : e && e.error === "duplicate_report" ? "剛才已經有人送出相同內容的陳情，請直接在那件按 +1"
+    : e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試"
+    : e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false) ? "目前連不上伺服器，請稍後再試（你輸入的內容已保留）"
+    : e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試";
+  if (statusNode) statusNode.textContent = message;
+  toast(message, !!(statusNode && statusNode.getClientRects().length));
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
@@ -704,11 +714,13 @@ function maskPII(s) {
     i += c.length;
   }
   const hits = [];
+  // Keep the old two-character hyphen/dot/whitespace separators and allow bounded whitespace around a slash.
+  const sep = String.raw`(?:[-.\s]{0,2}|\s{0,2}/\s{0,2})`;
   for (const re of [
     /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,                                           // email
     /(?<![A-Z0-9])[A-Z][12]\d{8}(?!\d)/gi,                                       // national ID
-    /(?<!\d)(?:\+?886[-.\s]?0?|0)9\d{2}[-.\s]{0,2}\d{3}[-.\s]{0,2}\d{3}(?!\d)/g, // mobile
-    /(?<!\d)\(?0[2-8]\d?\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}(?!\d)/g                // landline, 2- or 3-digit area code
+    new RegExp(String.raw`(?<!\d)(?:(?:\+|00)?886${sep}?0?9\d{2}${sep}?\d{3}${sep}?\d{3}|09\d{2}${sep}?\d{3}${sep}?\d{3})(?!\d)`, "g"), // Taiwan mobile, including +886 and 00886
+    new RegExp(String.raw`(?<!\d)\(?0[2-8]\d?\)?${sep}?\d{3,4}${sep}?\d{3,4}(?!\d)`, "g") // landline, 2- or 3-digit area code
   ]) for (const m of norm.matchAll(re)) {
     const a = at[m.index], b = end[m.index + m[0].length - 1];
     if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);
@@ -1049,9 +1061,10 @@ $("list").addEventListener("change", onListChange);
 ["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
 $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
-let formFrom = "issues";
+let formFrom = "issues", formEpoch = 0, locationIntent = 0, pickMapIntent = 0;
 $("newBtn").onclick = () => {
   if ($("newBox").hidden) {
+    formEpoch++; locationIntent++;
     formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
     const active = document.activeElement;
     formOpener = active && active !== document.body && !$("newBox").contains(active) ? active : $("newBtn");
@@ -1065,6 +1078,14 @@ function restoreFormFocus() {
   formOpener = null;
   target && target.focus({ preventScroll:true });
 }
+function restoreReportRetryFocus(requested, revision) {
+  if (!requested) return;
+  setTimeout(() => {
+    const target = $("submitBtn");
+    if (revision === reportRevision && !$("newBox").hidden && document.activeElement === document.body && !target.disabled)
+      target.focus({ preventScroll:true });
+  }, 0);
+}
 function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
@@ -1072,7 +1093,7 @@ function clearReportFlow() {
 }
 $("cancelBtn").onclick = () => {
   if (reportCreating) return;
-  clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
+  formEpoch++; pickMapIntent++; clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
   if (formFrom === "map") show("map");
   restoreFormFocus();
 };
@@ -1331,6 +1352,7 @@ $("dupBox").addEventListener("click", e => {
   if (!b || !pending) return;
   const { t, text, photos, signature } = pending;
   if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+  const restoreOnFailure = b.dataset.dup === "new" && document.activeElement === b;
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
   if (b.dataset.dup === "new") {
@@ -1338,7 +1360,7 @@ $("dupBox").addEventListener("click", e => {
     reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
     return shrinking.then(() => {
       if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
-      return create({ ...t, dup:null }, text, signature, maskedN);
+      return create({ ...t, dup:null }, text, signature, maskedN, restoreOnFailure);
     }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
   }
   if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
@@ -1371,7 +1393,7 @@ function completeCreatedReport(attempt) {
   if (unchanged) {
     clearReportFlow();
     $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true;
-    $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); restoreFormFocus();
+    formEpoch++; pickMapIntent++; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); restoreFormFocus();
   } else {
     pending = null; $("dupBox").replaceChildren(); $("dupBox").hidden = true;
     $("newStatus").textContent = "通報已送出；目前修改中的內容已保留";
@@ -1380,7 +1402,7 @@ function completeCreatedReport(attempt) {
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
 }
-async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN) {
+async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
   let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
   if (!attempt) {
@@ -1388,7 +1410,11 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     const addr = (picked && picked.address) || address;
     let photos = [];
     try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); }
-    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; return; }
+    catch (e) {
+      $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試";
+      restoreReportRetryFocus(restoreOnFailure, startRevision);
+      return;
+    }
     const where = await locate(address, fields.district);
     if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
     const id = crypto.randomUUID();
@@ -1411,7 +1437,11 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
       completeCreatedReport(attempt);
     } else {
       if (contactFn) try { await contactFn.save(id, contact); }
-      catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
+      catch (e) {
+        $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試";
+        restoreReportRetryFocus(restoreOnFailure, startRevision);
+        return;
+      }
       const snap = await ref.get(), stored = snap.exists && (snap.data().items || {})[id];
       // Older shims can recognize an existing cached item, then avoid replacing it.
       if (stored) { completeCreatedReport(attempt); return; }
@@ -1423,7 +1453,8 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     mine = null; $("newStatus").textContent = "";
     const twin = e && e.error === "duplicate_report" && issues.find(i => i.id !== full && normBody(i.body) === normBody(text));
     if (twin) { reportAttempt = null; return showDup({ ...attempt.t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, attempt.photos, signature); }
-    fail(e);
+    fail(e, $("newStatus"));
+    restoreReportRetryFocus(restoreOnFailure, startRevision);
   }
 }
 const normBody = s => String(s || "").replace(/[\s\p{P}\p{S}]/gu, "").toLowerCase(); // same as the Worker's duplicate check
@@ -1674,15 +1705,18 @@ function askReport({ lat, lng }) {
   m.bindPopup(askHtml("要在這裡通報嗎？", undefined, lat, lng, true), { offset:[0, -16] }).openPopup();
   m.on("popupclose", () => { m.remove(); if (askM === m) askM = null; });
   lookup(lat, lng).then(g => { m.geo = g; if (m.isPopupOpen()) m.setPopupContent(askHtml("要在這裡通報嗎？", g, lat, lng, true));
-    else if (m.confirmed && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo(g, lat, lng); }); // confirmed before the lookup came back
+    else if (m.confirmed && m.formIntent === locationIntent && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo(g, lat, lng, m.formIntent); }); // confirmed before the lookup came back
 }
-function reportAt({ lat, lng }, how, geo) {
+function reportAt({ lat, lng }, how, geo, locationMarker) {
   if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
-  $("newBtn").click(); setPicked(lat, lng, how === "定位" ? "gps" : "pin"); placePin(lat, lng);
-  applyGeo(geo, lat, lng);
+  $("newBtn").click(); const intent = setPicked(lat, lng, how === "定位" ? "gps" : "pin");
+  if (locationMarker) locationMarker.formIntent = intent;
+  placePin(lat, lng);
+  applyGeo(geo, lat, lng, intent);
   $("newBox").scrollIntoView({ block:"start" });
 }
-function applyGeo(geo, lat, lng) {
+function applyGeo(geo, lat, lng, intent) {
+  if (intent !== undefined && !isCurrentLocationIntent(intent)) return;
   const before = reportInputStamp();
   if (geo && geo.address) picked.address = geo.address.slice(0, 100);
   if (geo && DISTRICTS.includes(geo.district) && !$("newDistrict").value) $("newDistrict").value = geo.district;
@@ -1710,7 +1744,7 @@ $("locBtn").onclick = () => {
 $("map").addEventListener("click", e => {
   if (e.target.closest("[data-here]") && meM) { mainLM.closePopup(); reportAt(meM.getLatLng(), "定位", meM.geo); }
   if (e.target.closest("[data-askno]")) mainLM.closePopup();
-  if (e.target.closest("[data-askok]") && askM) { const m = askM; m.confirmed = true; mainLM.closePopup(); reportAt(m.getLatLng(), "長按", m.geo); }
+  if (e.target.closest("[data-askok]") && askM) { const m = askM; m.confirmed = true; mainLM.closePopup(); reportAt(m.getLatLng(), "長按", m.geo, m); }
 });
 if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖上按右鍵，直接回報那個位置";
 
@@ -1948,10 +1982,13 @@ $("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView
 // ---- Location picker on the New issue form ----
 let picked = null, pickLM = null, pinM = null;
 const setLoc = msg => $("locStatus").textContent = msg;
+const isCurrentLocationIntent = intent => intent === locationIntent && !$("newBox").hidden;
 function setPicked(lat, lng, loc) {
+  locationIntent++;
   picked = { lat:+lat.toFixed(5), lng:+lng.toFixed(5), loc };
   invalidateReportPreview();
   $("clrLoc").hidden = false; setLoc(loc === "gps" ? "已使用你的位置" : "已標記位置，可拖曳調整");
+  return locationIntent;
 }
 function placePin(lat, lng) {
   if (!pickLM) return;
@@ -1959,42 +1996,58 @@ function placePin(lat, lng) {
   pinM = L.marker([lat, lng], { draggable:true, keyboard:false, icon:L.divIcon({ className:"pin-wrap", html:'<span class="pin"></span>', iconSize:[22,22], iconAnchor:[11,22] }) }).addTo(pickLM);
   let last = [lat, lng];
   pinM.on("dragend", () => { const p = pinM.getLatLng();
-    if (!inTaipei(p.lat, p.lng)) { pinM.setLatLng(last); return setLoc("位置超出台北市範圍"); }
+    if (!inTaipei(p.lat, p.lng)) { locationIntent++; pinM.setLatLng(last); return setLoc("位置超出台北市範圍"); }
     last = [p.lat, p.lng]; setPicked(p.lat, p.lng, "pin"); });
 }
 function clearPick() {
+  locationIntent++; pickMapIntent++;
   picked = null; setLoc(""); $("clrLoc").hidden = true;
   invalidateReportPreview();
   if (pinM) { pinM.remove(); pinM = null; }
   $("pickMap").hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
 }
-$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; invalidateReportPreview(); setLoc(""); $("clrLoc").hidden = true; };
+$("clrLoc").onclick = () => { locationIntent++; if (pinM) { pinM.remove(); pinM = null; } picked = null; invalidateReportPreview(); setLoc(""); $("clrLoc").hidden = true; };
 $("gpsBtn").onclick = () => {
   if (!navigator.geolocation) return setLoc("這個瀏覽器不支援定位，請改在地圖上標記位置");
+  const intent = ++locationIntent;
   setLoc("定位中…");
   navigator.geolocation.getCurrentPosition(p => {
+    if (!isCurrentLocationIntent(intent)) return;
     const { latitude:la, longitude:ln } = p.coords;
     if (!inTaipei(la, ln)) return setLoc("你目前不在台北市範圍內，請改在地圖上標記位置");
-    setPicked(la, ln, "gps"); placePin(la, ln); if (pickLM) pickLM.setView([la, ln], 16);
+    const selectedIntent = setPicked(la, ln, "gps"); placePin(la, ln); if (pickLM) pickLM.setView([la, ln], 16);
     // Coarse fix (Wi-Fi / cell towers): open the pin map on it so the citizen can correct the spot
     const acc = p.coords.accuracy;
-    if (acc > 200) Promise.resolve($("pickMap").hidden && $("pinBtn").onclick()).finally(() => !$("pickMap").hidden && setLoc(`定位誤差約 ${Math.round(acc)} 公尺，請拖曳大頭針或點地圖修正位置`));
-  }, e => setLoc(e && e.code === 1 ? "你拒絕了定位權限，可改在地圖上標記位置" : "無法取得位置（逾時或訊號不佳），可改在地圖上標記位置"), { timeout:8000, maximumAge:60000 });
+    if (acc > 200) {
+      const epoch = formEpoch, map = $("pickMap").hidden ? togglePickMap() : Promise.resolve(true);
+      map.then(() => { if (selectedIntent === locationIntent && epoch === formEpoch && !$("newBox").hidden && !$("pickMap").hidden)
+        setLoc(`定位誤差約 ${Math.round(acc)} 公尺，請拖曳大頭針或點地圖修正位置`); });
+    }
+  }, e => { if (isCurrentLocationIntent(intent)) setLoc(e && e.code === 1 ? "你拒絕了定位權限，可改在地圖上標記位置" : "無法取得位置（逾時或訊號不佳），可改在地圖上標記位置"); }, { timeout:8000, maximumAge:60000 });
 };
-$("pinBtn").onclick = async () => {
+async function togglePickMap() {
+  const epoch = formEpoch, request = ++pickMapIntent, locationAtStart = locationIntent;
   const box = $("pickMap");
-  if (!box.hidden) { box.hidden = true; return $("pinBtn").setAttribute("aria-expanded", "false"); }
+  if (!box.hidden) { box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false"); return false; }
   box.hidden = false; $("pinBtn").setAttribute("aria-expanded", "true");
-  try { await loadLeaflet(); } catch { box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false"); return setLoc("地圖載入失敗，請稍後再試，或直接送出由系統依地址判斷"); }
+  try { await loadLeaflet(); } catch {
+    if (request !== pickMapIntent || epoch !== formEpoch || $("newBox").hidden || box.hidden) return false;
+    box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
+    if (locationAtStart === locationIntent) setLoc("地圖載入失敗，請稍後再試，或直接送出由系統依地址判斷");
+    return false;
+  }
+  if (request !== pickMapIntent || epoch !== formEpoch || $("newBox").hidden || box.hidden) return false;
   if (!pickLM) {
     pickLM = L.map("pickMap", TAIPEI_VIEW); addBase(pickLM);
-    pickLM.on("click", e => { if (!inTaipei(e.latlng.lat, e.latlng.lng)) return setLoc("位置超出台北市範圍");
+    pickLM.on("click", e => { if (!inTaipei(e.latlng.lat, e.latlng.lng)) { locationIntent++; return setLoc("位置超出台北市範圍"); }
       setPicked(e.latlng.lat, e.latlng.lng, "pin"); placePin(e.latlng.lat, e.latlng.lng); });
   }
   pickLM.invalidateSize();
   if (picked && !pinM) { placePin(picked.lat, picked.lng); pickLM.setView([picked.lat, picked.lng], 16); }
-  else if (!picked) setLoc("點一下地圖放下大頭針");
-};
+  else if (!picked && locationAtStart === locationIntent) setLoc("點一下地圖放下大頭針");
+  return true;
+}
+$("pinBtn").onclick = () => togglePickMap();
 
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
 let newsItems = [], tkTimer = 0, tkI = 0;
