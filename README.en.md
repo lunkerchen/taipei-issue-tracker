@@ -34,9 +34,11 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 
 **Citizens (mobile phone first)**
 
-- **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
-- **Contact data**: Your name, mobile number and email address are necessary. The email address is for case progress notices. The website does not send these notices yet. The Worker refuses a new report that has no valid contact data. The Worker saves the case and its contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. But the demo admin console needs no verification, so anyone can read it. The form and the privacy notice tell citizens not to enter real personal data. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
-- **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID.
+- **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos. The website tells you when it does not add other photos or when a photo is too large.
+- **Contact data**: Your name, mobile number and email address are necessary. The email address is for case progress notices. It has one @, at least one dot in the domain, and no empty or hyphen-edged domain label. The website does not send these notices yet. The form and the privacy notice also tell you that the website sends no email or text message notices. The Worker refuses a new report that has no valid contact data. The Worker saves the case and its contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. But the demo admin console needs no verification, so anyone can read it. The form and the privacy notice tell citizens not to enter real personal data. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Report fields**: The Worker accepts a new case only if it has a title of 1 to 200 characters, a body of 1 to 2000 characters, and tags as a list of strings. An item with a bad title, body or tags is refused with `bad_item` instead of being stored as a case that the website cannot show.
+- **Phones and keyboards**: The news ticker and the bottom navigation do not cover a control that has keyboard focus. The page moves the control above them. If a report form field has an error, the error text shows below that field, the field gets a red border, and a screen reader reads the error with the field. The privacy notice and the terms have a close button at the top. The button stays visible while you scroll. You can also click the background to close them. If the operating system asks for less motion, the page does not use smooth scrolling.
+- **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. While the website sends the case, the status shows "Sending..." and you cannot send or cancel the form again. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID. If AI sorting is not available, the title is the first 40 characters of your text. The cut does not split an emoji or the 「已遮蔽」 mask label.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
   - "Add to #N": The website adds your text and photos to that case and gives it +1. For a retry, the Worker uses the same addition ID and uploaded photo keys. It creates the addition once and keeps the other additions. The website saves your contact data with the addition, and the admin console shows it next to the addition.
@@ -46,32 +48,34 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
   After an addition or a +1 succeeds, the site opens the public case list and shows that case.
   While a +1 is saving, the site checks that the report preview is still current. If the visitor changes the draft, cancels the form, or opens a new report, the site keeps the current state and confirms that the +1 was saved.
 
-  The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
-- **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
+  An addition to your own case shows as "citizen addition". Additions from other visitors show as "addition from another citizen". The website keeps each addition in `addenda/<visitor ID>`.
+- **My reports and additions**: "My reports" shows the cases that you sent. If an administrator hides your case, the page says that the case is not public. It does not say that you did not send a case. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. The form shows the current number of additions. When the case reaches the limit, the form keeps your text as read-only and does not ask you to retry. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, but the demo admin console (no verification) shows them to anyone. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
-- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports. If report data cannot load, the map shows a connection error and a reload button. It does not show an empty city as if there were no reports.
+- **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports. If report data cannot load, the map shows a connection error and a reload button. It does not show an empty city as if there were no reports. The zoom buttons are 44px, so they are easy to tap. On a short screen, the map is at least 320px tall. The page scrolls below the map.
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. If a village page is open, clicking a district closes it and shows the village list of that district. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
 - **Village page**: Click a village to see its page in the side panel. **聯絡窗口** shows the village chief and the city councillors of the election zone, with a **撥打** (call) button when there is a phone number. The party emblem of each councillor shows after the name. A councillor without a party emblem (for example 無黨籍) shows the party name as text. **重大事件** lists the reports in the village: unfinished first, then most +1. Click a report to open it in the list. **回報這個里的問題** opens the report form with the district and a point in the village. Names and phone numbers come from `data/li-contacts.json` and `data/councilors.json`; empty entries show "資料待補".
-- **Report pop-up**: When you click a pin, a pop-up opens. At the top right of the title, an icon shows the area of daily life of the report (食 food, 住 home, 行 transport, 育 education, 樂 leisure, 醫 health). The website finds this area from the 1999 category. Reports in 「其他」 have no icon. Below the status, the address is a link. It opens the location in Google Maps.
+- **Report pop-up**: When you click a pin, a pop-up opens. At the top right of the title, an icon shows the area of daily life of the report (食 food, 住 home, 行 transport, 育 education, 樂 leisure, 醫 health). The website finds this area from the 1999 category. Reports in 「其他」 have no icon. Below the status, the address is a link. It opens the location in Google Maps. On a phone, the pop-up stays inside the map. Long content scrolls, and the close button stays in view. The close button is 44px, so it is easy to tap.
 - **District page**: The side panel of a district has 7 buttons: **全部** and one icon for each area of daily life (食, 住, 行, 育, 樂, 醫). These are the same icons as in the report pop-up. Push an icon to show only the reports of that area, on the map and in the list. The area comes from the 1999 category, as in the report pop-up. Reports in 「其他」 show only with **全部**. **熱門陳情** shows the 5 unfinished reports in the district that have the most +1 votes. Click a report to open it in the report list.
 - **加入 (join a report)**: Each 熱門陳情 row has a **加入** button. The button does not show on your own reports or when this browser cannot send reports. **加入** opens the report form in join mode. Write what you saw, and add photos if necessary. Your name, mobile number and email address are necessary. Push **補充到 #N**. The website does not send the text to AI sorting. It adds your text and photos to that case as a supplement, and it gives the case +1. **只按 +1** gives +1 only. If the +1 write fails, the form stays open and keeps your text. **改為新案件** changes the form back to a new report.
 - **Report pins**: Each report is a map pin in the colour of its 1999 category. More +1 votes make the pin taller. Fixed reports are faded. On the full city map, all 9 category layers are off at the start, so you see only the districts; **全選** / **全不選** turns all layers on or off. When you open a district, all reports in that district show, whatever the layer settings. The 食住行育樂醫 buttons on the district page can limit them to one area.
 - **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number. The points use the same map pins as the reports. When you open the timeline, all layers are on; when you close it, your layer settings come back.
-- **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
+- **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location. If a photo cannot be added, the error shows next to the photo picker, not at the bottom of the form. The page moves the error into view, and a screen reader reads it. The error goes away after you add a valid photo. The add-photo and remove-photo buttons are 44px, so they are easy to tap.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
-- **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases. After a citizen files a report, the keyboard focus goes to the new case. The photo picker shows a focus ring. Screen readers can read the classification in the preview. The name, phone and email fields are marked as required. A field with an error stays marked until the citizen corrects it. Label text has sufficient contrast in the light and dark themes. When the network drops, a banner shows the lost connection. When the network returns and the live connection is still open, the banner goes away.
-- **Case links**: Each case has a stable link from its data ID, not its changing number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
+- **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases. After a citizen files a report, the keyboard focus goes to the new case. A status message "已送出陳情" also confirms the successful report. The `c` shortcut opens the report form. Escape then returns the keyboard focus to 通報. On a short screen, the form keeps its description heading in view. A skip link at the top of the page goes to the main content. The page has one main landmark. The report form has a name. The preview starts with a level 3 heading. A small case map is a named group, not an image, because it contains the map attribution links. The photo picker shows a focus ring. Screen readers can read the classification in the preview. The name, phone and email fields are marked as required. A field with an error stays marked until the citizen corrects it. Label text has sufficient contrast in the light and dark themes. When the network drops, a banner shows the lost connection. When the network returns and the live connection is still open, the banner goes away.
+- **Case numbers**: A case gets a number when the Worker creates it. The number is permanent. Citizens and staff see the same number. The number does not change when other cases are hidden or released. A reload or a new snapshot keeps the same number. Case numbers and PR numbers never have the same value. An old case that has no stored number still shows a number on the page.
+- **Case links**: Each case has a stable link from its data ID, not its number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
-- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". If the data cannot load, the back office shows a connection error and no zero counts.
+- **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
+- **Repair order feedback**: A repair order title has a maximum of 80 characters, and the field shows the limit. After you make a repair order, the field is empty and the page shows the PR number. After you merge a repair order or mark a case fixed, the page shows a message. If the case leaves the Open list, the detail closes and the page shows the case list again.
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
@@ -91,6 +95,7 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
+  ├─ /api/mine ───────── Owner only: the number of your cases that an administrator hid (signed visitor token)
   ├─ /api/reset ──────── Administrator only: puts the database back to worker/data.json
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
@@ -201,6 +206,7 @@ node worker/test/share-links.mjs
 BASE=http://localhost:8808 node worker/test/location-request-race.mjs
 node worker/test/duplicate-target-navigation.mjs
 BASE=http://localhost:8788 node worker/test/district-switch.mjs
+BASE=http://localhost:8788 node worker/test/mobile-a11y.mjs
 ```
 
 The history map loading test uses sample dispatch data. It checks a delayed Leaflet load, cancellation, and retry:
@@ -213,17 +219,80 @@ The location test uses a synthetic visitor identity, delays GPS and address resu
 The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
 The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form. It also checks navigation after vote sorting, waits for an earlier pending +1, and reports partial success when +1 fails after an addendum is saved.
 
+The mobile accessibility test uses 320px and 390px viewports. It checks that keyboard focus and the duplicate-report action stay above the fixed bars, that form errors appear next to the field, and that the privacy dialog has a visible close button.
+
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 ```
+
+```bash
+BASE=http://localhost:8788 node worker/test/a11y-semantics.mjs
+BASE=http://localhost:8788 node worker/test/form-open-focus.mjs
+```
+
+The accessibility semantics test checks one main landmark, the skip link, the report form name, the preview heading, the success status, and the small map role. Set `BASE` to use another local URL. The test writes one report and one case with a location to the local Worker and deletes them when it ends.
+
+The form open focus test uses a phone viewport. It opens the report form with the `c` shortcut and checks that Escape returns focus to 通報. It also opens the form at 320px and checks that the description heading and the focused field stay in view. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
+BASE=http://localhost:8788 node worker/test/mine-hidden-empty.mjs
+```
+
+The hidden case test uses a 390px phone viewport. It creates a case for a test visitor and hides the case as the administrator. It checks that My reports says the case is not public, on the live update and after a reload. It also checks that a visitor with no reports gets the first-report message. Set `BASE` to use another local URL. The test writes one private case and one triage record and deletes them when it ends.
+
+The pop-up edge test uses 390px and 320px phone viewports. It opens the north-most case, which has photos. The test checks that the pop-up, its title, and the close button stay inside the viewport. Use a separate local Worker persistence directory. The test writes one private case and deletes it when it ends.
+
+```bash
+BASE=http://localhost:8788 node worker/test/popup-edge.mjs
+```
+
+```bash
+BASE=http://localhost:8788 node worker/test/photo-error-feedback.mjs
+```
+
+The photo error feedback test uses phone viewports of 390px and 320px. It adds a text file with a `.jpg` name to the photo picker. The test checks that the error shows next to the picker, inside the viewport, and that the form status stays clear. It then adds a valid photo and checks that the error goes away. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
+BASE=http://localhost:8788 node worker/test/touch-targets.mjs
+```
+
+The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
+```
+
+The short viewport test uses 320×568, 640×400, 512×384 and 390×844 viewports. It checks that the district map is at least 300px tall, that all 12 district labels show, and that the labels rarely overlap. It also opens a district from the map and goes back. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
 ```bash
+BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
+```
+
+```bash
 cd worker && node test/sync.mjs
 ```
+
+```bash
+BASE=http://localhost:8788 node worker/test/admin-queue.mjs
+```
+
+The admin queue test uses a desktop viewport and administrator mode. It creates 22 cases without a department and 2 cases for review. It checks that each queue shows all its cases after 顯示更多, and that a quick second click does not change the next case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/pr-merge-feedback.mjs
+```
+
+The repair order feedback test uses desktop and 390px phone viewports. It checks that a long title stops at 80 characters and that one click makes one repair order. It also checks that the field is empty after a repair order, and that merge or fixed shows a message and returns the page to the case list. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
+```
+
+The stable case number test uses two visitors and one administrator. It checks that a case keeps the same number in the staff view and the owner's citizen view. It releases and hides another case and checks for the same number. It also reloads the page and takes a new snapshot. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
@@ -256,7 +325,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 - Administrator mode applies only to the browser tab that you opened with `?admin`.
 - Browsers without Web Locks can create different visitor identities if you open two tabs for the first time at the same time. "My reports" is tied to the identity kept by this browser.
 - The Worker site makes report creation and note additions atomic. The claude.ai artifact keeps its existing database update method and does not have these server guarantees.
-- Case numbers can be the same if many persons send reports at the same time. If two administrators change one case at the same time, one change can replace the other change.
+- If two administrators change one case at the same time, one change can replace the other change.
 - AI sorting and the personal data mask operate in the browser. The Worker checks the prompt prefix and the length limit.
 - If you upload a photo and do not send the report, the photo stays in R2. The system does not remove it automatically.
 - Each history point shows only the road section. For approximately 6% of cases, the road section was not found. These points show near the center of the district.
