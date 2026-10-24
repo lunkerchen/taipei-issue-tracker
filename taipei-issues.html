@@ -849,12 +849,13 @@ function drawShots() {
 }
 function clearShots() { shots.forEach(s => URL.revokeObjectURL(s.url)); shots = []; $("photoIn").value = ""; drawShots(); }
 $("photoIn").addEventListener("change", async () => {
-  const files = [...$("photoIn").files].slice(0, PHOTO_MAX - shots.length); $("photoIn").value = "";
+  const files = [...$("photoIn").files]; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   for (const f of files) {
+    if (shots.length >= PHOTO_MAX) break;
     try { const blob = await shrink(f); shots.push({ blob, url:URL.createObjectURL(blob) }); }
     catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
   }
-  drawShots();
+  $("photoIn").disabled = false; drawShots();
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); });
 $("newForm").addEventListener("submit", async e => {
