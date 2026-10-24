@@ -129,6 +129,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `deck/` | Slides and product screenshots |
 | `docs/og.jpg` | Share card (1200 × 630) for links on social media. Made with GPT Image. `worker/build.mjs` copies it to the site and adds the `og:` and `twitter:` tags. |
 | `docs/screens/` | Screenshots of the website for this README |
+| `promo/` | 30-second vertical promo video (9:16). `compose.html` draws each frame from the real 1999 data. `render.mjs` makes the video. The output goes to `promo/out/` (not in git). |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
 | `PLAN.md` | Tasks and acceptance records for each phase |
 
@@ -142,6 +143,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
 | `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data. If a JPEG is larger than 650 KB, the script uses a lower quality. All 50 demo cases have a photo. |
+| `promo/render.mjs` | Makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, and ffmpeg with libx264. Give seconds (for example `node promo/render.mjs 4.5 18`) to make only those frames in `promo/out/sample/`. Use `--encode` to encode the frames again without a new capture. |
 
 ## Local development
 
