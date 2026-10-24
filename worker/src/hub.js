@@ -197,7 +197,9 @@ export class Hub extends DurableObject {
   }
 
   // Release notes name cases by number; a case hidden after the release still must not reach visitors.
+  // Cached per seq: every doc write bumps seq, and a snapshot calls this once per release doc.
   hiddenCaseNumbers() {
+    if (this.hiddenCache?.seq === this.seq) return this.hiddenCache.out;
     const out = new Set();
     for (const r of this.sql.exec("SELECT path, data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
       const owner = r.path.slice(8), items = JSON.parse(r.data).items;
@@ -205,6 +207,7 @@ export class Hub extends DurableObject {
       for (const [key, item] of Object.entries(items))
         if (isObj(item) && caseNo(item.n) && !this.publicCase(owner === "demo-seed" ? key : `${owner}:${key}`)) out.add(item.n);
     }
+    this.hiddenCache = { seq: this.seq, out };
     return out;
   }
 
