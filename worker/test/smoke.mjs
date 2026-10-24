@@ -86,7 +86,11 @@ assert.equal((await createKey("constructor", "2020-01-01T00:00:00Z")).status, 40
 for (const key of ["constructor", "__proto__", "toString"]) assert.equal((await createKey(key)).status, 200, "fresh inherited-name report " + key);
 assert.equal((await createKey("hasOwnProperty")).status, 429, "inherited-name reports count toward the visitor quota");
 assert.equal((await write({ "x-admin": admin }, "delete", `reports/${K.id}`)).status, 200);
-const rep = (who, key, body, createdAt = now()) => write({ "x-visitor": who.token }, "update", `reports/${who.id}`, { items: { [key]: { title: "t", body, createdAt } } });
+const seedContact = (who, key) => post("/api/contact", { "x-visitor": who.token }, { item:key, name:"測試", phone:"0912000000", email:"seed@example.com", realName:false });
+const rep = async (who, key, body, createdAt = now()) => {
+  assert.equal((await seedContact(who, key)).status, 200, "seed contact " + key);
+  return write({ "x-visitor": who.token }, "update", `reports/${who.id}`, { items: { [key]: { title: "t", body, createdAt } } });
+};
 assert.equal((await write({ "x-visitor": F.token }, "update", `reports/${F.id}`, { items: { a: { body: "x1", createdAt: now() }, b: { body: "x2", createdAt: now() } } })).status, 400, "two new reports in one write");
 assert.equal((await rep(F, "old", "backdated " + tag, "2026-01-01T00:00:00Z")).status, 400, "backdated createdAt");
 for (let i = 1; i <= 3; i++) assert.equal((await rep(F, "r" + i, `路燈不亮 ${tag} 第${i}件`)).status, 200, "report " + i);
@@ -140,6 +144,7 @@ const savedAddenda = (await (await fetch(BASE + "/api/db")).json()).addenda[G.id
 assert.equal(Object.keys(savedAddenda).filter(k => k === addendum.id).length, 1, "one addendum id is stored");
 assert.equal(savedAddenda[addendum.id].text, addendum.text, "idempotency conflict keeps the first text");
 const N = await visitor(), Nkey = "note-case", Nitem = { title: "原案件", body: `補充回歸測試 ${tag}`, createdAt: now(), author: N.id, department: "測試局處" };
+assert.equal((await seedContact(N, Nkey)).status, 200, "note test contact");
 assert.equal((await write({ "x-visitor": N.token }, "update", `reports/${N.id}`, { items: { [Nkey]: Nitem } })).status, 200, "note test report");
 const appendNote = (headers, note) => write(headers, "append-note", `reports/${N.id}`, { key: Nkey, ...note });
 const noteA = { id: "00000000-0000-4000-8000-000000000001", text: "同時補充甲", photos: [] };

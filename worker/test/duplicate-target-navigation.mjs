@@ -23,9 +23,14 @@ const createVisitor = async () => {
   return { token, id:token.split(".")[0] };
 };
 const write = async (headers, op, path, data) => json(await post("/api/db", headers, { op, path, data }));
-const report = (owner, key, title, body, dept) => write({ "x-visitor":owner.token }, "update", `reports/${owner.id}`, {
-  items:{ [key]:{ author:owner.id, title, body, dept, tags:["交通號誌"], district:"大安區", createdAt:new Date().toISOString() } }
-});
+const report = async (owner, key, title, body, dept) => {
+  const saved = await post("/api/contact", { "x-visitor":owner.token }, { item:key, name:"合成測試", phone:"0912000000",
+    email:"synthetic@example.com", realName:false });
+  assert.equal(saved.status, 200, `contact for ${key}`);
+  return write({ "x-visitor":owner.token }, "update", `reports/${owner.id}`, {
+    items:{ [key]:{ author:owner.id, title, body, dept, tags:["交通號誌"], district:"大安區", createdAt:new Date().toISOString() } }
+  });
+};
 const adminHeaders = { "x-admin":adminToken };
 const deleteDoc = async (path, headers = adminHeaders) => json(await post("/api/db", headers, { op:"delete", path }));
 
@@ -131,9 +136,10 @@ try {
   const setMismatchedFilters = async target => {
     if (await page.locator('#nav [data-view="issues"]').getAttribute("aria-current") !== "page")
       await page.locator('#nav [data-view="issues"]').click();
-    await page.locator("#q").fill(`不符合目標的搜尋 ${runId}`);
+    // Department options follow the search, so choose the department before the search hides it.
     const wrongDept = target === first ? "交通局" : "工務局新工處";
     await page.locator("#deptFilter").selectOption(wrongDept);
+    await page.locator("#q").fill(`不符合目標的搜尋 ${runId}`);
     await page.locator("#msFilter").selectOption("flood-prep");
     assert.equal(await page.locator("#q").inputValue(), `不符合目標的搜尋 ${runId}`);
     assert.equal(await page.locator("#deptFilter").inputValue(), wrongDept);
