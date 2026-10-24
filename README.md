@@ -79,6 +79,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/fetch-1999-history.mjs` | 下載 data.taipei 1999 派工 CSV，取路段、查座標，產生 `data/history-2026.json` |
 | `scripts/history-releases.mjs` | 由歷史資料產生每月派工報告（`--write` 寫入線上資料庫） |
 | `scripts/enrich-seed.mjs` | 幫示範案件補 1999 分類與座標 |
+| `scripts/codex-proxy.mjs` | 本機開發用：把 AI 分類請求轉給 Codex CLI |
 | `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳 R2，並加進示範資料 |
 
 ## 本機開發
@@ -96,6 +97,13 @@ npm install -g wrangler   # 若尚未安裝
 VISITOR_SECRET=<任意長字串>
 ADMIN_TOKEN=<本機管理者 token>
 ANTHROPIC_API_KEY=<選填，沒有時 AI 分類改為「1999 待分派」>
+AI_PROXY_URL=<選填，本機改用 Codex CLI 分類：http://127.0.0.1:8799>
+```
+
+**本機用 Codex CLI 做 AI 分類**（不需要 Claude API key）：先啟動代理，再在 `.dev.vars` 設 `AI_PROXY_URL=http://127.0.0.1:8799`。代理對每次請求執行一次 `codex exec`（預設 `gpt-6-luna`、低推理強度、唯讀沙箱，可用 `CODEX_MODEL` 換模型），分類約 10 秒。只在本機使用，線上仍用 Claude API。
+
+```bash
+node scripts/codex-proxy.mjs
 ```
 
 啟動並測試：

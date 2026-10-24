@@ -134,6 +134,13 @@ async function photo(req, env, key) {
 }
 
 async function claude(env, model, prompt) {
+  // Local dev: AI_PROXY_URL (in .dev.vars) points at scripts/codex-proxy.mjs, which answers with Codex CLI instead
+  if (env.AI_PROXY_URL) {
+    const r = await fetch(env.AI_PROXY_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }), signal: AbortSignal.timeout(95000) });
+    if (!r.ok) throw new Error("proxy " + r.status);
+    const text = (await r.json()).text || "";
+    return JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  }
   for (let k = 0; ; k++) {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -152,7 +159,7 @@ async function claude(env, model, prompt) {
 export default {
   async fetch(req, env) {
     const { pathname, searchParams } = new URL(req.url);
-    if (pathname === "/api/health") return Response.json({ ai: !!env.ANTHROPIC_API_KEY });
+    if (pathname === "/api/health") return Response.json({ ai: !!(env.ANTHROPIC_API_KEY || env.AI_PROXY_URL) });
     if (pathname === "/api/db") {
       if (req.method === "GET") return Response.json(await hub(env).snapshot(), { headers: { "cache-control": "no-store" } });
       return req.method === "POST" ? writeDb(req, env) : err(405, "method_not_allowed");
@@ -178,7 +185,7 @@ export default {
     if (pathname === "/api/photo" || pathname.startsWith("/api/photo/")) return photo(req, env, pathname.slice(11));
     if (pathname !== "/api/sample") return err(404, "not_found");
     if (req.method !== "POST") return err(405, "method_not_allowed");
-    if (!env.ANTHROPIC_API_KEY) return err(503, "no_key");
+    if (!env.ANTHROPIC_API_KEY && !env.AI_PROXY_URL) return err(503, "no_key");
     const { success } = await env.LIMITER.limit({ key: req.headers.get("cf-connecting-ip") || "unknown" });
     if (!success) return err(429, "rate_limited");
     let body;
