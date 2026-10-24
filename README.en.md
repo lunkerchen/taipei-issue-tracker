@@ -28,7 +28,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 
   The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
-- **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm.
+- **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides Taiwan telephone numbers, including common slash separators and the `+886` and `00886` mobile prefixes, email addresses and ID numbers before it sends a report or an addition. Contact fields stay private. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**. Purple dashed lines show the boundaries of the 12 districts.
@@ -157,6 +157,7 @@ node worker/test/addendum-flow.mjs
 node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
+BASE=http://localhost:8808 node worker/test/location-request-race.mjs
 ```
 
 The history map loading test uses sample dispatch data. It checks a delayed Leaflet load, cancellation, and retry:
@@ -164,6 +165,8 @@ The history map loading test uses sample dispatch data. It checks a delayed Leaf
 ```bash
 HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-loading.mjs
 ```
+
+The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
