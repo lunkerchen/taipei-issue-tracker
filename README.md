@@ -402,6 +402,12 @@ BASE=http://localhost:8788 node worker/test/dept-counts.mjs
 
 局處件數測試使用桌面視窗，在警察局建立一件未完成與一件已修復的案件。測試逐一比對未完成與已修復分頁中每個局處選項的件數，確認選取後顯示的列表筆數相同。測試也會搜尋測試案件，確認件數縮小到符合的案件。測試結束時會刪除自己建立的案件。請使用獨立的 Worker 持久化目錄。
 
+```bash
+BASE=http://localhost:8907 node worker/test/release-sort-tz.mjs
+```
+
+版本與歷史派工排序測試驗證 Releases 列表依解析後的 Unix epoch 時間戳記降冪排序，而非純字串比對，避免因時區表示法差異（如 `+08:00` 與 `Z`）導致發布時間錯序。同時驗證歷史時間軸上的派工件數皆正確套用千分位格式。
+
 本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。
 
 ## 部署

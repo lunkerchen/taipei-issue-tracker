@@ -402,6 +402,12 @@ BASE=http://localhost:8788 node worker/test/dept-counts.mjs
 
 The department count test uses a desktop viewport. It makes one open and one fixed case in 警察局. It checks every department option under the open and fixed tabs against the rows that option shows. It then searches for the test case and checks that the counts narrow to the matching case. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
+```bash
+BASE=http://localhost:8907 node worker/test/release-sort-tz.mjs
+```
+
+The release sorting test verifies that releases sort in newest-first order by parsed timestamp epoch rather than string comparison, so releases with different timezone offset representations (e.g. `+08:00` vs `Z`) maintain correct chronological order. It also verifies that history dispatch count numbers format with thousands separators.
+
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment
