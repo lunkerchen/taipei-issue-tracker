@@ -18,7 +18,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 **Citizens (mobile phone first)**
 
 - **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
-- **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its private contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. Only the administrator can read it. The website does not show it to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. But the demo admin console needs no verification, so anyone can read it. The form and the privacy notice tell citizens not to enter real personal data. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
 - **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
@@ -33,7 +33,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
-- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. Contact fields stay private. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
+- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, but the demo admin console (no verification) shows them to anyone. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports.
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. If a village page is open, clicking a district closes it and shows the village list of that district. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
@@ -48,7 +48,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
-**Department administrators** (add `?admin=<token>` to the URL. After you open the page, the website removes the token from the address bar.)
+**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
@@ -69,7 +69,7 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
   ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
-  ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, only the administrator can read)
+  ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
 
@@ -77,8 +77,9 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 
 **Security and limits**
 
-- A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. The Worker compares the administrator token in constant time.
-- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket uses the same token as the page.
+- A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. Demo mode: any request with an `x-admin` header is an administrator request. No token is checked.
+- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin`.
+- Because the demo administrator needs no token, administrator writes, contact saves and photo uploads are limited to 120 per minute for each IP address, and an administrator document can be at most 256 KB.
 - Protection against a flood of reports. The server examines each new report:
   - Each request can add only one report.
   - The creation time must be the current time. A report with an earlier time is not accepted.
@@ -132,7 +133,6 @@ Make the file `worker/.dev.vars`. Do not put this file in git.
 
 ```
 VISITOR_SECRET=<a long random string>
-ADMIN_TOKEN=<local administrator token>
 ANTHROPIC_API_KEY=<optional; if it is empty, AI sorting sets "1999 待分派">
 AI_PROXY_URL=<optional; use Codex CLI for local sorting: http://127.0.0.1:8799>
 ```
@@ -184,7 +184,7 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 ```
 
 The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
-The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. Set `DUPLICATE_NAV_ADMIN_TOKEN` to the same local test value as the Worker's `ADMIN_TOKEN`. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
+The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
 The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form. It also checks navigation after vote sorting, waits for an earlier pending +1, and reports partial success when +1 fails after an addendum is saved.
 
 ```bash
@@ -192,14 +192,14 @@ cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 ```
 
 ```bash
-BASE=http://localhost:8788 ADMIN_TOKEN=<local-test-token> node worker/test/report-contact.mjs
+BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
 ```bash
 cd worker && node test/sync.mjs
 ```
 
-Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin=<ADMIN_TOKEN>`.
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment
 
@@ -207,7 +207,7 @@ Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?
 cd worker && npx wrangler deploy
 ```
 
-The production environment must have three secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ADMIN_TOKEN`, `ANTHROPIC_API_KEY`. You must also have the R2 bucket `taipei-issue-photos`.
+The production environment must have two secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ANTHROPIC_API_KEY`. The Worker does not use `ADMIN_TOKEN`; you can delete it with `wrangler secret delete ADMIN_TOKEN`. You must also have the R2 bucket `taipei-issue-photos`.
 
 CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
 
@@ -227,7 +227,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 
 ## Known limits
 
-- Administrator access applies only to the browser tab that you opened with the token.
+- Administrator mode applies only to the browser tab that you opened with `?admin`.
 - Browsers without Web Locks can create different visitor identities if you open two tabs for the first time at the same time. "My reports" is tied to the identity kept by this browser.
 - The Worker site makes report creation and note additions atomic. The claude.ai artifact keeps its existing database update method and does not have these server guarantees.
 - Case numbers can be the same if many persons send reports at the same time. If two administrators change one case at the same time, one change can replace the other change.

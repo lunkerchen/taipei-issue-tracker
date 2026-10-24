@@ -1,10 +1,9 @@
 // Release tags are v<year>.<week>, and the dot must pass /api/db path validation.
-// Run against a local Worker: BASE=http://localhost:8941 ADMIN_TOKEN=<local token> node worker/test/release-tag-path.mjs
+// Run against a local Worker: BASE=http://localhost:8941 node worker/test/release-tag-path.mjs
 import assert from "node:assert/strict";
 
 const BASE = (process.env.BASE || "http://127.0.0.1:8941").replace(/\/$/, "");
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
-assert.ok(ADMIN_TOKEN, "Set ADMIN_TOKEN to the local Worker's test token");
+const ADMIN_TOKEN = "1"; // demo mode: any x-admin value is admin
 const headers = { "content-type": "application/json", "x-admin": ADMIN_TOKEN };
 const runId = Date.now().toString(36);
 const docs = [`v2099.${runId}`, `v2099.${runId}.1`];

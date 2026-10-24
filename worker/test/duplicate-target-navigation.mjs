@@ -8,8 +8,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const base = process.env.DUPLICATE_NAV_BASE || "http://localhost:8809";
 const evidenceDir = process.env.DUPLICATE_NAV_EVIDENCE_DIR;
-const adminToken = process.env.DUPLICATE_NAV_ADMIN_TOKEN;
-if (!adminToken) throw new Error("Set DUPLICATE_NAV_ADMIN_TOKEN to the local synthetic Worker ADMIN_TOKEN.");
+const adminToken = "1"; // demo mode: any x-admin value is admin
 const launchOptions = { headless:true };
 if (process.env.CHROME_EXECUTABLE_PATH) launchOptions.executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
