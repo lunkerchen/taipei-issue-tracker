@@ -18,6 +18,8 @@ const runId = crypto.randomUUID().slice(0, 8), key = "orphan-draft";
 const id = `${visitorId}:${key}`;
 const title = `草稿保留測試 ${runId}`;
 const draft = `未送出的補充草稿 ${runId}：今天又更嚴重了`;
+assert.equal((await post("/api/contact", { "x-visitor":visitor.id }, { item:key, name:"回歸測試", phone:"0912000000",
+  email:"test@example.com", realName:false })).status, 200, "save contact before creating a case");
 assert.equal((await write({ "x-visitor":visitor.id }, "update", `reports/${visitorId}`, { items:{ [key]:{
   title, body:`管理員隱藏案件時，未送出的補充不能無提示消失。${runId}`, createdAt:new Date().toISOString(),
   author:visitorId, dept:"1999 待分派", tags:[], photos:[], notes:[]
