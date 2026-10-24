@@ -762,7 +762,22 @@ function applyRole() {
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
-async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
+async function run(btn, fn) {
+  const hadFocus = btn === document.activeElement;
+  const attr = btn.dataset.status ? "data-status" : btn.dataset.hide ? "data-hide" : btn.dataset.contact ? "data-contact" : btn.dataset.pr ? "data-pr" : btn.dataset.merge ? "data-merge" : null;
+  const caseId = btn.dataset.id || btn.dataset.pr || btn.dataset.contact;
+  const sameSel = attr ? `[${attr}="${CSS.escape(btn.getAttribute(attr))}"]${btn.dataset.id ? `[data-id="${CSS.escape(btn.dataset.id)}"]` : ""}` : null;
+  btn.disabled = true;
+  try { await fn(); } catch (e) { fail(e); }
+  finally {
+    if (btn.isConnected) btn.disabled = false;
+    if (hadFocus && (!document.activeElement || document.activeElement === document.body || document.activeElement === btn)) {
+      const next = (btn.isConnected && btn) || (sameSel && document.querySelector(sameSel))
+        || (caseId && document.querySelector(`[data-open="${CSS.escape(caseId)}"]`)) || (btn.id && $(btn.id));
+      next && next.focus({ preventScroll:true });
+    }
+  }
+}
 
 // Same domain rule as the Worker: one @, a dot, and no empty or hyphen-edged domain label.
 function validEmail(s) {
@@ -1062,9 +1077,13 @@ function render() {
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
   const typed = {}, active = document.activeElement;
+  const noteForm = active?.closest?.("[data-note]");
   const focused = active && $("list").contains(active) ? {
     id: active.id, open: active.dataset.open, vote: active.dataset.vote,
     share: active.dataset.share, shareUrl: active.dataset.shareUrl,
+    status: active.dataset.status, hide: active.dataset.hide, contact: active.dataset.contact,
+    pr: active.dataset.pr, merge: active.dataset.merge, caseId: active.dataset.id || active.dataset.pr || active.dataset.contact,
+    noteSubmit: !!noteForm && active.matches("button[type=submit]"),
     start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection
   } : null;
   document.querySelectorAll("#list input[id^=pr-],#list textarea[id^=note-]").forEach(x => typed[x.id] = x.value);
@@ -1139,9 +1158,17 @@ function render() {
     }
   });
   if (focused) {
+    const byStatus = focused.status && focused.caseId ? document.querySelector(`[data-status="${CSS.escape(focused.status)}"][data-id="${CSS.escape(focused.caseId)}"]`) : null;
+    const byHide = focused.hide && focused.caseId ? document.querySelector(`[data-hide="${CSS.escape(focused.hide)}"][data-id="${CSS.escape(focused.caseId)}"]`) : null;
+    const byContact = focused.contact ? document.querySelector(`[data-contact="${CSS.escape(focused.contact)}"]`) : null;
+    const byPr = focused.pr ? document.querySelector(`[data-pr="${CSS.escape(focused.pr)}"]`) : null;
+    const byMerge = focused.merge ? document.querySelector(`[data-merge="${CSS.escape(focused.merge)}"]`) : null;
+    const noteSubmit = focused.noteSubmit && document.querySelector(`[data-note="${CSS.escape(focused.caseId)}"] button[type=submit]`);
+    const caseTitle = focused.caseId ? document.querySelector(`[data-open="${CSS.escape(focused.caseId)}"]`) : null;
     const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
       focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : focused.share ? document.querySelector(`[data-share="${CSS.escape(focused.share)}"]`) :
-      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) : null;
+      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) :
+      noteSubmit || byStatus || byHide || byContact || byPr || byMerge || caseTitle;
     if (target) {
       target.focus({ preventScroll: true });
       if (typeof target.setSelectionRange === "function" && Number.isInteger(focused.start))
@@ -2533,6 +2560,10 @@ $("list").addEventListener("change", async e => {
     render();
   }
 });
+function focusNoteForm(id) {
+  const ta = $("note-" + id);
+  (ta || document.querySelector(`[data-open="${CSS.escape(id)}"]`))?.focus({ preventScroll:true });
+}
 $("list").addEventListener("submit", async e => {
   const f = e.target.closest("[data-note]"); if (!f) return; e.preventDefault();
   const id = f.dataset.note, i = issues.find(x => x.id === id), state = noteState(id);
@@ -2559,6 +2590,7 @@ $("list").addEventListener("submit", async e => {
     // a live re-render may already have replaced this form: clear the current one by id
     notePics.delete(id); noteAttempts.delete(id); noteStates.delete(id);
     const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
+    focusNoteForm(id);
   } catch (err) {
     state.sending = false;
     if (err && err.error === "note_limit") {
@@ -2567,7 +2599,7 @@ $("list").addEventListener("submit", async e => {
       render(); toast("此案件已達 10 則補充上限"); return;
     }
     state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
-    render(); fail(err);
+    render(); fail(err); focusNoteForm(id);
   }
 });
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
