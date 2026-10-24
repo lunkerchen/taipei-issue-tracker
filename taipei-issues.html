@@ -861,6 +861,7 @@ function cleanTri(t) {
 // reports/<user> holds each citizen's own items; triage/<id> holds what departments decided. Merge by id.
 const hiddenFor = i => i.hidden === true || (!!i.flagged && i.hidden !== false);
 let gotReports = false, gotTriage = false, loadErr = false, mine = null, scrollTo = null;
+let userApi = null, myHidden = null, myHiddenPending = false, myVisibleSig = "";
 function build(checkMine) {
   if (!gotReports || !gotTriage) return; // wait for a server-definitive snapshot of both, or a hidden case shows for a moment
   // A citizen item's id is "<doc id>:<key>" so nobody can write another user's key; demo-seed keeps its plain keys.
@@ -877,6 +878,9 @@ function build(checkMine) {
   all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events,
     notes:[...x.notes, ...(addenda[x.id] || [])].sort((a, b) => a.t.localeCompare(b.t)) }; });
   issues = all.filter(i => admin || !hiddenFor(i));
+  // The snapshot drops hidden cases, so refetch the owner-only count only when the visible set changes.
+  const myVisible = issues.filter(i => i.author === me).map(i => i.id).sort().join("|");
+  if (myVisible !== myVisibleSig) { myVisibleSig = myVisible; myHidden = null; }
   if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
   if (checkMine) mine = null;
   if (pendingShareId !== null) resolveShareRoute();
@@ -1013,7 +1017,20 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
-  if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
+  if (!rows.length) {
+    // Hidden cases stay out of issues, so an empty mine view must not claim the citizen never sent one.
+    let empty;
+    if (view.mine && myHidden > 0) empty = `你的 ${myHidden} 件陳情目前未公開，可能已被管理者隱藏。如果這不是預期情況，請透過頁尾的聯絡信箱詢問。`;
+    else if (view.mine) empty = "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。";
+    else empty = issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。";
+    $("list").innerHTML = `<div class="empty">${empty}</div>`;
+    if (view.mine && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
+      myHiddenPending = true;
+      userApi.hiddenMine().then(n => { myHiddenPending = false; const v = Number(n) || 0; if (v !== myHidden) { myHidden = v; render(); } })
+        .catch(() => { myHiddenPending = false; myHidden = 0; });
+    }
+    return;
+  }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
   const typed = {}, active = document.activeElement;
@@ -2772,7 +2789,7 @@ document.addEventListener("keydown", e => {
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;
   if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
-  const user = await claude.use("user");
+  const user = userApi = await claude.use("user");
   if (!db) return render();
   me = user ? await user.id() : null;
   admin = user ? await user.canEdit() : false;

@@ -125,7 +125,12 @@ const db = {
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
 };
 const user = { id: async () => ((await visitor) || "").split(".")[0] || null, canEdit: async () => !!adminToken,
-  storageBlocked: async () => { await visitor; return visitorStorageBlocked; } };
+  storageBlocked: async () => { await visitor; return visitorStorageBlocked; },
+  // Hidden cases stay out of the public snapshot; this owner-only count lets 我的陳情 explain an empty list.
+  hiddenMine: async () => {
+    const v = await visitor; if (!v) return 0;
+    try { const r = await req("/api/mine", { headers: { "x-visitor": v } }); return r.ok ? (await r.json()).hidden || 0 : 0; } catch { return 0; }
+  } };
 const sample = { async json(prompt, { modelTier, signal } = {}) {
   const r = await fetch("/api/sample", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, tier: modelTier || "default" }), signal });
   if (r.ok) return r.json();
