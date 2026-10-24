@@ -5,6 +5,10 @@ import { DurableObject } from "cloudflare:workers";
 import seed from "../data.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
+// Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
+// ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
+const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;
+const norm = s => String(s || "").replace(/[\s\p{P}\p{S}]/gu, "").toLowerCase();
 const TAIPEI_VIEWBOX = "121.45,25.22,121.67,24.95"; // left,top,right,bottom
 const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
 // Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
@@ -76,6 +80,7 @@ export class Hub extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT NOT NULL, exp INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY)");
       // Reporter name/phone: kept out of docs, so snapshot() and the socket never send them; only the admin route reads them
+      this.sql.exec("CREATE TABLE IF NOT EXISTS quota (who TEXT NOT NULL, ip TEXT NOT NULL, t INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS contacts (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS counter (k TEXT PRIMARY KEY, v INTEGER NOT NULL)");
       this.seq = this.sql.exec("SELECT v FROM counter WHERE k = 'seq'").toArray()[0]?.v || 0;
@@ -98,7 +103,30 @@ export class Hub extends DurableObject {
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
   // The Worker has already checked who may write where; this checks the data and applies it.
-  write(op, path, data, admin) {
+  // New report items in a visitor write: at most one per write, fresh createdAt, not a copy of a recent report, within quota.
+  floodCheck(path, oldDoc, doc, ip) {
+    if (!path.startsWith("reports/")) return null;
+    const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
+    const fresh = Object.keys(items).filter(k => !(k in old));
+    if (!fresh.length) return null;
+    if (fresh.length > 1) return { status: 400, error: "one_report_per_write" };
+    const it = items[fresh[0]], now = Date.now(), t = Date.parse(it?.createdAt);
+    if (!(Math.abs(now - t) <= SKEW)) return { status: 400, error: "bad_created_at" };
+    const who = path.slice(8), n = (sql, ...a) => this.sql.exec(sql, ...a).toArray()[0].c;
+    this.sql.exec("DELETE FROM quota WHERE t < ?", now - 24 * 60 * MIN);
+    if (n("SELECT COUNT(*) c FROM quota WHERE who = ? AND t > ?", who, now - 10 * MIN) >= PER_VISITOR_10MIN ||
+        n("SELECT COUNT(*) c FROM quota WHERE who = ? AND t > ?", who, now - 24 * 60 * MIN) >= PER_VISITOR_DAY ||
+        n("SELECT COUNT(*) c FROM quota WHERE ip = ? AND t > ?", ip, now - 10 * MIN) >= PER_IP_10MIN) return { status: 429, error: "report_quota" };
+    // ponytail: scans every reports doc; fine for a demo-sized database, index body hashes if it grows
+    const body = norm(it.body);
+    if (body.length >= 4) for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'reports/%'").toArray())
+      for (const x of Object.values(JSON.parse(r.data).items || {}))
+        if (x && x !== it && now - Date.parse(x.createdAt) < DUP_WINDOW && norm(x.body) === body) return { status: 409, error: "duplicate_report" };
+    this.sql.exec("INSERT INTO quota VALUES (?, ?, ?)", who, ip, now);
+    return null;
+  }
+
+  write(op, path, data, admin, ip = "") {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
     let doc = null;
     if (op !== "delete") {
@@ -108,6 +136,7 @@ export class Hub extends DurableObject {
       if (!admin) {
         if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
+        const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f;
       }
       this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
     } else this.sql.exec("DELETE FROM docs WHERE path = ?", path);

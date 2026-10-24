@@ -87,7 +87,7 @@ const write = async (op, path, data) => {
   if (adminToken) h["x-admin"] = adminToken;
   const v = await visitor; if (v) h["x-visitor"] = v;
   const r = await req("/api/db", { method: "POST", headers: h, body: JSON.stringify({ op, path, data }) });
-  if (!r.ok) throw Object.assign(new Error("write " + r.status), { status: r.status });
+  if (!r.ok) throw Object.assign(new Error("write " + r.status), { status: r.status, error: (await r.json().catch(() => ({}))).error });
   const j = await r.json(); apply(path, j.data, j.seq); // own write shows at once; the broadcast echo is ignored by seq
 };
 const ref = (c, id) => ({

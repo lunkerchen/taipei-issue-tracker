@@ -45,6 +45,17 @@ const items = Object.fromEntries(Array.from({ length: 21 }, (_, i) => [i, { titl
 assert.equal((await write({ "x-visitor": A.token }, "set", `reports/${A.id}`, { items })).status, 400, "21 items");
 assert.equal((await write({ "x-visitor": A.token }, "set", `reports/${A.id}`, { items: { a: "x".repeat(33000) } })).status, 413, "over 32KB");
 
+// anti-flood on new reports: one per write, fresh createdAt, 3 per visitor per 10 min, no copy of a recent report
+const F = await visitor(), G = await visitor(), tag = Date.now().toString(36), now = () => new Date().toISOString();
+const rep = (who, key, body, createdAt = now()) => write({ "x-visitor": who.token }, "update", `reports/${who.id}`, { items: { [key]: { title: "t", body, createdAt } } });
+assert.equal((await write({ "x-visitor": F.token }, "update", `reports/${F.id}`, { items: { a: { body: "x1", createdAt: now() }, b: { body: "x2", createdAt: now() } } })).status, 400, "two new reports in one write");
+assert.equal((await rep(F, "old", "backdated " + tag, "2026-01-01T00:00:00Z")).status, 400, "backdated createdAt");
+for (let i = 1; i <= 3; i++) assert.equal((await rep(F, "r" + i, `路燈不亮 ${tag} 第${i}件`)).status, 200, "report " + i);
+assert.equal((await rep(F, "r4", `路燈不亮 ${tag} 第4件`)).status, 429, "4th report in 10 min");
+assert.equal((await rep(G, "copy", `路燈不亮${tag}第1件！`)).status, 409, "copy of a recent report");
+assert.equal((await rep(G, "own", `人行道破損 ${tag}`)).status, 200, "G's own report");
+for (const w of [F, G]) assert.equal((await write({ "x-admin": admin }, "delete", `reports/${w.id}`)).status, 200);
+
 // admin writes anywhere; B receives; then clean up
 r = await write({ "x-admin": admin }, "set", "triage/smoke-x", { status: "open" });
 assert.equal(r.status, 200, "admin write");

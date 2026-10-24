@@ -32,7 +32,7 @@ async function writeDb(req, env) {
   const { op, path, data } = b || {};
   if (!["set", "update", "delete"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
   if (!admin && path !== `reports/${id}` && path !== `votes/${id}`) return err(403, "forbidden");
-  return reply(await hub(env).write(op, path, data, admin));
+  return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 
 // Reporter contact (private): a signed visitor saves name/phone for one of its own reports; only the admin reads it back.

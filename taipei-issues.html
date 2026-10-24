@@ -541,6 +541,8 @@ function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); to
 // A rejected write from a non-admin means the rules only give this viewer read access: drop to read-only.
 function fail(e) {
   if (e && e.code === "invalid_argument" && canWrite && !admin) { canWrite = false; applyRole(); render(); return toast("你目前只能檢視"); }
+  if (e && e.error === "report_quota") return toast("短時間內送出太多陳情，請稍後再試（每人每 10 分鐘 3 件、每天 10 件）");
+  if (e && e.error === "duplicate_report") return toast("剛才已經有人送出相同內容的陳情，請直接在那件按 +1");
   if (e && e.status === 429) return toast("操作太頻繁，請 1 分鐘後再試");
   if (e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false)) return toast("目前連不上伺服器，請稍後再試（你輸入的內容已保留）");
   toast(e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試");
