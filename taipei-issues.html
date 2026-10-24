@@ -854,6 +854,8 @@ function clearShots(only) {
   $("photoIn").value = ""; drawShots();
 }
 $("photoIn").addEventListener("change", () => {
+  // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
+  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     for (const f of files) {
@@ -908,7 +910,7 @@ $("dupBox").addEventListener("click", e => {
   const { t, text } = pending;
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
-  if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return create({ ...t, dup: null }, text).finally(() => $("submitBtn").disabled = false); }
+  if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return shrinking.then(() => create({ ...t, dup: null }, text)).finally(() => $("submitBtn").disabled = false); }
   setVote(t.dup.id, true);
   view.open.add(t.dup.id); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; clearPick(); clearShots(); render();
@@ -932,7 +934,7 @@ async function locate(address, district) {
 async function create(t, text) {
   const { dup, address, outside, vague, ...fields } = t;
   const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
-  const sent = shots.slice(); // this report's photos; ones added while it uploads stay for the next one
+  const sent = shots.slice(); // picks are refused while submitBtn is disabled, so this is the report's full set
   let photos = [];
   try { photos = await Promise.all(sent.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
   catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
@@ -948,7 +950,7 @@ async function create(t, text) {
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
     view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
-    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(sent);
+    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
     render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);

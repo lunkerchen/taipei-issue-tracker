@@ -51,21 +51,35 @@ async function readCapped(body, max) {
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
 }
-// Keep SOI, APP0 (JFIF) and APP14 (Adobe colour); drop APP1–APP13/APP15 (EXIF, XMP, IPTC…) and COM. null = not a well-formed JPEG.
+// Strict baseline-JPEG check that also drops metadata. Accepts what canvas.toBlob("image/jpeg") writes and nothing looser:
+// SOI, then segments each introduced by exactly one 0xFF (no fill bytes), APP1–APP15 and COM removed, one SOS, then
+// entropy data where 0xFF is only ever followed by 0x00 or RST0–7, ending in EOI as the last two bytes. Anything else -> null.
+// Rejecting instead of repairing means no later APP segment, fill-byte trick or truncation can carry EXIF/GPS through.
+const SEG_OK = new Set([0xe0, 0xdb, 0xc0, 0xc4, 0xdd, 0xee]); // APP0, DQT, SOF0 (baseline), DHT, DRI, APP14
 function stripJpeg(b) {
-  if (b[0] !== 0xff || b[1] !== 0xd8) return null;
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
   const keep = [b.subarray(0, 2)]; let i = 2;
-  while (i + 4 <= b.length) {
-    if (b[i] !== 0xff) return null;
-    const mk = b[i + 1];
-    if (mk === 0xda) { keep.push(b.subarray(i)); break; } // start of scan: image data to the end
-    const len = (b[i + 2] << 8) | b[i + 3];
+  for (;;) {
+    if (i + 4 > b.length || b[i] !== 0xff) return null;
+    const mk = b[i + 1], len = (b[i + 2] << 8) | b[i + 3];
     if (len < 2 || i + 2 + len > b.length) return null;
+    const end = i + 2 + len;
+    if (mk === 0xda) { // start of scan: header, then entropy-coded data to EOI
+      for (let j = end; j < b.length; j++) {
+        if (b[j] !== 0xff) continue;
+        const n = b[j + 1];
+        if (n === 0x00 || (n >= 0xd0 && n <= 0xd7)) { j++; continue; }
+        if (n === 0xd9 && j + 2 === b.length) { keep.push(b.subarray(i)); break; }
+        return null;
+      }
+      if (keep.at(-1)[1] !== 0xda) return null; // no EOI
+      break;
+    }
     const meta = (mk >= 0xe1 && mk <= 0xef && mk !== 0xee) || mk === 0xfe;
-    if (!meta) keep.push(b.subarray(i, i + 2 + len));
-    i += 2 + len;
+    if (!meta && !SEG_OK.has(mk)) return null;
+    if (!meta) keep.push(b.subarray(i, end));
+    i = end;
   }
-  if (keep.length < 2 || keep.at(-1)[1] !== 0xda) return null;
   const out = new Uint8Array(keep.reduce((s, p) => s + p.length, 0)); let o = 0;
   for (const p of keep) { out.set(p, o); o += p.length; }
   return out;

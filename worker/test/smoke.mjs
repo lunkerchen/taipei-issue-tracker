@@ -75,6 +75,14 @@ assert.equal(got.status, 200); assert.equal(got.headers.get("content-type"), "im
 assert.deepEqual(new Uint8Array(await got.arrayBuffer()), clean, "EXIF segment stripped, image kept");
 assert.equal((await up({ "x-visitor": A.token }, new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 "))).status, 415, "webp refused (JPEG only)");
 assert.equal((await up({ "x-visitor": A.token }, new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 99]))).status, 415, "truncated jpeg refused");
+const C = await visitor(); // separate visitor: these extra uploads would push A past the 10-photos-per-minute limit
+for (const [bad, why] of [
+  [[0xff, 0xd8, 0xff, 0xda, 0xff, 0xff], "SOS with no header / EOI"],
+  [[0xff, 0xd8, ...app0, ...sos.slice(0, 8)], "no EOI"],
+  [[0xff, 0xd8, 0xff, 0xff, 0xe1, 0, 4, 0, 0, ...sos], "fill byte before a marker"],
+  [[0xff, 0xd8, ...app0, 0xff, 0xda, 0, 4, 1, 2, 0xff, 0xe1, 0, 4, 9, 9, 0xff, 0xd9], "APP1 after SOS"],
+  [[0xff, 0xd8, ...app0, 0xff, 0xc2, 0, 2, ...sos], "progressive SOF2"],
+]) assert.equal((await up({ "x-visitor": C.token }, new Uint8Array(bad))).status, 415, why);
 // no Content-Length (streamed): still capped
 const big = new ReadableStream({ start(c) { for (let i = 0; i < 12; i++) c.enqueue(new Uint8Array(64 * 1024).fill(0xff)); c.close(); } });
 const sr = await fetch(BASE + "/api/photo", { method: "POST", headers: { "content-type": "image/jpeg", "x-visitor": A.token }, body: big, duplex: "half", signal: AbortSignal.timeout(8000) });
