@@ -26,6 +26,9 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
   - "Only +1 for #N".
   - Send a new case. If the text is exactly the same, this choice changes to "Change the text".
 
+  After an addition or a +1 succeeds, the site opens the public case list and shows that case.
+  While a +1 is saving, the site checks that the report preview is still current. If the visitor changes the draft, cancels the form, or opens a new report, the site keeps the current state and confirms that the +1 was saved.
+
   The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
@@ -170,6 +173,7 @@ node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
 BASE=http://localhost:8808 node worker/test/location-request-race.mjs
+node worker/test/duplicate-target-navigation.mjs
 ```
 
 The history map loading test uses sample dispatch data. It checks a delayed Leaflet load, cancellation, and retry:
@@ -179,6 +183,8 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 ```
 
 The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
+The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. Set `DUPLICATE_NAV_ADMIN_TOKEN` to the same local test value as the Worker's `ADMIN_TOKEN`. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
+The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form. It also checks navigation after vote sorting, waits for an earlier pending +1, and reports partial success when +1 fails after an addendum is saved.
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
