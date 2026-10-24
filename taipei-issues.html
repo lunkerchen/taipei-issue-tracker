@@ -1272,8 +1272,21 @@ function onListChange(e) {
 }
 $("list").addEventListener("change", onListChange);
 ["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
-$("tabOpen").onclick = () => { view.closed = false; render(); };
-$("tabClosed").onclick = () => { view.closed = true; render(); };
+const switchClosedTab = closed => {
+  view.closed = closed;
+  // A case from the other tab leaves the list; close it and move the URL back to the list.
+  let dropped = false;
+  for (const id of [...view.open]) {
+    const issue = issues.find(i => i.id === id);
+    if (issue && (issue.status === "fixed") === closed) continue;
+    view.open.delete(id);
+    if (id === activeShareId) dropped = true;
+  }
+  if (dropped) { activeShareId = null; if (issueIdFromHash() !== null) replaceHash("#issues"); }
+  render();
+};
+$("tabOpen").onclick = () => switchClosedTab(false);
+$("tabClosed").onclick = () => switchClosedTab(true);
 let formFrom = "issues", formEpoch = 0, locationIntent = 0, pickMapIntent = 0;
 $("newBtn").onclick = () => {
   if (!canWrite) return;
