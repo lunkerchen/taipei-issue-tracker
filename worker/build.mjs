@@ -62,7 +62,7 @@ let baseSeq = -1;
 const put = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; };
 const apply = (path, d, seq) => { if (!(seq > Math.max(baseSeq, pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
 const load = async () => {
-  const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status);
+  const r = await req("/api/db", adminToken ? { headers: { "x-admin": adminToken } } : undefined); if (!r.ok) throw new Error("db " + r.status);
   const { _seq = 0, ...fresh } = await r.json(), old = DATA;
   if (_seq < baseSeq) return; // an older snapshot finished after a newer one
   DATA = fresh; baseSeq = _seq;
@@ -84,7 +84,7 @@ const offline = on => {
 };
 addEventListener("offline", () => offline(true));
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws");
+  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
   ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
