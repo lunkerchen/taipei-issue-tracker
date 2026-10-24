@@ -15,6 +15,7 @@ let sampleCount = 0, releaseFirst, markFirst;
 const firstGate = new Promise(resolve => { releaseFirst = resolve; });
 const firstStarted = new Promise(resolve => { markFirst = resolve; });
 const creates = [];
+let legacyContactWrites = 0;
 let visitorToken = "", reportPath = "";
 
 try {
@@ -26,7 +27,10 @@ try {
       reason:"測試固定分類", duplicate_of:null, duplicate_reason:"", spam:false, outside_taipei:false, too_vague:false
     }) });
   });
-  await page.route("**/api/contact", route => route.fulfill({ status:200, contentType:"application/json", body:"{}" }));
+  await page.route("**/api/contact", route => {
+    if (route.request().method() === "POST") legacyContactWrites++;
+    return route.fulfill({ status:200, contentType:"application/json", body:"{}" });
+  });
   await page.route("**/api/health", route => route.fulfill({ status:200, contentType:"application/json", body:JSON.stringify({ ai:true }) }));
   await page.route("**/api/geocode*", route => route.fulfill({ status:200, contentType:"application/json", body:JSON.stringify({ lat:null }) }));
   await page.route("**/api/db", async route => {
@@ -105,6 +109,9 @@ try {
   assert.equal(creates.length, 2, "write was attempted and the simulated retry failed");
 
   const initial = creates[0];
+  assert.equal(legacyContactWrites, 0, "the form never saves an orphan contact before creation succeeds");
+  assert.equal(initial.data.contact.name, "另一位合成市民", "contact travels inside the atomic report creation request");
+  assert.equal(initial.data.contact.phone, "0912345678");
   assert.equal(initial.data.item.body.replace(/[\s\p{P}\p{S}]/gu, "").length, 3, "the test report is short enough to bypass duplicate text detection");
   assert.deepEqual(creates[1], initial, "automatic retry keeps the same attempt ID and payload");
   const append = await fetch(`${base}/api/db`, { method:"POST", headers:{ "content-type":"application/json", "x-visitor":visitorToken },

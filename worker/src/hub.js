@@ -131,11 +131,21 @@ export class Hub extends DurableObject {
   write(op, path, data, admin, ip = "") {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
     const creating = op === "create-report";
+    let reportContact = null, contactKey = null;
     if (creating) {
       if (admin || !path.startsWith("reports/") || !isObj(data) || !REPORT_ITEM.test(data.key || "") || !isObj(data.item) || data.item.author !== path.slice(8))
         return { status: 400, error: "bad_request" };
       const current = row ? JSON.parse(row.data) : {};
       if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
+      if (data.contact !== undefined && data.contact !== null) {
+        const c = data.contact;
+        const name = typeof c?.name === "string" ? c.name.trim() : "";
+        const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
+        if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || typeof c.realName !== "boolean")
+          return { status: 400, error: "bad_contact" };
+        reportContact = { name, phone, realName: c.realName, t: new Date().toISOString() };
+        contactKey = `${path.slice(8)}:${data.key}`;
+      }
       data = { items: { [data.key]: data.item } }; op = "update";
     }
     let doc = null;
@@ -162,9 +172,14 @@ export class Hub extends DurableObject {
       if (!admin) {
         if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
-        const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f;
       }
-      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+      const failure = this.ctx.storage.transactionSync(() => {
+        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f; }
+        this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+        if (reportContact) this.contactPut(contactKey, reportContact);
+        return null;
+      });
+      if (failure) return failure;
     } else this.sql.exec("DELETE FROM docs WHERE path = ?", path);
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
     const msg = JSON.stringify({ path, data: doc, seq: this.seq });

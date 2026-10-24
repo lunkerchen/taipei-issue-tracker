@@ -1265,8 +1265,6 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
   }
   const { id, item, contact } = attempt, full = `${me}:${id}`, ref = db.doc("reports/" + me);
   try {
-    if (contactFn) try { await contactFn.save(id, contact); }
-    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
     if (db.createReport) {
       if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
       // The Worker creates this report ID only once; a retry cannot replace a report or later additions.
@@ -1274,10 +1272,12 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
       // original createdAt when this ID already exists, while a still-missing
       // report can be created with a fresh timestamp on a later manual retry.
       item.createdAt = new Date().toISOString();
-      const result = await db.createReport("reports/" + me, id, item);
+      const result = await db.createReport("reports/" + me, id, item, contact);
       if (!result || typeof result.created !== "boolean") throw new Error("bad_create_report_response");
       completeCreatedReport(attempt);
     } else {
+      if (contactFn) try { await contactFn.save(id, contact); }
+      catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
       const snap = await ref.get(), stored = snap.exists && (snap.data().items || {})[id];
       // Older shims can recognize an existing cached item, then avoid replacing it.
       if (stored) { completeCreatedReport(attempt); return; }
