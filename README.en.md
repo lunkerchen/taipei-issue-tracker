@@ -18,7 +18,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 **Citizens (mobile phone first)**
 
 - **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
-- **Contact data**: Your name and mobile number are necessary. The Worker keeps them in a private table under the report author's identity, also when you send a report from an administrator tab. Only the administrator can read them. The website does not show them to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its private contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. Only the administrator can read it. The website does not show it to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
 - **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, a retry of the same report uses the same case ID.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
@@ -156,6 +156,10 @@ node worker/test/note-photos.cjs
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
+```
+
+```bash
+BASE=http://localhost:8788 ADMIN_TOKEN=<local-test-token> node worker/test/report-contact.mjs
 ```
 
 ```bash
