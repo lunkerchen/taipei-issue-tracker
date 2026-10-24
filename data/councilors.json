@@ -1,0 +1,86 @@
+[
+  {
+    "zone": "第1選舉區",
+    "districts": [
+      "北投區",
+      "士林區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  },
+  {
+    "zone": "第2選舉區",
+    "districts": [
+      "內湖區",
+      "南港區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  },
+  {
+    "zone": "第3選舉區",
+    "districts": [
+      "松山區",
+      "信義區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  },
+  {
+    "zone": "第4選舉區",
+    "districts": [
+      "中山區",
+      "大同區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  },
+  {
+    "zone": "第5選舉區",
+    "districts": [
+      "中正區",
+      "萬華區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  },
+  {
+    "zone": "第6選舉區",
+    "districts": [
+      "大安區",
+      "文山區"
+    ],
+    "members": [
+      {
+        "name": "",
+        "party": "",
+        "phone": ""
+      }
+    ]
+  }
+]

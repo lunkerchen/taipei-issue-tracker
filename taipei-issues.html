@@ -239,6 +239,26 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .lipanel .cnt{border:1.5px solid var(--fixed);color:var(--fixed);background:none;min-width:28px;text-align:center;font-size:13px}
 .lipanel .chev{color:var(--muted);font-size:18px}
 .mapside[hidden]{display:none}
+.lipanel .boxhead #liBack{font-size:18px;line-height:1;padding:2px 10px}
+.ldsec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.ldsec h3{margin:0 0 8px;font-size:15px}
+.ldsec h3 span{color:#d4a72c}
+.ldrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.ldrow:first-child{border-top:0}
+.ldrow .who{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ldrow .role{font-size:13px;color:var(--muted)}
+.ldrow .tel{font-family:var(--mono);font-size:13px;color:var(--muted)}
+#ldEvents{list-style:none;margin:0;padding:0}
+#ldEvents li{border-top:1px solid var(--line)}
+#ldEvents li:first-child{border-top:0}
+#ldEvents li.more{padding:8px 0}
+#ldEvents button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:2px 8px;width:100%;padding:8px 4px;cursor:pointer}
+#ldEvents button:hover{background:var(--hover)}
+#ldEvents button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+#ldEvents .t{font-weight:600}
+#ldEvents .meta{grid-column:1/-1;font-size:13px;color:var(--muted)}
+#ldEvents .chip{align-self:start;border:1.5px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:12px;white-space:nowrap}
+.ldreport{width:100%;min-height:44px;font-size:15px;font-weight:600}
 .distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
 .distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
@@ -412,6 +432,12 @@ Switched to branch 'taipei'
         <div class="boxhead"><b id="liTitle"></b><span class="spacer"></span><span class="note" id="liSum"></span></div>
         <ol id="liList"></ol>
         <div class="foot note" id="liFoot"></div>
+      </aside>
+      <aside class="box mapside lipanel" id="liDetail" aria-labelledby="ldName" hidden>
+        <div class="boxhead"><button class="btn sm" type="button" id="liBack" aria-label="回到各里清單">‹</button><b id="ldName"></b><span class="note" id="ldDist"></span></div>
+        <section class="ldsec" aria-labelledby="ldC"><h3 id="ldC">聯絡窗口</h3><div id="ldContacts"></div></section>
+        <section class="ldsec" aria-labelledby="ldE"><h3 id="ldE"><span aria-hidden="true">★</span> 重大事件</h3><ol id="ldEvents"></ol><p class="note" id="ldNone" hidden>這個里目前沒有陳情</p></section>
+        <div class="foot"><button class="btn primary ldreport" type="button" id="ldReport">回報這個里的問題</button></div>
       </aside>
       <aside class="box mapside" id="layerPanel" aria-label="圖層">
         <div class="boxhead"><b>圖層</b><span class="note">1999 九大類</span><span class="spacer"></span><button class="btn sm" type="button" id="layerAll" aria-pressed="false">全選</button></div>
@@ -1235,7 +1261,7 @@ function closeDistrict() {
   curDist = ""; curLi = "";
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
   liGroup?.clearLayers(); liLayers = {};
-  $("layerPanel").hidden = false; $("liPanel").hidden = true; setPins();
+  $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
   cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
   $("distBack").hidden = true;
 }
@@ -1271,7 +1297,63 @@ function selectLi(li) {
   l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront();
   mainLM.flyToBounds(l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
   for (const b of document.querySelectorAll("#liList button")) b.setAttribute("aria-current", b.dataset.li === li);
+  $("liPanel").hidden = true; $("liDetail").hidden = false; renderLiDetail();
 }
+function backToList() {
+  const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList();
+  if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
+}
+$("liBack").onclick = backToList;
+
+// Contacts: data/li-contacts.json (one row per 里, keyed by code) and data/councilors.json (6 election zones).
+// Teammates fill the names and office phones; an empty row shows "資料待補". Loaded once, on the first 里 detail.
+let contactsP = null, liContacts = {}, councilors = [];
+const getJson = f => tryTwice(async () => { const r = await fetch(f); if (!r.ok) throw new Error(f + " " + r.status); return r.json(); }, 10000);
+function loadContacts() {
+  return contactsP ||= Promise.all([getJson("li-contacts.json").catch(() => []), getJson("councilors.json").catch(() => [])]).then(([rows, cs]) => {
+    for (const r of Array.isArray(rows) ? rows : []) if (r && isStr(r.code)) liContacts[r.code] = r;
+    councilors = Array.isArray(cs) ? cs : [];
+  });
+}
+const telHref = p => "tel:" + String(p).replace(/[^\d+#]/g, "");
+const contactRow = (role, name, phone) => `<div class="ldrow"><div class="who"><span class="role">${esc(role)}</span><b>${name ? esc(name) : '<span class="note">資料待補</span>'}</b>${phone ? `<span class="tel">${esc(phone)}</span>` : ""}</div>${phone ? `<a class="btn sm" href="${esc(telHref(phone))}">撥打</a>` : ""}</div>`;
+// Key events = every report in the 里: unfinished first, then most +1, then status (處理中 before 已受理), then newest.
+function liEvents(x) {
+  const c = counts(), rank = { progress:0, open:1, fixed:2 };
+  return issues.filter(i => inTaipei(i.lat, i.lng) && liAt(i.lat, i.lng) === x)
+    .map(i => ({ i, v:c[i.id] || 0 }))
+    .sort((a, b) => (a.i.status === "fixed") - (b.i.status === "fixed") || b.v - a.v || (rank[a.i.status] ?? 1) - (rank[b.i.status] ?? 1) || String(b.i.createdAt).localeCompare(String(a.i.createdAt)));
+}
+function renderLiDetail() {
+  const x = liGeo?.find(y => y.district === curDist && y.li === curLi); if (!x) return;
+  $("ldName").textContent = x.li; $("ldDist").textContent = x.district;
+  const draw = () => {
+    if (curLi !== x.li) return;
+    const ct = liContacts[x.code] || {}, zone = councilors.find(z => Array.isArray(z.districts) && z.districts.includes(x.district));
+    const ms = (zone && Array.isArray(zone.members) ? zone.members : []).filter(m => m && (m.name || m.phone));
+    $("ldContacts").innerHTML = contactRow("里長", ct.chief, ct.phone) +
+      (ms.length ? ms.map(m => contactRow(`議員（${zone.zone}）${m.party ? "・" + m.party : ""}`, m.name, m.phone)).join("") : contactRow(`議員${zone ? `（${zone.zone}）` : ""}`, "", ""));
+  };
+  draw(); loadContacts().then(draw);
+  const ev = liEvents(x);
+  $("ldNone").hidden = ev.length > 0;
+  $("ldEvents").innerHTML = ev.slice(0, 6).map(({ i, v }) => { const st = STATUS[i.status] || STATUS.open;
+    return `<li><button type="button" data-go="${esc(i.id)}"><span class="t">${esc(i.title)}</span><span class="chip" style="--c:${st[1]}">${esc(st[0])}</span>
+      <span class="meta">#${esc(i.n)} · ${ago(i.createdAt)}${v ? ` · +${v}` : ""}</span></button></li>`; }).join("") +
+    (ev.length > 6 ? `<li class="note more">另有 ${ev.length - 6} 件，可在陳情列表查看</li>` : "");
+}
+$("ldEvents").addEventListener("click", goIssue);
+// Report from a 里: a point inside its polygon (bounds centre, else the first inside point on a 9×9 grid) with the district preset
+$("ldReport").onclick = () => {
+  const x = liGeo?.find(y => y.district === curDist && y.li === curLi); if (!x) return;
+  const [w, so, e, n] = x.box, inside = (lng, lat) => x.polys.some(p => inPoly(p, lng, lat));
+  let pt = [(so + n) / 2, (w + e) / 2];
+  if (!inside(pt[1], pt[0])) for (let a = 1; a < 10 && !inside(pt[1], pt[0]); a++) for (let b = 1; b < 10; b++) { const q = [so + (n - so) * a / 10, w + (e - w) * b / 10]; if (inside(q[1], q[0])) { pt = q; break; } }
+  const [lat, lng] = pt;
+  reportAt({ lat, lng }, "里", { district:x.district });
+  lookup(lat, lng).then(g => { if (g && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo({ ...g, district:x.district }, lat, lng); });
+};
 // Unfinished = not fixed. Reports without a point, or outside every 里, are left out of the 里 counts.
 function liOpen(d) {
   const by = {};
@@ -1280,6 +1362,7 @@ function liOpen(d) {
 }
 function renderLiList() {
   if (!curDist || !liGeo) return;
+  if (curLi) renderLiDetail();
   const all = liGeo.filter(x => x.district === curDist), by = liOpen(curDist);
   const rows = all.filter(x => by[x.li]).sort((a, b) => by[b.li].length - by[a.li].length || a.code.localeCompare(b.code));
   const total = rows.reduce((n, x) => n + by[x.li].length, 0);
