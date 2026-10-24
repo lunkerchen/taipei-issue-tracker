@@ -1025,6 +1025,18 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
+  // A live change or a filter can remove an open case from the list; close it and do not keep its #issue URL.
+  const staleOpen = [...view.open].filter(id => !rows.some(i => i.id === id));
+  const dropHadFocus = staleOpen.length > 0 && $("list").contains(document.activeElement);
+  if (staleOpen.length) {
+    for (const id of staleOpen) view.open.delete(id);
+    if (staleOpen.includes(activeShareId)) activeShareId = null;
+    if (staleOpen.includes(issueIdFromHash())) replaceHash("#issues");
+    const gone = staleOpen.map(id => issues.find(i => i.id === id)).find(Boolean);
+    toast(gone && gone.status === "fixed" && !view.closed ? "這件案件已改為已修復，詳情已收起。"
+      : gone ? "這件案件已不符合目前的篩選，詳情已收起。"
+      : "這件案件目前無法公開，詳情已收起。");
+  }
   if (!rows.length) {
     // Hidden cases stay out of issues, so an empty mine view must not claim the citizen never sent one.
     let empty;
@@ -1032,6 +1044,7 @@ function render() {
     else if (view.mine) empty = "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。";
     else empty = issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。";
     $("list").innerHTML = `<div class="empty">${empty}</div>`;
+    if (dropHadFocus) $("q").focus();
     if (view.mine && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
       myHiddenPending = true;
       userApi.hiddenMine().then(n => { myHiddenPending = false; const v = Number(n) || 0; if (v !== myHidden) { myHidden = v; render(); } })
@@ -1128,6 +1141,9 @@ function render() {
         target.setSelectionRange(focused.start, focused.end, focused.direction);
     }
   }
+  // Focus was inside the case that just left the list, so the restore above has no target; stay in the list.
+  if (dropHadFocus && document.activeElement === document.body)
+    (document.querySelector("#list [data-open]") || $("q")).focus();
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
