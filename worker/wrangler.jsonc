@@ -10,7 +10,9 @@
     { "name": "LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
     { "name": "WRITE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } },
     { "name": "VISITOR_LIMITER", "namespace_id": "1003", "simple": { "limit": 150, "period": 60 } },
-    { "name": "PHOTO_LIMITER", "namespace_id": "1004", "simple": { "limit": 10, "period": 60 } }
+    { "name": "PHOTO_LIMITER", "namespace_id": "1004", "simple": { "limit": 10, "period": 60 } },
+    // Demo admin needs no token, so its writes and uploads are capped per IP instead
+    { "name": "ADMIN_LIMITER", "namespace_id": "1005", "simple": { "limit": 120, "period": 60 } }
   ],
   // Report photos (JPEG/WebP, already resized in the browser); keys are <visitor id>/<uuid>.jpg, admin/<uuid>.jpg or demo/<name>.jpg
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "taipei-issue-photos" }],

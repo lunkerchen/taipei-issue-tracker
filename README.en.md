@@ -18,7 +18,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 **Citizens (mobile phone first)**
 
 - **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
-- **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its private contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. Only the administrator can read it. The website does not show it to the public. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Contact data**: Your name and mobile number are necessary. The Worker saves the case and its private contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. But the demo admin console needs no verification, so anyone can read it. The form and the privacy notice tell citizens not to enter real personal data. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
 - **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
@@ -69,7 +69,7 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
   ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
-  ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, only the administrator can read)
+  ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
 
@@ -79,6 +79,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 
 - A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. Demo mode: any request with an `x-admin` header is an administrator request. No token is checked.
 - Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin`.
+- Because the demo administrator needs no token, administrator writes, contact saves and photo uploads are limited to 120 per minute for each IP address, and an administrator document can be at most 256 KB.
 - Protection against a flood of reports. The server examines each new report:
   - Each request can add only one report.
   - The creation time must be the current time. A report with an earlier time is not accepted.

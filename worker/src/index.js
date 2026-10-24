@@ -20,12 +20,15 @@ async function visitorId(env, h) {
 }
 const reply = r => r.error ? err(r.status, r.error) : Response.json(r);
 
+// Demo admin has no token, so anyone can be admin: it gets ADMIN_LIMITER per IP; visitors get their own limiter per id.
+const limited = async (env, req, admin, visitorLimiter, id) =>
+  (await (admin ? env.ADMIN_LIMITER.limit({ key: req.headers.get("cf-connecting-ip") || "unknown" }) : visitorLimiter.limit({ key: id }))).success;
 async function writeDb(req, env) {
   const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   const id = admin ? null : await visitorId(env, h.get("x-visitor"));
   if (!admin && !id) return err(403, "forbidden");
-  // Per verified visitor id (a venue shares one IP); admin is unlimited
-  if (!admin && !(await env.WRITE_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+  // Per verified visitor id (a venue shares one IP); the token-free demo admin per IP
+  if (!(await limited(env, req, admin, env.WRITE_LIMITER, id))) return err(429, "rate_limited");
   const text = await req.text();
   let b;
   try { if (text.length > BODY_MAX) return err(413, "too_large"); b = JSON.parse(text); } catch { return err(400, "bad_json"); }
@@ -52,7 +55,7 @@ async function contact(req, env, searchParams) {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
   if (!id) return err(403, "forbidden");
-  if (!admin && !(await env.WRITE_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+  if (!(await limited(env, req, admin, env.WRITE_LIMITER, id))) return err(429, "rate_limited");
   let b;
   try { const t = await req.text(); if (t.length > 1000) return err(413, "too_large"); b = JSON.parse(t); } catch { return err(400, "bad_json"); }
   const name = typeof b?.name === "string" ? b.name.trim() : "", phone = typeof b?.phone === "string" ? b.phone.replace(/[\s-]/g, "") : "";
@@ -124,7 +127,7 @@ async function photo(req, env, key) {
   const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
   if (!id) return err(403, "forbidden");
-  if (!admin && !(await env.PHOTO_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+  if (!(await limited(env, req, admin, env.PHOTO_LIMITER, id))) return err(429, "rate_limited");
   if (+(h.get("content-length") || 0) > PHOTO_MAX || !req.body) return err(413, "too_large");
   const raw = await readCapped(req.body, PHOTO_MAX);
   if (!raw) return err(413, "too_large");

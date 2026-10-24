@@ -5,7 +5,7 @@ import { DurableObject } from "cloudflare:workers";
 import seed from "../data.json";
 import offices from "../../data/offices.json";
 
-const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
+const DOC_MAX = 32 * 1024, ITEMS_MAX = 20, ADMIN_DOC_MAX = 256 * 1024;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
@@ -239,7 +239,8 @@ export class Hub extends DurableObject {
     } else if (op !== "delete") {
       if (!isObj(data)) return { status: 400, error: "bad_data" };
       doc = op === "update" ? merge(row ? JSON.parse(row.data) : {}, data) : data;
-      // ponytail: admin skips the size caps so seeding big demo docs works; visitors are capped.
+      // ponytail: admin gets a looser cap so seeding big demo docs works; the demo admin has no token, so it is still capped.
+      if (admin && new TextEncoder().encode(JSON.stringify(doc)).length > ADMIN_DOC_MAX) return { status: 413, error: "too_large" };
       if (!admin) {
         if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
