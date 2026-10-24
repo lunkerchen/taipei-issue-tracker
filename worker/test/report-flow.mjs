@@ -80,12 +80,14 @@ try {
     await page.locator("#cEmail").fill(bad);
     await page.locator("#submitBtn").click();
     assert.equal(await page.locator("#cEmail").getAttribute("aria-invalid"), "true", `email "${bad}" is marked invalid`);
-    assert.equal(await page.locator("#newStatus").innerText(), "請填寫有效的 Email（本站不會寄送通知）");
+    assert.equal(await page.locator("#formErr").innerText(), "請填寫有效的 Email（本站不會寄送通知）");
+    assert.equal(await page.locator("#cEmail").getAttribute("aria-errormessage"), "formErr", "the email error is attached to the field");
     assert.equal(await page.evaluate(() => document.activeElement.id), "cEmail", "the email error moves focus to the field");
   }
   assert.equal(sampleCount, 0, "no preview while the email is missing or malformed");
   await page.locator("#cEmail").fill(" citizen@example.com ");
   assert.equal(await page.locator("#cEmail").getAttribute("aria-invalid"), null, "typing clears the email error mark");
+  assert.equal(await page.locator("#formErr").isHidden(), true, "typing hides the visible email error");
 
   await page.locator("#newText").fill("A 交通號誌故障，行人無法安全通過");
   await page.locator("#submitBtn").click();
