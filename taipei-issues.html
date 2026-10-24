@@ -632,6 +632,8 @@ Switched to branch 'taipei'
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
 const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const motionBehavior = () => REDUCED_MOTION ? "auto" : "smooth";
+const fly = (map, center, zoom, opts) => REDUCED_MOTION ? map.setView(center, zoom, { ...opts, animate:false }) : map.flyTo(center, zoom, opts);
+const flyBounds = (map, bounds, opts) => REDUCED_MOTION ? map.fitBounds(bounds, { ...opts, animate:false }) : map.flyToBounds(bounds, opts);
 const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
@@ -1897,7 +1899,7 @@ async function drawDistricts() {
       l.on("mouseout", () => { l.getElement()?.classList.remove("hot"); l.setTooltipContent(d); l.getTooltip().getElement()?.classList.remove("hot"); });
       l.on("click", () => openDistrict(d));
     } }).addTo(mainLM);
-  cityBounds = L.geoJSON(gj).getBounds(); mainLM.fitBounds(cityBounds, { padding:[12, 12] });
+  cityBounds = L.geoJSON(gj).getBounds(); flyBounds(mainLM, cityBounds, { padding:[12, 12] });
   mainLM.attributionControl.addAttribution("里界 © 臺北市政府民政局");
 }
 function openDistrict(d) {
@@ -1905,7 +1907,7 @@ function openDistrict(d) {
   curDist = d; curLi = ""; $("liDetail").hidden = true; setAspect(""); // a 里 page left open from before would sit beside the new 里 list
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
   l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone"); mapMode();
-  mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
+  flyBounds(mainLM, l.getBounds(), { padding:[24, 24], duration:.6 });
   $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
   $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…"; renderHot();
   loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
@@ -1915,7 +1917,7 @@ function closeDistrict() {
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
   liGroup?.clearLayers(); liLayers = {}; mapMode();
   $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
-  cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
+  cityBounds ? flyBounds(mainLM, cityBounds, { padding:[12, 12], duration:.6 }) : fly(mainLM, TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
   $("distBack").hidden = true;
 }
 $("distBack").addEventListener("click", closeDistrict);
@@ -1955,14 +1957,14 @@ function selectLi(li) {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
   curLi = li; const l = liLayers[li]; if (!l) return;
   l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront(); mapMode();
-  mainLM.flyToBounds(l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
+  flyBounds(mainLM, l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
   for (const b of document.querySelectorAll("#liList button")) b.setAttribute("aria-current", b.dataset.li === li);
   $("liPanel").hidden = true; $("liDetail").hidden = false; renderLiDetail();
 }
 function backToList() {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
   curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList(); mapMode();
-  if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
+  if (distLayers[curDist]) flyBounds(mainLM, distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
 }
 $("liBack").onclick = backToList;
 
@@ -2393,7 +2395,7 @@ $("liveList").addEventListener("click", e => {
   if (curDist && r.dist !== curDist) closeDistrict();
   if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
   $("map").scrollIntoView({ block:"center", behavior:motionBehavior() });
-  mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
+  fly(mainLM, r.m.getLatLng(), Math.max(mainLM.getZoom(), 16), { duration:.25 }); mainLM.once("moveend", () => r.m.openPopup());
 });
 $("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:motionBehavior() }); };
 
