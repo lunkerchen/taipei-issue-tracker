@@ -1094,7 +1094,7 @@ function render() {
           <span class="status" role="status" data-share-status></span></div>
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
+        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}${admin && x.contact && contactFn ? (contactCache.has(x.contact) ? `<span class="note">${contactText(contactCache.get(x.contact))}</span>` : `<button class="btn" data-contact="${esc(x.contact)}">補充者聯絡資料</button>`) : ""}</div>`).join("")}
         ${canWrite && me && i.author === me ? (() => {
           const ownN = i.notes.filter(x => !x.other).length, full = ownN >= 10 || noteLimits.has(i.id);
           const s = noteStates.get(i.id) || {}, busy = s.uploading || s.sending, pics = notePics.get(i.id) || [];
@@ -1478,7 +1478,7 @@ $("newForm").addEventListener("submit", async e => {
 function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   pending = { t, text, photos, signature };
   $("dupBox").innerHTML = `<div id="dupNotice">${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
-    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
+    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。「補充到」會保存你的聯絡資料；「只按 +1」不會。</div>
     <div class="row"><button class="btn primary" type="button" data-dup="add" aria-describedby="dupNotice">補充到 #${esc(t.dup.n)}</button>
     <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
     ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
@@ -1537,6 +1537,14 @@ async function supplement(t, text, photos, signature) {
     if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
     if (attempt.photos.length > PHOTO_MAX || attempt.photos.some(k => !PHOTO_RE.test(k) || !k.startsWith(me + "/"))) {
       $("newStatus").textContent = "照片無法安全附加，請重新選擇照片"; return;
+    }
+    if (contactFn && !attempt.contactSaved) {
+      const contact = { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), email:$("cEmail").value.trim(), realName:!$("cRealRow").hidden && $("cReal").checked };
+      try { await contactFn.save(attempt.id, contact); attempt.contactSaved = true; }
+      catch (e) {
+        $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試";
+        return;
+      }
     }
     supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
     const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
@@ -2900,9 +2908,9 @@ document.addEventListener("keydown", e => {
   // Supplements from other citizens: target must be a case id, photos only from the writer's own folder
   db.collection("addenda").onSnapshot(s => {
     const out = {};
-    for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
+    for (const d of s.docs) for (const [aid, x] of Object.entries(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500),
+        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500), contact:`${d.id}:${aid}`,
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
   }, () => {});
