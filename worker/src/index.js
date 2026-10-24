@@ -31,7 +31,7 @@ async function writeDb(req, env) {
   try { if (text.length > BODY_MAX) return err(413, "too_large"); b = JSON.parse(text); } catch { return err(400, "bad_json"); }
   const { op, path, data } = b || {};
   if (!["set", "update", "delete"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
-  if (!admin && path !== `reports/${id}` && path !== `votes/${id}`) return err(403, "forbidden");
+  if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 

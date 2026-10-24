@@ -54,7 +54,10 @@ for (let i = 1; i <= 3; i++) assert.equal((await rep(F, "r" + i, `路燈不亮 $
 assert.equal((await rep(F, "r4", `路燈不亮 ${tag} 第4件`)).status, 429, "4th report in 10 min");
 assert.equal((await rep(G, "copy", `路燈不亮${tag}第1件！`)).status, 409, "copy of a recent report");
 assert.equal((await rep(G, "own", `人行道破損 ${tag}`)).status, 200, "G's own report");
+assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${G.id}`, { items: { s1: { target: "x", t: now(), text: "補充", photos: [] } } })).status, 200, "own addenda");
+assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${F.id}`, { items: {} })).status, 403, "someone else's addenda");
 for (const w of [F, G]) assert.equal((await write({ "x-admin": admin }, "delete", `reports/${w.id}`)).status, 200);
+assert.equal((await write({ "x-admin": admin }, "delete", `addenda/${G.id}`)).status, 200);
 
 // admin writes anywhere; B receives; then clean up
 r = await write({ "x-admin": admin }, "set", "triage/smoke-x", { status: "open" });

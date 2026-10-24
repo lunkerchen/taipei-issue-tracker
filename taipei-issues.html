@@ -524,7 +524,7 @@ const ICON = {
 };
 
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
-let reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
+let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -663,7 +663,8 @@ function build(checkMine) {
   let n = Math.max(0, ...list.filter(x => x.seed).map(x => x.n)), now = Date.now();
   const when = x => Math.min(+new Date(x.createdAt), now);
   list.filter(x => !x.seed).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
-  all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events }; });
+  all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events,
+    notes:[...x.notes, ...(addenda[x.id] || [])].sort((a, b) => a.t.localeCompare(b.t)) }; });
   issues = all.filter(i => admin || !hiddenFor(i));
   if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
   if (checkMine) mine = null;
@@ -793,8 +794,8 @@ function render() {
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.notes.map(x => `<div class="addl"><div class="meta">市民補充 · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
-        ${canWrite && me && i.author === me && i.notes.length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
+        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
+        ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
           <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明"></textarea>
           <div class="phprev">${(notePics.get(i.id) || []).map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
           <div class="row">${photoFn && (notePics.get(i.id) || []).length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple></label>` : ""}
@@ -983,12 +984,8 @@ $("newForm").addEventListener("submit", async e => {
     return;
   }
   if (t.dup) {
-    pending = { t, text };
     $("newStatus").textContent = note;
-    $("dupBox").innerHTML = `<div>這可能和 <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b> 重複。${esc(t.dup.reason)}</div>
-      <div class="row"><button class="btn primary" type="button" data-dup="vote">改成幫 #${esc(t.dup.n)} 按 +1</button>
-      <button class="btn" type="button" data-dup="new">仍要送出新案件</button></div>`;
-    $("dupBox").hidden = false;
+    showDup(t, text, true);
     $("submitBtn").disabled = false;
     return;
   }
@@ -1012,16 +1009,42 @@ $("newForm").addEventListener("submit", async e => {
   $("dupBox").querySelector("[data-dup=new]").focus();
 });
 
+// Same or similar case found (AI dup, or the server refused an exact copy): add this text/photos to that case, +1 it,
+// or still send a new one (not offered when the server already refused the copy).
+function showDup(t, text, canNew, photos) {
+  pending = { t, text, photos };
+  $("dupBox").innerHTML = `<div>${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
+    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
+    <div class="row"><button class="btn primary" type="button" data-dup="add">補充到 #${esc(t.dup.n)}</button>
+    <button class="btn" type="button" data-dup="vote">只幫 #${esc(t.dup.n)} 按 +1</button>
+    ${canNew ? `<button class="btn" type="button" data-dup="new">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
+  $("dupBox").hidden = false;
+  $("dupBox").querySelector("[data-dup=add]").focus();
+}
+function doneReport(openId) {
+  view.open.add(openId); view.closed = false;
+  $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
+}
+// A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
+async function supplement(t, text, photos) {
+  $("submitBtn").disabled = true; $("newStatus").textContent = "補充中…";
+  try {
+    if (!photos) { await shrinking; photos = await Promise.all(shots.map(x => photoFn(x.blob))); }
+    await db.doc("addenda/" + me).update({ items:{ [crypto.randomUUID()]:{ target:t.dup.id, t:new Date().toISOString(), text, photos } } });
+    if (!myVotes[t.dup.id]) setVote(t.dup.id, true);
+    doneReport(t.dup.id); toast(`已補充到 #${t.dup.n}`);
+  } catch (e) { $("newStatus").textContent = ""; fail(e); } finally { $("submitBtn").disabled = false; }
+}
 $("dupBox").addEventListener("click", e => {
   const b = e.target.closest("[data-dup]");
   if (!b || !pending) return;
-  const { t, text } = pending;
+  const { t, text, photos } = pending;
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
   if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return shrinking.then(() => create({ ...t, dup: null }, text)).finally(() => $("submitBtn").disabled = false); }
+  if (b.dataset.dup === "add") return supplement(t, text, photos);
   setVote(t.dup.id, true);
-  view.open.add(t.dup.id); view.closed = false;
-  $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; clearPick(); clearShots(); render();
+  doneReport(t.dup.id);
 });
 
 // Where the report goes on the map: GPS/pin the citizen chose, else the address Claude found, else the district center, else City Hall.
@@ -1065,8 +1088,14 @@ async function create(t, text) {
     render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
-  } catch (e) { mine = null; $("newStatus").textContent = ""; fail(e); }
+  } catch (e) {
+    mine = null; $("newStatus").textContent = "";
+    const twin = e && e.error === "duplicate_report" && issues.find(i => i.id !== full && normBody(i.body) === normBody(text));
+    if (twin) return showDup({ ...t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, photos);
+    fail(e);
+  }
 }
+const normBody = s => String(s || "").replace(/[\s\p{P}\p{S}]/gu, "").toLowerCase(); // same as the Worker's duplicate check
 
 // ---- Map, location picker and news ticker. Leaflet 1.9.4 loads from cdnjs the first time either map opens. ----
 const within = (p, ms) => { let t; return Promise.race([p, new Promise((_, rej) => t = setTimeout(() => rej(new Error("timeout")), ms))]).finally(() => clearTimeout(t)); };
@@ -1717,6 +1746,15 @@ document.addEventListener("keydown", e => {
     render();
   });
   db.doc("stats/history").onSnapshot(s => { history = (s.exists && s.data().days) || {}; render(); });
+  // Supplements from other citizens: target must be a case id, photos only from the writer's own folder
+  db.collection("addenda").onSnapshot(s => {
+    const out = {};
+    for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
+      if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
+        (out[x.target] ||= []).push({ other:true, t:x.t, text:x.text.slice(0, 500),
+          photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
+    addenda = out; build();
+  }, () => {});
   db.collection("votes").onSnapshot(s => {
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
