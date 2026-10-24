@@ -6,7 +6,7 @@
 :root{
   --bg:#ffffff; --panel:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0;
   --accent:#1f883d; --accent-fg:#ffffff; --link:#0969da; --term:#161b22; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa;
+  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa; --bad:#cf222e;
   --merged:#8250df; --hm0:#eff2f5; --hm1:#aceebb; --hm2:#4ac26b; --hm3:#2da44e; --hm4:#116329;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
@@ -14,13 +14,17 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
 .wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:18px}
+.skip{position:absolute;left:8px;top:-48px;z-index:80;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font-weight:600;text-decoration:none}
+.skip:focus{top:8px}
+#main{display:flex;flex-direction:column;gap:18px}
+#main:focus{outline:none}
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 .repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
 .repo h1 b{font-weight:600}
@@ -47,9 +51,9 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .issue:first-child{border-top:0}
 .issue:hover{background:var(--hover)}
 .ico{width:16px;height:16px;margin-top:4px}
-.title{font-weight:700;color:var(--fg);background:none;border:0;padding:0;font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.title{font-weight:700;color:var(--fg);background:none;border:0;padding:0;font:inherit;font-weight:700;text-align:left;cursor:pointer;display:block;max-width:100%;overflow-wrap:anywhere}
 .title:hover{color:var(--link)}
-.meta{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.meta{font-size:12.5px;color:var(--muted);font-family:var(--mono);overflow-wrap:anywhere}
 .labels{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:6px;vertical-align:2px}
 .lbl{font-size:12px;font-weight:500;border-radius:99px;padding:0 8px;line-height:20px;border:1px solid transparent;white-space:nowrap}
 .plus{display:flex;align-items:flex-start}
@@ -61,7 +65,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .share-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .share-url{flex:1 1 260px;min-width:0}
 .share-notice{padding:10px 14px;text-align:left;color:var(--fg);border-bottom:1px solid var(--line)}
-.detail .body{white-space:pre-wrap;max-width:68ch}
+.detail .body{white-space:pre-wrap;max-width:68ch;overflow-wrap:anywhere}
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .photos a{flex:0 1 180px;min-width:0}
 .pv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:8px 0}.pv dt{color:var(--muted)}.pv dd{margin:0;min-width:0;overflow-wrap:anywhere}
@@ -69,9 +73,11 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .ldrow .ptext{margin-left:6px;font-weight:400}
 .contact{border:0;padding:0;margin:0 0 10px;display:grid;gap:6px}.contact[hidden]{display:none}.contact .row input{flex:1 1 140px;min-width:0}.contact .row #cEmail{flex-basis:220px}
 .addl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.addnote{display:grid;gap:6px;margin:0 0 12px}.addnote textarea{width:100%;box-sizing:border-box;min-height:56px;font:inherit}
+#draftList .draft{padding:12px 14px;border-top:1px solid var(--line)}#draftList .draft:first-child{border-top:0}#draftList textarea{width:100%;box-sizing:border-box;margin:6px 0;resize:vertical}
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
 .doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
 .doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
+.doc .doc-close{position:sticky;top:-16px;z-index:1;display:flex;justify-content:flex-end;margin:-16px -20px 12px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
 .lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
 .lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
@@ -81,12 +87,13 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .phprev{display:flex;flex-wrap:wrap;gap:8px}
 .phprev figure{position:relative;margin:0}
 .phprev img{display:block;width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
-.phprev button{position:absolute;top:2px;right:2px;min-width:28px;min-height:28px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.phprev button{position:absolute;top:2px;right:2px;min-width:44px;min-height:44px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+#photoLbl{display:inline-flex;align-items:center;min-height:44px}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #photoIn:focus-visible+#photoLbl,.btn:has(> input.vh:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
 .bot .h{font-size:13px;background:var(--hover);padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
-.bot .b{padding:8px 10px;font-size:14px}
+.bot .b{padding:8px 10px;font-size:14px;overflow-wrap:anywhere}
 .admin{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .empty{padding:36px 16px;text-align:center;color:var(--muted)}
 .new{display:flex;flex-direction:column;gap:10px;padding:14px}
@@ -99,6 +106,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .aspects input:checked+label{background:var(--accent,#0969da);border-color:transparent;color:#fff}
 .aspects input:focus-visible+label{outline:2px solid var(--accent,#0969da);outline-offset:2px}
 .status{font-size:13px;color:var(--muted)}
+.field-err{display:block;margin:4px 0 0;font-size:13px;color:var(--bad)}
+input[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
 .toast{position:fixed;left:16px;right:16px;bottom:16px;margin:0 auto;width:fit-content;max-width:480px;background:var(--term);color:var(--term-fg);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:10}
 .toast:empty{opacity:0;pointer-events:none}
 .hm-wrap{overflow-x:auto;padding:12px 14px 6px}
@@ -111,7 +120,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .hm-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;font-size:12px;color:var(--muted);padding:0 14px 12px}
 .legend{display:inline-flex;gap:3px;align-items:center}
 .tl{display:flex;flex-direction:column;border-left:2px solid var(--line);margin-left:8px;padding-left:16px;max-width:68ch}
-.ev{position:relative;font-size:13px;color:var(--muted);padding:5px 0}
+.ev{position:relative;font-size:13px;color:var(--muted);padding:5px 0;overflow-wrap:anywhere}
 .ev::before{content:"";position:absolute;left:-23px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--panel);border:2px solid var(--line)}
 .ev b{color:var(--fg)}
 .pr{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px;color:var(--fg);background:var(--panel)}
@@ -153,6 +162,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .bars .n{text-align:right;font-variant-numeric:tabular-nums}
 .adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 16px}
 .q .row-item select{max-width:100%}
+.q .queue-more{padding:10px 14px;border-top:1px solid var(--line)}
 .pulse{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:14px}
 .pulse .big{font-size:13px;color:var(--muted)}
 .pulse .big b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums;margin-right:4px}
@@ -168,7 +178,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .rel:first-child{border-top:0}
 .rel .side{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
 .rel .tag{font-family:var(--mono);color:var(--fg)}
-.rel h2{margin:0 0 6px;font-size:22px;text-wrap:balance}
+.rel h2{margin:0 0 6px;font-size:22px;text-wrap:balance;overflow-wrap:anywhere}
 .rel h3{margin:12px 0 4px;font-size:15px}
 .rel ul{margin:0;padding-left:20px}
 .latest{align-self:flex-start;font-size:12px;font-weight:600;color:var(--open);border:1px solid var(--open);border-radius:99px;padding:0 8px}
@@ -225,11 +235,13 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .pop b{display:block;margin-bottom:2px}
-.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:14px}
+.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
 .pop .asp{flex:none;width:32px;height:32px;margin:0;aspect-ratio:auto;border-radius:50%}
 .pop .addr{display:block;margin-top:2px;color:var(--link)}
-.pop .btn{margin-top:8px}
+.pop .btn{margin-top:8px;min-height:44px;padding:7px 16px}
+.mapbox .leaflet-control-container .leaflet-bar a,.pickbox .leaflet-control-container .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:22px}
+.mapbox .leaflet-container a.leaflet-popup-close-button,.pickbox .leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;line-height:44px;font-size:24px;padding:0}
 .pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
@@ -291,7 +303,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 #ldEvents .meta{grid-column:1/-1;font-size:13px;color:var(--muted)}
 #ldEvents .chip{align-self:start;border:1.5px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:12px;white-space:nowrap}
 .ldreport{width:100%;min-height:44px;font-size:15px;font-weight:600}
-.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
+.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600;display:inline-flex;align-items:center;min-height:44px}
 .distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
 .locbtn[aria-busy="true"]{opacity:.6}
@@ -301,7 +313,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}.rpin.mk-new{animation:pinbounce .5s ease-out 6}}
 @keyframes pinbounce{0%,100%{translate:0 0}50%{translate:0 -8px}}
 .rpin{background:none;border:0}
-.boxhead .btn.sm{padding:2px 10px;min-height:0;font-size:13px}
+.boxhead .btn.sm{padding:2px 10px;min-height:44px;min-width:44px;font-size:13px}
 .rpin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
 .rpin.fixed{opacity:.5}
 .rpin.mk-new svg path{stroke:#000;stroke-width:2.5}
@@ -321,6 +333,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.tk-track{animation:tkmove linear infinite}.ticker:hover .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}}
 @keyframes tkmove{to{transform:translateX(-50%)}}
 .has-tk .wrap{padding-bottom:104px}
+/* Fixed ticker and mobile nav must not cover a focused control or the last buttons. */
+html{scroll-padding-bottom:32px}
+@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(58px + env(safe-area-inset-bottom))}html.citizen.has-tk{scroll-padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
@@ -332,10 +347,10 @@ html.citizen [hidden]{display:none!important}
 .citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
 .citizen .nav .ni{display:block!important}.citizen .nav .cnt,.citizen #newBtn{display:none}
-.citizen .wrap{padding-bottom:80px}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:112px}
+.citizen .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom))}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .citizen .ticker{bottom:calc(57px + env(safe-area-inset-bottom))}
 .citizen .toast,.citizen.has-tk .toast{bottom:104px}
-.citizen .mapbox{height:calc(100vh - var(--hdr,170px) - 222px);height:calc(100svh - var(--hdr,170px) - 222px)}}
+.citizen .mapbox{height:max(320px,calc(100vh - var(--hdr,170px) - 222px));height:max(320px,calc(100svh - var(--hdr,170px) - 222px))}}
 .has-tk .wrap.wide{padding-bottom:48px}
 .has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
 .has-tk .toast{bottom:48px}
@@ -349,6 +364,7 @@ html.citizen [hidden]{display:none!important}
 </style>
 
 <div class="wrap" id="wrap">
+  <a class="skip" href="#main">跳到主要內容</a>
   <header class="repo">
     <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北市，你給我聽好了｜<b>市民 1999 通報地圖</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
@@ -369,6 +385,7 @@ html.citizen [hidden]{display:none!important}
   </nav>
   <div class="empty share-notice" id="shareNotice" role="status" hidden></div>
 
+  <main id="main" tabindex="-1">
   <div class="view" id="v-issues">
 
   <div class="term" aria-label="終端機示意"><span class="p">$</span> git checkout taipei
@@ -382,17 +399,19 @@ Switched to branch 'taipei'
   </section>
 
   <section class="box" id="newBox" hidden>
-    <form class="new" id="newForm">
+    <form class="new" id="newForm" aria-label="新增陳情">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <div class="joinbox" id="joinBox" hidden><span id="joinMsg"></span><button class="btn" type="button" id="joinVote">只按 +1</button><button class="btn" type="button" id="joinOff">改為新案件</button></div>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
-      <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <textarea id="newText" maxlength="1000" aria-required="true" aria-describedby="formErr" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <span class="field-err" id="formErr" role="alert" hidden></span>
       <div class="row" id="photoRow" hidden>
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
         <label class="btn" for="photoIn" id="photoLbl">加入照片</label>
         <span class="note">最多 3 張，會自動縮小並移除拍攝位置等資訊</span>
+        <span class="status" id="photoStatus" role="status"></span>
       </div>
       <div class="phprev" id="photoPrev"></div>
       <div class="dup" id="dupBox" hidden></div>
@@ -404,7 +423,8 @@ Switched to branch 'taipei'
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
       <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填。本示範站的局處後台不需驗證，任何人都看得到，請勿填寫真實姓名、手機與 Email）</legend>
-        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（接收處理進度通知）" aria-label="Email" aria-required="true"></div>
+        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（本站不寄通知）" aria-label="Email" aria-required="true"></div>
+        <p class="note">本站目前不會寄送 Email 通知；處理進度請回「我的陳情」查看。</p>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。勾選與否都不影響誰看得到：本示範站的局處後台不需驗證，任何人（包含被檢舉人）都能看到姓名、手機與 Email。</label>
       </fieldset>
       <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
@@ -416,6 +436,11 @@ Switched to branch 'taipei'
         <span class="status" id="newStatus" role="status"></span>
       </div>
     </form>
+  </section>
+
+  <section class="box" id="draftBox" hidden aria-labelledby="draftHead">
+    <div class="boxhead"><b id="draftHead">未送出的補充草稿</b><span class="spacer"></span><span class="note">案件目前無法公開顯示，草稿仍保留在這裡</span></div>
+    <div id="draftList"></div>
   </section>
 
   <div class="bar">
@@ -538,6 +563,7 @@ Switched to branch 'taipei'
       <span class="status" id="snapStatus" role="status"></span>
     </div></div>
   </section>
+  </main>
 
   <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
@@ -545,12 +571,13 @@ Switched to branch 'taipei'
 <div class="toast" id="toast" role="status"></div>
 
 <dialog class="doc" id="privacy" aria-labelledby="privacyH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉隱私權告知">關閉</button></form>
   <h2 id="privacyH">隱私權告知</h2>
   <p class="note">依個人資料保護法第 8 條告知。最後更新：2026-10-24。</p>
   <h3>誰蒐集你的資料</h3>
   <p>本站由 Laban Chen 個人開發與營運，不是臺北市政府。聯絡信箱：<a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
   <h3>目的</h3>
-  <p>受理與顯示市民通報的市政問題、聯繫通報人查證、通知你案件處理進度，以及防止濫用。</p>
+  <p>受理與顯示市民通報的市政問題、聯繫通報人查證，以及防止濫用。本站目前不會寄送 Email 或簡訊通知處理進度。</p>
   <h3>蒐集哪些資料、誰看得到</h3>
   <ul>
     <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
@@ -572,9 +599,9 @@ Switched to branch 'taipei'
   <p>你可以依個資法第 3 條，請求查詢、閱覽、複製、補充或更正、停止蒐集處理利用，以及刪除你的資料。請寄信到上面的信箱，並附上陳情編號。</p>
   <h3>不提供資料的影響</h3>
   <p>姓名、手機與 Email 是必填。不提供時，無法送出陳情。</p>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="doc" id="terms" aria-labelledby="termsH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉使用條款">關閉</button></form>
   <h2 id="termsH">使用條款</h2>
   <p class="note">最後更新：2026-10-24。</p>
   <h3>非官方服務</h3>
@@ -599,11 +626,12 @@ Switched to branch 'taipei'
     <li>跑馬燈：Bing News、PTT Taipei 板，版權屬原作者。</li>
     <li>示範照片由 AI 生成，不是真實現場。</li>
   </ul>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionBehavior = () => REDUCED_MOTION ? "auto" : "smooth";
 const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
@@ -740,9 +768,34 @@ function applyRole() {
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
-async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
+async function run(btn, fn) {
+  const hadFocus = btn === document.activeElement;
+  const attr = btn.dataset.status ? "data-status" : btn.dataset.hide ? "data-hide" : btn.dataset.contact ? "data-contact" : btn.dataset.pr ? "data-pr" : btn.dataset.merge ? "data-merge" : null;
+  const caseId = btn.dataset.id || btn.dataset.pr || btn.dataset.contact;
+  const sameSel = attr ? `[${attr}="${CSS.escape(btn.getAttribute(attr))}"]${btn.dataset.id ? `[data-id="${CSS.escape(btn.dataset.id)}"]` : ""}` : null;
+  btn.disabled = true;
+  try { await fn(); } catch (e) { fail(e); }
+  finally {
+    if (btn.isConnected) btn.disabled = false;
+    if (hadFocus && (!document.activeElement || document.activeElement === document.body || document.activeElement === btn)) {
+      const next = (btn.isConnected && btn) || (sameSel && document.querySelector(sameSel))
+        || (caseId && document.querySelector(`[data-open="${CSS.escape(caseId)}"]`)) || (btn.id && $(btn.id));
+      next && next.focus({ preventScroll:true });
+    }
+  }
+}
+
+// Same domain rule as the Worker: one @, a dot, and no empty or hyphen-edged domain label.
+function validEmail(s) {
+  if (s.length > 254) return false;
+  const at = s.indexOf("@");
+  if (at < 1 || at !== s.lastIndexOf("@") || /\s/.test(s)) return false;
+  const domain = s.slice(at + 1);
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+}
 
 // Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
+const MASKED_MARK = "［已遮蔽］";
 function maskPII(s) {
   // Match on an NFKC copy (full-width digits, @ and so on) but cut the original text, so other characters stay as typed.
   let norm = "", at = [], end = [];
@@ -765,8 +818,17 @@ function maskPII(s) {
     if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);
   }
   let out = "", pos = 0;
-  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + "［已遮蔽］"; pos = b; }
+  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + MASKED_MARK; pos = b; }
   return { text: out + s.slice(pos), count: hits.length };
+}
+// Cut by code point so an emoji is not split, and never end inside the mask marker.
+function titleFromText(text, max = 40) {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  let cut = chars.slice(0, max).join("");
+  for (let n = MASKED_MARK.length - 1; n > 0; n--)
+    if (cut.endsWith(MASKED_MARK.slice(0, n))) { cut = cut.slice(0, -n); break; }
+  return cut.trim();
 }
 
 // Every sample call gets a timeout; only a transient upstream error is retried, once. A timeout aborts as "cancelled" and is not retried.
@@ -807,12 +869,14 @@ const fmtDate = d => new Date(d).toLocaleDateString("zh-TW", { year:"numeric", m
 
 // Reports and triage are written by other people: keep only well-formed data and drop the rest.
 const isStr = x => typeof x === "string", isObj = x => !!x && typeof x === "object" && !Array.isArray(x);
+// Same 1..999999 range the Worker assigns at creation.
+const caseNo = x => Number.isInteger(x) && x >= 1 && x < 1e6;
 const validDate = x => isStr(x) && Number.isFinite(+new Date(x));
 const deptOf = d => isStr(d) && Object.hasOwn(DEPTS, d) ? d : "1999 待分派";
 function cleanItem(key, it, docId) {
   if (!/^[\w-]{1,64}$/.test(key) || !isObj(it)) return null;
   const seed = docId === "demo-seed";
-  if (seed && (!Number.isInteger(it.n) || it.n < 1 || it.n >= 1e6)) return null; // citizen n is ignored, see build()
+  if (seed && !caseNo(it.n)) return null; // a demo case always carries its number
   if (!isStr(it.title) || !isStr(it.body) || !validDate(it.createdAt)) return null;
   const tags = it.tags ?? [];
   if (!Array.isArray(tags) || !tags.every(isStr)) return null;
@@ -824,7 +888,7 @@ function cleanItem(key, it, docId) {
   const own = seed ? "demo/" : docId + "/";
   const photos = Array.isArray(it.photos) ? it.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && (k.startsWith(own) || k.startsWith("admin/"))).slice(0, 3) : [];
   return { ...geo, ...(LOC_KINDS.includes(it.loc) ? { loc:it.loc } : {}), ...(isStr(it.address) && it.address && it.address.length <= 100 ? { address:it.address } : {}),
-    seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
+    seed, n:seed || caseNo(it.n) ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
     tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), category:isStr(it.category) && /^TYPEA-AC\d{4}$/.test(it.category) ? it.category : "", flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
     createdAt:it.createdAt, author:isStr(it.author) ? it.author : "", photos,
     // Follow-ups the reporter added later: text plus up to 3 own photos each, at most 10
@@ -844,6 +908,7 @@ function cleanTri(t) {
 // reports/<user> holds each citizen's own items; triage/<id> holds what departments decided. Merge by id.
 const hiddenFor = i => i.hidden === true || (!!i.flagged && i.hidden !== false);
 let gotReports = false, gotTriage = false, loadErr = false, mine = null, scrollTo = null;
+let userApi = null, myHidden = null, myHiddenPending = false, myVisibleSig = "";
 function build(checkMine) {
   if (!gotReports || !gotTriage) return; // wait for a server-definitive snapshot of both, or a hidden case shows for a moment
   // A citizen item's id is "<doc id>:<key>" so nobody can write another user's key; demo-seed keeps its plain keys.
@@ -852,14 +917,19 @@ function build(checkMine) {
     const c = cleanItem(key, it, r.id);
     if (c) list.push({ ...c, key, id:c.seed ? key : `${r.id}:${key}`, reporter:r.id });
   }
-  // ponytail: citizen n is computed here, not trusted. Order is createdAt (a future date counts as now), then id, numbered after demo-seed's highest n.
-  // A citizen can backdate createdAt to take an earlier number; that only reorders numbers, and a PR event's number can later equal an issue's.
-  let n = Math.max(0, ...list.filter(x => x.seed).map(x => x.n)), now = Date.now();
-  const when = x => Math.min(+new Date(x.createdAt), now);
-  list.filter(x => !x.seed).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
+  // A case number is permanent: use the number the Worker stored when the case was created, so every viewer sees
+  // the same one. Only legacy items without a number are numbered here, above every issue and PR number in use,
+  // in createdAt (a future date counts as now) then id order. A backdated legacy item only reorders legacy numbers.
+  const stored = x => x.n > 0, now = Date.now(), when = x => Math.min(+new Date(x.createdAt), now);
+  let n = Math.max(0, ...list.filter(stored).map(x => x.n),
+    ...list.flatMap(x => (tri[x.id]?.events || []).filter(e => e.type === "pr" && Number.isFinite(e.n)).map(e => e.n)));
+  list.filter(x => !stored(x)).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
   all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events,
     notes:[...x.notes, ...(addenda[x.id] || [])].sort((a, b) => a.t.localeCompare(b.t)) }; });
   issues = all.filter(i => admin || !hiddenFor(i));
+  // The snapshot drops hidden cases, so refetch the owner-only count only when the visible set changes.
+  const myVisible = issues.filter(i => i.author === me).map(i => i.id).sort().join("|");
+  if (myVisible !== myVisibleSig) { myVisibleSig = myVisible; myHidden = null; }
   if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
   if (checkMine) mine = null;
   if (pendingShareId !== null) resolveShareRoute();
@@ -961,6 +1031,14 @@ function syncDataNote() {
 }
 $("dataNoteRetry").onclick = () => location.reload();
 function render() {
+  // A live update can remove a case under a half-written addendum; snapshot the draft before rebuilding.
+  document.querySelectorAll("#list textarea[id^=note-]").forEach(ta => {
+    const id = ta.id.slice("note-".length), text = ta.value;
+    if (!text) { noteDrafts.delete(id); return; }
+    const title = ta.closest(".issue")?.querySelector(".title")?.textContent.trim() || noteDrafts.get(id)?.title || "";
+    noteDrafts.set(id, { text, title });
+  });
+  renderDrafts();
   heatmap();
   const c = counts();
   const q = $("q").value.trim().toLowerCase();
@@ -996,13 +1074,30 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
-  if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
+  if (!rows.length) {
+    // Hidden cases stay out of issues, so an empty mine view must not claim the citizen never sent one.
+    let empty;
+    if (view.mine && myHidden > 0) empty = `你的 ${myHidden} 件陳情目前未公開，可能已被管理者隱藏。如果這不是預期情況，請透過頁尾的聯絡信箱詢問。`;
+    else if (view.mine) empty = "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。";
+    else empty = issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。";
+    $("list").innerHTML = `<div class="empty">${empty}</div>`;
+    if (view.mine && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
+      myHiddenPending = true;
+      userApi.hiddenMine().then(n => { myHiddenPending = false; const v = Number(n) || 0; if (v !== myHidden) { myHidden = v; render(); } })
+        .catch(() => { myHiddenPending = false; myHidden = 0; });
+    }
+    return;
+  }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
   const typed = {}, active = document.activeElement;
+  const noteForm = active?.closest?.("[data-note]");
   const focused = active && $("list").contains(active) ? {
     id: active.id, open: active.dataset.open, vote: active.dataset.vote,
     share: active.dataset.share, shareUrl: active.dataset.shareUrl,
+    status: active.dataset.status, hide: active.dataset.hide, contact: active.dataset.contact,
+    pr: active.dataset.pr, merge: active.dataset.merge, caseId: active.dataset.id || active.dataset.pr || active.dataset.contact,
+    noteSubmit: !!noteForm && active.matches("button[type=submit]"),
     start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection
   } : null;
   document.querySelectorAll("#list input[id^=pr-],#list textarea[id^=note-]").forEach(x => typed[x.id] = x.value);
@@ -1032,21 +1127,27 @@ function render() {
           <span class="status" role="status" data-share-status></span></div>
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
-        ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
-          ${(() => { const s = noteStates.get(i.id) || {}; const busy = s.uploading || s.sending; const pics = notePics.get(i.id) || [];
-            return `<textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${s.sending ? "disabled" : ""}></textarea>
+        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}${admin && x.contact && contactFn ? (contactCache.has(x.contact) ? `<span class="note">${contactText(contactCache.get(x.contact))}</span>` : `<button class="btn" data-contact="${esc(x.contact)}">補充者聯絡資料</button>`) : ""}</div>`).join("")}
+        ${canWrite && me && i.author === me ? (() => {
+          const ownN = i.notes.filter(x => !x.other).length, full = ownN >= 10 || noteLimits.has(i.id);
+          const s = noteStates.get(i.id) || {}, busy = s.uploading || s.sending, pics = notePics.get(i.id) || [];
+          const draft = full ? (document.getElementById(`note-${i.id}`)?.value || noteDrafts.get(i.id)?.text || "") : "";
+          if (full && !draft && !pics.length) return `<div class="note" data-notefull="${esc(i.id)}">此案件已達 10 則補充上限。</div>`;
+          return `<form class="addnote" data-note="${esc(i.id)}">
+            <div class="note">${full ? "此案件已達 10 則補充上限。草稿已保留，請自行複製。" : `每件案件最多 10 則補充，目前已 ${ownN} 則。`}</div>
+            <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${full ? "readonly" : s.sending ? "disabled" : ""}>${esc(noteDrafts.get(i.id)?.text || "")}</textarea>
           <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
-          <div class="row">${photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
-            <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
-        </form>` : ""}
+          <div class="row">${!full && photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
+            <button class="btn" type="submit" ${full || busy ? "disabled" : ""}>${full ? "已達上限" : "新增補充"}</button><span class="status" role="status">${esc(full ? "" : s.status || "")}</span></div>
+        </form>`;
+        })() : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
-        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
+        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
         ${admin && i.status !== "fixed" ? `<div class="admin">
-          <input id="pr-${esc(i.id)}" placeholder="修繕單標題，例：人行道全段重鋪" aria-label="修繕單標題" style="flex:1 1 220px;min-width:0">
+          <input id="pr-${esc(i.id)}" maxlength="80" placeholder="修繕單標題（最多 80 字），例：人行道全段重鋪" aria-label="修繕單標題（最多 80 字）" style="flex:1 1 220px;min-width:0">
           <button class="btn" data-pr="${esc(i.id)}">Open pull request</button>
         </div>` : ""}
         ${admin ? `<div class="admin">
@@ -1071,9 +1172,17 @@ function render() {
     }
   });
   if (focused) {
+    const byStatus = focused.status && focused.caseId ? document.querySelector(`[data-status="${CSS.escape(focused.status)}"][data-id="${CSS.escape(focused.caseId)}"]`) : null;
+    const byHide = focused.hide && focused.caseId ? document.querySelector(`[data-hide="${CSS.escape(focused.hide)}"][data-id="${CSS.escape(focused.caseId)}"]`) : null;
+    const byContact = focused.contact ? document.querySelector(`[data-contact="${CSS.escape(focused.contact)}"]`) : null;
+    const byPr = focused.pr ? document.querySelector(`[data-pr="${CSS.escape(focused.pr)}"]`) : null;
+    const byMerge = focused.merge ? document.querySelector(`[data-merge="${CSS.escape(focused.merge)}"]`) : null;
+    const noteSubmit = focused.noteSubmit && document.querySelector(`[data-note="${CSS.escape(focused.caseId)}"] button[type=submit]`);
+    const caseTitle = focused.caseId ? document.querySelector(`[data-open="${CSS.escape(focused.caseId)}"]`) : null;
     const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
       focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : focused.share ? document.querySelector(`[data-share="${CSS.escape(focused.share)}"]`) :
-      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) : null;
+      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) :
+      noteSubmit || byStatus || byHide || byContact || byPr || byMerge || caseTitle;
     if (target) {
       target.focus({ preventScroll: true });
       if (typeof target.setSelectionRange === "function" && Number.isInteger(focused.start))
@@ -1096,9 +1205,13 @@ async function onListClick(e) {
     const id = o.dataset.open, closing = view.open.has(id);
     if (closing) {
       view.open.delete(id);
-      if (issueIdFromHash() === id) { activeShareId = null; replaceHash("#issues"); }
+      if (issueIdFromHash() === id) {
+        activeShareId = null;
+        if (history.state && history.state.caseDetail) history.back();
+        else replaceHash("#issues");
+      }
     } else {
-      view.open.add(id); activeShareId = id; replaceHash(issueHash(id));
+      view.open.add(id); activeShareId = id; shareNotice = ""; pushCaseHash(issueHash(id));
     }
     return render();
   }
@@ -1109,15 +1222,39 @@ async function onListClick(e) {
   const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide],[data-contact]");
   if (!btn || btn.disabled) return;
   if (btn.dataset.contact) return run(btn, async () => { contactCache.set(btn.dataset.contact, await contactFn.get(btn.dataset.contact)); render(); });
+  const fromList = !!btn.closest("#list"); // the admin queues share this handler but must keep their own view and URL
   const i = issues.find(x => x.id === (btn.dataset.id || btn.dataset.pr));
-  if (btn.dataset.status) return run(btn, () => act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }));
-  if (btn.dataset.merge) return run(btn, () => act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }));
+  if (btn.dataset.status) return run(btn, async () => {
+    if (await act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }) && fromList) fixedFeedback(i, btn.dataset.status);
+  });
+  if (btn.dataset.merge) {
+    const pr = +btn.dataset.merge;
+    return run(btn, async () => { if (await act(i, [{ type:"merged", pr }], { status:"fixed" }) && fromList) fixedFeedback(i, "fixed", pr); });
+  }
   if (btn.dataset.hide) return run(btn, () => act(i, [], { hidden: btn.dataset.hide === "true" }));
-  const title = $("pr-" + i.id).value.trim();
-  if (!title) return $("pr-" + i.id).focus();
+  const prInput = $("pr-" + i.id), title = prInput.value.trim().slice(0, 80);
+  if (!title) return prInput.focus();
+  if (prInput.value !== title) prInput.value = title; // keep the field and the saved title equal if a scripted value passed maxlength
+  let pr = 0;
   const isOpen = cur => (cur.status || "open") === "open";
-  run(btn, () => act(i, cur => [{ type:"pr", n:nextN(), title:title.slice(0, 80) }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])],
-    cur => isOpen(cur) ? { status:"progress" } : {}));
+  run(btn, async () => {
+    if (!await act(i, cur => { pr = nextN(); return [{ type:"pr", n:pr, title }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])]; },
+      cur => isOpen(cur) ? { status:"progress" } : {})) return;
+    // Clear the fresh input, not the one from click time: a live re-render can replace it and restore the old text.
+    const live = $("pr-" + i.id); if (live) live.value = "";
+    toast(`已建立 PR #${pr}`);
+    render();
+  });
+}
+// A fixed case leaves the Open list: close the detail and keep the URL on the list. The toast confirms the action either way.
+function fixedFeedback(i, status, pr) {
+  if (pr) toast(`已合併 PR #${pr}，案件標記為已修復`);
+  else if (status === "fixed") toast("已標記為已修復");
+  if (status !== "fixed" || view.closed) return;
+  view.open.delete(i.id);
+  activeShareId = null;
+  replaceHash("#issues");
+  render();
 }
 $("list").addEventListener("click", onListClick);
 function onListChange(e) {
@@ -1165,6 +1302,7 @@ function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
   $("cName").removeAttribute("aria-invalid"); $("cPhone").removeAttribute("aria-invalid"); $("cEmail").removeAttribute("aria-invalid");
+  $("newText").removeAttribute("aria-invalid"); $("formErr").textContent = ""; $("formErr").hidden = true;
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 $("cancelBtn").onclick = () => {
@@ -1175,7 +1313,7 @@ $("cancelBtn").onclick = () => {
 };
 
 async function triage(text, district, aspect) {
-  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
+  const fallback = { title: titleFromText(text), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
   if (!sample) return fallback;
   // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
   const open = issues.filter(i => i.status !== "fixed").sort((a, b) => b.n - a.n).slice(0, 60);
@@ -1226,6 +1364,48 @@ const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|�
 const notePics = new Map();
 const noteStates = new Map();
 const noteAttempts = new Map();
+const noteLimits = new Set();
+const noteDrafts = new Map();
+const draftAnnounced = new Set();
+function renderDrafts() {
+  const unavailable = [...noteDrafts.entries()].filter(([id]) => !issues.some(i => i.id === id));
+  $("draftBox").hidden = !unavailable.length;
+  if (!unavailable.length) { $("draftList").innerHTML = ""; return; }
+  for (const id of [...draftAnnounced]) if (!noteDrafts.has(id) || issues.some(i => i.id === id)) draftAnnounced.delete(id);
+  if (gotReports && gotTriage) {
+    const fresh = unavailable.filter(([id]) => !draftAnnounced.has(id));
+    if (fresh.length) {
+      fresh.forEach(([id]) => draftAnnounced.add(id));
+      toast("案件已無法公開顯示，未送出的補充草稿已保留，可在列表上方複製");
+    }
+  }
+  $("draftList").innerHTML = unavailable.map(([id, d]) => `<div class="draft" data-draft="${esc(id)}">
+    <div class="meta">案件「${esc(d.title || "未命名案件")}」目前無法公開顯示</div>
+    <textarea readonly rows="2" aria-label="保留的補充草稿：${esc(d.title || "未命名案件")}">${esc(d.text)}</textarea>
+    <div class="row"><button class="btn" type="button" data-draft-copy="${esc(id)}">複製草稿</button><button class="btn" type="button" data-draft-drop="${esc(id)}">丟棄</button><span class="status" role="status" data-draft-status></span></div>
+  </div>`).join("");
+}
+$("draftBox").addEventListener("click", async e => {
+  const copy = e.target.closest("[data-draft-copy]"), drop = e.target.closest("[data-draft-drop]");
+  if (copy) {
+    const id = copy.dataset.draftCopy, d = noteDrafts.get(id), item = copy.closest(".draft");
+    if (!d) return;
+    const status = item?.querySelector("[data-draft-status]");
+    try {
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(d.text);
+      if (status && status.isConnected) status.textContent = "已複製草稿";
+      toast("已複製草稿");
+    } catch {
+      if (!item || !item.isConnected) return;
+      const ta = item.querySelector("textarea");
+      ta.focus(); ta.select();
+      if (status) status.textContent = "無法自動複製，請選取上方文字後手動複製。";
+    }
+    return;
+  }
+  if (drop) { noteDrafts.delete(drop.dataset.draftDrop); render(); toast("已丟棄草稿"); }
+});
 const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
@@ -1242,10 +1422,15 @@ function drawShots() {
   $("photoPrev").innerHTML = shots.map((s, n) => `<figure><img src="${s.url}" alt="待上傳照片 ${n + 1}"><button type="button" data-rmshot="${n}" aria-label="移除照片 ${n + 1}">×</button></figure>`).join("");
   $("photoLbl").hidden = shots.length >= PHOTO_MAX;
 }
+function setPhotoFeedback(text) {
+  $("photoStatus").textContent = text;
+  // The picker can sit against the fixed bottom bars; bring the message fully into view when it changes.
+  if (text) $("photoStatus").scrollIntoView({ block:"center" });
+}
 function clearShots(only) {
   const gone = only || shots; gone.forEach(s => URL.revokeObjectURL(s.url));
   shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
-  $("photoIn").value = ""; drawShots();
+  $("photoIn").value = ""; $("photoStatus").textContent = ""; drawShots();
 }
 function reportInputStamp() {
   const aspect = document.querySelector("#aspects input:checked");
@@ -1265,7 +1450,7 @@ function invalidateReportPreview() {
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
-  if (e.target.matches("#cName,#cPhone,#cEmail")) e.target.removeAttribute("aria-invalid");
+  if (e.target.matches("#newText,#cName,#cPhone,#cEmail")) clearFieldError(e.target);
   if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cEmail,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
 };
 $("newForm").addEventListener("input", reportInputChanged);
@@ -1274,8 +1459,9 @@ $("newForm").addEventListener("change", e => {
 });
 $("photoIn").addEventListener("change", () => {
   // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
-  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
+  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("photoStatus").textContent = "送出中，請稍候再加照片"; return; }
   invalidateReportPreview();
+  $("photoStatus").textContent = ""; // a new pick replaces the previous pick's feedback
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     const problems = [];
@@ -1285,10 +1471,24 @@ $("photoIn").addEventListener("change", () => {
       try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
       catch (err) { problems.push(err && err.message === "too_large" ? "有一張照片太大，請改用較小的圖片" : "有一張照片無法讀取，請改用 JPEG 或 PNG"); }
     }
-    if (gen === shotGen && problems.length) $("newStatus").textContent = problems.join("；");
+    if (gen === shotGen && problems.length) setPhotoFeedback(problems.join("；"));
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
+function clearFieldError(el) {
+  if (el.getAttribute("aria-invalid") !== "true") return;
+  el.removeAttribute("aria-invalid"); el.removeAttribute("aria-errormessage");
+  const box = $("formErr"); box.textContent = ""; box.hidden = true;
+}
+// Keep the one visible error next to the invalid field, above the fixed mobile bars.
+function fieldError(el, msg) {
+  for (const f of $("newForm").querySelectorAll('[aria-invalid="true"]')) { f.removeAttribute("aria-invalid"); f.removeAttribute("aria-errormessage"); }
+  const box = $("formErr");
+  box.hidden = false; box.textContent = msg;
+  (el.closest(".row") || el).insertAdjacentElement("afterend", box);
+  el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-errormessage", "formErr");
+  el.focus({ preventScroll:true }); el.scrollIntoView({ block:"center" });
+}
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled || reportCreating || supplementBusy) return;
@@ -1300,15 +1500,15 @@ $("newForm").addEventListener("submit", async e => {
     await shrinking; // Photos still shrinking belong to this report.
     if (!current()) return;
     const m = maskPII($("newText").value.trim()), text = m.text;
-    if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
-    if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
+    if (!text) { fieldError($("newText"), "請描述你遇到的問題"); return; }
+    if (!withoutTemplate(text)) { fieldError($("newText"), "請在範本的冒號後面填上內容"); return; }
     if (contactFn) {
-      if (!$("cName").value.trim()) { $("cName").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      if (!$("cName").value.trim()) { fieldError($("cName"), "請填寫姓名"); return; }
       $("cName").removeAttribute("aria-invalid");
-      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("cPhone").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { fieldError($("cPhone"), "請填寫手機號碼（09 開頭共 10 碼）"); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { $("cEmail").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫 Email（用來通知處理進度）"; $("cEmail").focus(); return; }
+      if (!validEmail(mail)) { fieldError($("cEmail"), "請填寫有效的 Email（本站不會寄送通知）"); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
@@ -1341,7 +1541,7 @@ $("newForm").addEventListener("submit", async e => {
     pending = { t, text, signature };
     $("newStatus").textContent = note;
     const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
-    $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
+    $("dupBox").innerHTML = `<div class="h" role="heading" aria-level="3">確認送出前，請看一下 1999 的分類結果</div>
       <dl class="pv" id="dupDetails"><dt>標題</dt><dd>${esc(t.title)}</dd>
       <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
       <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
@@ -1353,7 +1553,8 @@ $("newForm").addEventListener("submit", async e => {
       <div class="row"><button class="btn primary" type="button" data-dup="new" aria-describedby="dupDetails">確認送出</button>
       <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
-    $("dupBox").querySelector("[data-dup=new]").focus();
+    const next = $("dupBox").querySelector("[data-dup=new]");
+    next.focus({ preventScroll:true }); next.scrollIntoView({ block:"center" });
   } catch (err) { if (current()) { $("newStatus").textContent = ""; fail(err); } }
   finally { finish(); }
 });
@@ -1363,12 +1564,13 @@ $("newForm").addEventListener("submit", async e => {
 function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   pending = { t, text, photos, signature };
   $("dupBox").innerHTML = `<div id="dupNotice">${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
-    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
+    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。「補充到」會保存你的聯絡資料；「只按 +1」不會。</div>
     <div class="row"><button class="btn primary" type="button" data-dup="add" aria-describedby="dupNotice">補充到 #${esc(t.dup.n)}</button>
     <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
     ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
   $("dupBox").hidden = false;
-  $("dupBox").querySelector("[data-dup=add]").focus();
+  const add = $("dupBox").querySelector("[data-dup=add]");
+  add.focus({ preventScroll:true }); add.scrollIntoView({ block:"center" });
 }
 function doneReport(openId, { publicTarget = false } = {}) {
   clearReportFlow(); setJoin(null);
@@ -1421,6 +1623,14 @@ async function supplement(t, text, photos, signature) {
     if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
     if (attempt.photos.length > PHOTO_MAX || attempt.photos.some(k => !PHOTO_RE.test(k) || !k.startsWith(me + "/"))) {
       $("newStatus").textContent = "照片無法安全附加，請重新選擇照片"; return;
+    }
+    if (contactFn && !attempt.contactSaved) {
+      const contact = { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), email:$("cEmail").value.trim(), realName:!$("cRealRow").hidden && $("cReal").checked };
+      try { await contactFn.save(attempt.id, contact); attempt.contactSaved = true; }
+      catch (e) {
+        $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試";
+        return;
+      }
     }
     supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
     const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
@@ -1517,6 +1727,7 @@ function completeCreatedReport(attempt) {
   }
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
+  else toast("已送出陳情");
 }
 async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
@@ -1610,7 +1821,9 @@ function drawMinis() {
 let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "", histOn = false;
 const markers = new Map(), seen = new Set(), fresh = new Map();
 let seenInit = false, noteTimer;
-const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10, maxBounds:[[24.85,121.35],[25.30,121.78]] };
+const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10,
+  // City fit reaches the old edge, so popup autoPan had no room and tall popups near the north edge were clipped.
+  maxBounds:[[24.65,121.15],[25.50,121.98]] };
 
 // The map fills the viewport below the nav: --hdr is the distance from the page top to the map.
 function sizeMap() { document.documentElement.style.setProperty("--hdr", Math.round($("v-map").getBoundingClientRect().top + scrollY) + 16 + "px"); }
@@ -1645,6 +1858,14 @@ function mapMessage(message, retry = false) {
 function initMap() {
   if (mainLM) return;
   mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25, tapHold:true });
+  // The phone map is short and narrow; cap the popup to the map and let long content scroll.
+  mainLM.on("popupopen", e => {
+    if (!matchMedia("(max-width:760px)").matches) return;
+    const size = mainLM.getSize();
+    e.popup.options.maxWidth = Math.max(180, size.x - 40);
+    e.popup.options.maxHeight = Math.max(96, size.y - 100);
+    e.popup.update();
+  });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
@@ -1703,7 +1924,7 @@ $("distBack").addEventListener("click", closeDistrict);
 function mapMode() {
   const v = $("v-map"); v.classList.toggle("indist", !!curDist); v.classList.toggle("inli", !!curLi);
   mainLM.invalidateSize({ pan:false });
-  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:"smooth" }), 600);
+  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:motionBehavior() }), 600);
 }
 
 // Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
@@ -2163,7 +2384,7 @@ $("liveBtn").onclick = () => {
   if (histWanted || histOn || $("histOn").checked) setHist(false); // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
-  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
+  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:motionBehavior() });
 };
 $("liveList").addEventListener("click", e => {
   const b = e.target.closest("[data-live]"); if (!b) return;
@@ -2171,10 +2392,10 @@ $("liveList").addEventListener("click", e => {
   if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
   if (curDist && r.dist !== curDist) closeDistrict();
   if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
-  $("map").scrollIntoView({ block:"center", behavior:"smooth" });
+  $("map").scrollIntoView({ block:"center", behavior:motionBehavior() });
   mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
 });
-$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:"smooth" }); };
+$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:motionBehavior() }); };
 
 // ---- Location picker on the New issue form ----
 let picked = null, pickLM = null, pinM = null;
@@ -2294,6 +2515,11 @@ function replaceHash(hash) {
   try { window.history.replaceState(null, "", location.pathname + location.search + hash); } catch {}
   syncedLocation = location.href;
 }
+// A case opened from the list gets its own history entry so Back returns to the list and its filters.
+function pushCaseHash(hash) {
+  try { window.history.pushState({ caseDetail: true }, "", location.pathname + location.search + hash); } catch {}
+  syncedLocation = location.href;
+}
 function show(v, replace, preserveHash = false, preserveNotice = false) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
   if (!preserveHash && location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
@@ -2400,6 +2626,10 @@ $("list").addEventListener("change", async e => {
     render();
   }
 });
+function focusNoteForm(id) {
+  const ta = $("note-" + id);
+  (ta || document.querySelector(`[data-open="${CSS.escape(id)}"]`))?.focus({ preventScroll:true });
+}
 $("list").addEventListener("submit", async e => {
   const f = e.target.closest("[data-note]"); if (!f) return; e.preventDefault();
   const id = f.dataset.note, i = issues.find(x => x.id === id), state = noteState(id);
@@ -2420,16 +2650,22 @@ $("list").addEventListener("submit", async e => {
       const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
       if (!raw) throw new Error("not_found");
       const notes = Array.isArray(raw.notes) ? raw.notes : [];
-      if (notes.length >= 10) throw new Error("note_limit");
+      if (notes.length >= 10) throw Object.assign(new Error("note_limit"), { error:"note_limit" });
       await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
     }
     // a live re-render may already have replaced this form: clear the current one by id
     notePics.delete(id); noteAttempts.delete(id); noteStates.delete(id);
     const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
+    focusNoteForm(id);
   } catch (err) {
     state.sending = false;
+    if (err && err.error === "note_limit") {
+      noteLimits.add(id);
+      state.status = "此案件已達 10 則補充上限，草稿已保留，請自行複製。";
+      render(); toast("此案件已達 10 則補充上限"); return;
+    }
     state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
-    render(); fail(err);
+    render(); fail(err); focusNoteForm(id);
   }
 });
 $("nav").addEventListener("click", e => {
@@ -2580,6 +2816,7 @@ ${publicIssues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}
 
 // ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
 const PENDING = "1999 待分派";
+const queueShown = { review:20, unassigned:20, overdue:20 };
 function renderAdmin(c) {
   const loading = !gotReports || !gotTriage;
   $("admLoad").hidden = !(loadErr || loading);
@@ -2601,12 +2838,15 @@ function renderAdmin(c) {
       <div class="admin" style="padding:0;border:0">${extra}</div></div>`;
   const deptSel = i => `<select data-dept="${esc(i.id)}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>`;
   const st = i => i.status === "open" ? `<button class="btn" data-status="progress" data-id="${esc(i.id)}">標記處理中</button>` : `<button class="btn" data-status="fixed" data-id="${esc(i.id)}">標記已修復</button>`;
-  const q = (title, note, list, extra) => `<section class="box"><div class="boxhead"><b>${title}</b> <span class="cnt">${list.length}</span><span class="spacer"></span><span class="note">${note}</span></div>
-    ${list.length ? list.slice(0, 20).map(i => row(i, extra(i))).join("") : `<div class="empty" style="padding:16px">沒有案件</div>`}</section>`;
-  $("admQueues").innerHTML = q("待審核", "AI 判為垃圾訊息，審核前一般訪客看不到", review,
+  const q = (key, title, note, list, extra) => {
+    const shown = list.slice(0, queueShown[key]), rest = list.length - shown.length;
+    return `<section class="box"><div class="boxhead"><b>${title}</b> <span class="cnt">${list.length}</span><span class="spacer"></span><span class="note">${note}</span></div>
+    ${list.length ? shown.map(i => row(i, extra(i))).join("") + (rest ? `<div class="queue-more"><button class="btn" type="button" data-more="${key}">顯示更多（還有 ${rest} 筆）</button></div>` : "") : `<div class="empty" style="padding:16px">沒有案件</div>`}</section>`;
+  };
+  $("admQueues").innerHTML = q("review", "待審核", "AI 判為垃圾訊息，審核前一般訪客看不到", review,
       i => `<button class="btn" data-hide="false" data-id="${esc(i.id)}">放行</button><button class="btn" data-hide="true" data-id="${esc(i.id)}">隱藏</button>`)
-    + q("待分派", "taipei-bot 判斷不出局處", unassigned, deptSel)
-    + q(`逾期未結`, `開立超過 ${STALE_DAYS} 天，最久的在前`, overdue, i => st(i) + deptSel(i));
+    + q("unassigned", "待分派", "taipei-bot 判斷不出局處", unassigned, deptSel)
+    + q("overdue", `逾期未結`, `開立超過 ${STALE_DAYS} 天，最久的在前`, overdue, i => st(i) + deptSel(i));
   const bars = (pairs, color) => { const max = Math.max(1, ...pairs.map(p => p[1]));
     return pairs.length ? pairs.map(([n, v, col]) => `<div><span>${esc(n)}</span><i style="width:${v / max * 100}%;background:${col || color}"></i><span class="n">${v}</span></div>`).join("") : `<div class="empty" style="padding:12px">沒有資料</div>`; };
   const byDept = {}; open.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
@@ -2614,7 +2854,24 @@ function renderAdmin(c) {
   const byCat = {}; issues.forEach(i => { const m = (SUBS[i.category] || {}).main || "未分類"; byCat[m] = (byCat[m] || 0) + 1; });
   $("admCat").innerHTML = bars(Object.entries(byCat).sort((a, b) => b[1] - a[1]), "var(--accent)");
 }
-$("v-admin").addEventListener("click", e => e.target.closest("[data-go]") ? goIssue(e) : onListClick(e));
+let adminQueueGuard = 0;
+$("v-admin").addEventListener("click", e => {
+  const more = e.target.closest("#admQueues [data-more]");
+  if (more) {
+    const key = more.dataset.more;
+    if (!Object.hasOwn(queueShown, key)) return;
+    queueShown[key] += 20; render();
+    document.querySelector(`#admQueues [data-more="${key}"]`)?.focus();
+    return;
+  }
+  if (e.target.closest("[data-go]")) return goIssue(e);
+  // After an action the row leaves the queue and the next row moves under the pointer; ignore a quick second click.
+  if (e.target.closest("#admQueues [data-status],#admQueues [data-hide]")) {
+    if (performance.now() < adminQueueGuard) return;
+    adminQueueGuard = performance.now() + 800;
+  }
+  onListClick(e);
+});
 $("v-admin").addEventListener("change", onListChange);
 
 // ---- Demo tools: snapshot the pre-demo state, put it back after a rehearsal ----
@@ -2705,6 +2962,7 @@ $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl
 // GitHub-style keyboard shortcuts.
 // Privacy notice and terms: any [data-doc] link opens that <dialog>
 document.addEventListener("click", e => { const a = e.target.closest("[data-doc]"); if (a) { e.preventDefault(); $(a.dataset.doc).showModal(); } });
+for (const d of document.querySelectorAll("dialog.doc")) d.addEventListener("click", e => { if (e.target === d) d.close(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("newBox").hidden && !document.querySelector("dialog[open]")) return $("cancelBtn").click();
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
@@ -2729,7 +2987,7 @@ document.addEventListener("keydown", e => {
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;
   if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
-  const user = await claude.use("user");
+  const user = userApi = await claude.use("user");
   if (!db) return render();
   me = user ? await user.id() : null;
   admin = user ? await user.canEdit() : false;
@@ -2755,9 +3013,9 @@ document.addEventListener("keydown", e => {
   // Supplements from other citizens: target must be a case id, photos only from the writer's own folder
   db.collection("addenda").onSnapshot(s => {
     const out = {};
-    for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
+    for (const d of s.docs) for (const [aid, x] of Object.entries(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500),
+        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500), contact:`${d.id}:${aid}`,
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
   }, () => {});
