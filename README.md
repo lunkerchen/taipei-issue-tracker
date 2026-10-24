@@ -2,6 +2,8 @@
 
 繁體中文 | [English](README.en.md)
 
+![台北市，你給我聽好了｜市民 1999 通報地圖](docs/og.jpg)
+
 <!-- 本檔是 README.en.md（ASD-STE100 簡化技術英文）的繁體中文翻譯。修改時兩份一起改。 -->
 
 這個網站把台北市呈現成一個 GitHub repo。市民的 1999 陳情是 issue。局處的修繕是 pull request。每月的派工摘要是 release。
