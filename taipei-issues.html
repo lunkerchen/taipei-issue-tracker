@@ -619,15 +619,25 @@ const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
   return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
 
 let toastTimer;
-function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").textContent = "", 5000); }
+function toast(msg, hideFromAT = false) {
+  const el = $("toast");
+  el.textContent = msg;
+  if (hideFromAT) el.setAttribute("aria-hidden", "true"); else el.removeAttribute("aria-hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.textContent = ""; el.removeAttribute("aria-hidden"); }, 5000);
+}
 // A rejected write from a non-admin means the rules only give this viewer read access: drop to read-only.
-function fail(e) {
-  if (e && e.code === "invalid_argument" && canWrite && !admin) { canWrite = false; applyRole(); render(); return toast("你目前只能檢視"); }
-  if (e && e.error === "report_quota") return toast("短時間內送出太多陳情，請稍後再試（每人每 10 分鐘 3 件、每天 10 件）");
-  if (e && e.error === "duplicate_report") return toast("剛才已經有人送出相同內容的陳情，請直接在那件按 +1");
-  if (e && e.status === 429) return toast("操作太頻繁，請 1 分鐘後再試");
-  if (e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false)) return toast("目前連不上伺服器，請稍後再試（你輸入的內容已保留）");
-  toast(e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試");
+function fail(e, statusNode = null) {
+  const readOnly = e && e.code === "invalid_argument" && canWrite && !admin;
+  if (readOnly) { canWrite = false; applyRole(); render(); }
+  const message = readOnly ? "你目前只能檢視"
+    : e && e.error === "report_quota" ? "短時間內送出太多陳情，請稍後再試（每人每 10 分鐘 3 件、每天 10 件）"
+    : e && e.error === "duplicate_report" ? "剛才已經有人送出相同內容的陳情，請直接在那件按 +1"
+    : e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試"
+    : e && (e.name === "TypeError" || e.name === "TimeoutError" || e.status >= 500 || navigator.onLine === false) ? "目前連不上伺服器，請稍後再試（你輸入的內容已保留）"
+    : e && e.code === "invalid_argument" ? "無法儲存：你沒有寫入權限" : "無法儲存，請稍後再試";
+  if (statusNode) statusNode.textContent = message;
+  toast(message, !!(statusNode && statusNode.getClientRects().length));
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
@@ -1012,6 +1022,14 @@ function restoreFormFocus() {
   formOpener = null;
   target && target.focus({ preventScroll:true });
 }
+function restoreReportRetryFocus(requested, revision) {
+  if (!requested) return;
+  setTimeout(() => {
+    const target = $("submitBtn");
+    if (revision === reportRevision && !$("newBox").hidden && document.activeElement === document.body && !target.disabled)
+      target.focus({ preventScroll:true });
+  }, 0);
+}
 function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
@@ -1278,6 +1296,7 @@ $("dupBox").addEventListener("click", e => {
   if (!b || !pending) return;
   const { t, text, photos, signature } = pending;
   if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+  const restoreOnFailure = b.dataset.dup === "new" && document.activeElement === b;
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
   if (b.dataset.dup === "new") {
@@ -1285,7 +1304,7 @@ $("dupBox").addEventListener("click", e => {
     reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
     return shrinking.then(() => {
       if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
-      return create({ ...t, dup:null }, text, signature, maskedN);
+      return create({ ...t, dup:null }, text, signature, maskedN, restoreOnFailure);
     }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
   }
   if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
@@ -1327,7 +1346,7 @@ function completeCreatedReport(attempt) {
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
 }
-async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN) {
+async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
   let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
   if (!attempt) {
@@ -1335,7 +1354,11 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     const addr = (picked && picked.address) || address;
     let photos = [];
     try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); }
-    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; return; }
+    catch (e) {
+      $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試";
+      restoreReportRetryFocus(restoreOnFailure, startRevision);
+      return;
+    }
     const where = await locate(address, fields.district);
     if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
     const id = crypto.randomUUID();
@@ -1358,7 +1381,11 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
       completeCreatedReport(attempt);
     } else {
       if (contactFn) try { await contactFn.save(id, contact); }
-      catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
+      catch (e) {
+        $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試";
+        restoreReportRetryFocus(restoreOnFailure, startRevision);
+        return;
+      }
       const snap = await ref.get(), stored = snap.exists && (snap.data().items || {})[id];
       // Older shims can recognize an existing cached item, then avoid replacing it.
       if (stored) { completeCreatedReport(attempt); return; }
@@ -1370,7 +1397,8 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     mine = null; $("newStatus").textContent = "";
     const twin = e && e.error === "duplicate_report" && issues.find(i => i.id !== full && normBody(i.body) === normBody(text));
     if (twin) { reportAttempt = null; return showDup({ ...attempt.t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, attempt.photos, signature); }
-    fail(e);
+    fail(e, $("newStatus"));
+    restoreReportRetryFocus(restoreOnFailure, startRevision);
   }
 }
 const normBody = s => String(s || "").replace(/[\s\p{P}\p{S}]/gu, "").toLowerCase(); // same as the Worker's duplicate check
