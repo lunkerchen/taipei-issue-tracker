@@ -1,7 +1,7 @@
 // Builds public/index.html: the artifact page plus a window.claude stand-in.
 // State lives in the Worker's Hub Durable Object: the shim loads GET /api/db, applies pushes from /api/ws, and writes via POST /api/db.
 // AI calls go to the Worker's /api/sample. ?admin sends x-admin so the presenter gets the bureau controls (merge, draft release); no token is checked
-// for those. ?admin=<ADMIN_TOKEN> also unlocks reporter contacts and progress notices.
+// for those. #admin=<ADMIN_TOKEN> also unlocks reporter contacts and progress notices.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
@@ -27,13 +27,15 @@ const req = async (url, init = {}) => {
 };
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 // ?admin turns the 局處後台 on (demo mode, no token) and ?citizen turns it off; the choice stays in sessionStorage for this tab.
-// ?admin=<ADMIN_TOKEN> is the real admin: it also reads reporter contacts and its triage changes email the reporter.
+// #admin=<ADMIN_TOKEN> is the real admin: it also reads reporter contacts and its triage changes email the reporter.
+// The key is a URL fragment, which the browser never sends, so it stays out of request URLs and Workers logs; a ?admin= value is ignored.
 const adminToken = (() => {
-  const q = new URLSearchParams(location.search), on = q.has("admin"), off = q.has("citizen");
+  const q = new URLSearchParams(location.search), key = new URLSearchParams(location.hash.slice(1)).get("admin") || "",
+    on = q.has("admin") || !!key, off = q.has("citizen");
   if (!on && !off) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
-  const t = on ? q.get("admin") || "1" : "";
+  const t = key || (on ? "1" : "");
   try { on ? sessionStorage.setItem("admin", t) : sessionStorage.removeItem("admin"); } catch {}
-  q.delete("admin"); q.delete("citizen"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
+  q.delete("admin"); q.delete("citizen"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + (key ? "" : location.hash));
   return t;
 })();
 

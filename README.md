@@ -11,7 +11,7 @@
 這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。網站標題是「台北市，你給我聽好了｜市民 1999 通報地圖」。
 
 - 線上網站：<https://taipei-issue-tracker.labanchen.workers.dev>
-- 局處後台（示範，免驗證）：<https://taipei-issue-tracker.labanchen.workers.dev/?admin>。示範後台讀不到聯絡資料，也不會寄出進度通知；要用這兩項功能，請開 `?admin=<ADMIN_TOKEN>`。
+- 局處後台（示範，免驗證）：<https://taipei-issue-tracker.labanchen.workers.dev/?admin>。示範後台讀不到聯絡資料，也不會寄出進度通知；要用這兩項功能，請開 `#admin=<ADMIN_TOKEN>`。金鑰放在網址的片段（#）裡，瀏覽器不會把它送到伺服器，也不會出現在請求紀錄中。
 - 黑客松題目：[puma.taipei/hackathon](https://puma.taipei/hackathon)「你看見的市政 bug」
 
 > 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料。請參閱〈資料來源〉。
@@ -69,7 +69,7 @@
 - **瀏覽器身分**：Worker 網站會在這個瀏覽器保留訪客身分，並在每次載入頁面時向 Worker 確認。如果簽章無效，Worker 會先換發新身分，頁面才會進入可寫狀態。如果 Worker 無法簽發身分，或瀏覽器無法保留身分，網站會維持唯讀並隱藏通報按鈕。允許網站儲存資料並重新整理後即可通報。支援 Web Locks 的瀏覽器會讓同時開啟的分頁共用同一個身分。
 - **跑馬燈**：頁面底部顯示 Bing News 與 PTT Taipei 板的台北新聞，不顯示交易或徵求類貼文。另外也顯示人工挑選的 Threads 貼文。每則前面標日期，例如 10/24。
 
-**局處管理者**（示範模式，不需驗證：點頁面底部的 **局處後台（示範，免驗證）**，或在網址加上 `?admin`；點 **回到市民畫面** 或加上 `?citizen` 回到市民畫面。任何拿到網址的人都能使用案件操作；聯絡資料與進度通知需要金鑰，請開 `?admin=<ADMIN_TOKEN>`。頁面會把金鑰從網址列移除，只存在這個分頁（sessionStorage）。）
+**局處管理者**（示範模式，不需驗證：點頁面底部的 **局處後台（示範，免驗證）**，或在網址加上 `?admin`；點 **回到市民畫面** 或加上 `?citizen` 回到市民畫面。任何拿到網址的人都能使用案件操作；聯絡資料與進度通知需要金鑰，請開 `#admin=<ADMIN_TOKEN>`（網址片段，不是查詢參數）；放在 `?admin=` 的金鑰會被忽略。頁面會把金鑰從網址列移除，只存在這個分頁（sessionStorage）。）
 
 - **後台**：後台顯示今日通報、未結案件、待審核、待分派與逾期案件。三個待辦佇列可以放行、隱藏、改派，或把案件設為「處理中」或「已修復」。資料載入失敗時，後台會顯示連線中斷，不會顯示全為 0 的數字。
 - **案件操作**：開修繕單（PR）、Merge 以結案、改派局處、設定里程碑，以及查看市民的聯絡資料（需金鑰）。
@@ -243,7 +243,13 @@ BASE=http://localhost:8806 node worker/test/progress-notice.mjs
 node worker/test/notice-undo.mjs
 ```
 
-本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。持金鑰的管理者：`http://localhost:8788/?admin=<.dev.vars 裡的 ADMIN_TOKEN>`。
+管理者金鑰測試會用 `#admin=<金鑰>` 與 `?admin=<金鑰>` 各開一次頁面，確認沒有任何請求網址帶著金鑰，而且放在 `?admin=` 的金鑰只會變成示範後台。這個測試使用 Playwright：
+
+```bash
+BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
+```
+
+本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。持金鑰的管理者：`http://localhost:8788/#admin=<.dev.vars 裡的 ADMIN_TOKEN>`。
 
 ## 部署
 

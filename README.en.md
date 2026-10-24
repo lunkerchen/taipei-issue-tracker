@@ -11,7 +11,7 @@ This website shows Taipei City as a GitHub repository. A 1999 citizen report is 
 This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖」.
 
 - Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
-- Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>. The demo console cannot read contact data and does not send progress notices. For these functions, open `?admin=<ADMIN_TOKEN>`.
+- Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>. The demo console cannot read contact data and does not send progress notices. For these functions, open `#admin=<ADMIN_TOKEN>`. The key is in the URL fragment, so the browser does not send it to the server and it is not in request logs.
 - Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
 
 > The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
@@ -69,7 +69,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
-**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `?admin=<ADMIN_TOKEN>`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
+**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `#admin=<ADMIN_TOKEN>` (a URL fragment, not a query). The page ignores a key in `?admin=`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". If the data cannot load, the back office shows a connection error and no zero counts.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen (key only).
@@ -243,7 +243,13 @@ The notice undo test needs no Worker. It runs `worker/src/hub.js` with Node SQLi
 node worker/test/notice-undo.mjs
 ```
 
-Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`. Administrator with the key: `http://localhost:8788/?admin=<ADMIN_TOKEN in .dev.vars>`.
+The admin key test opens the page with `#admin=<key>` and with `?admin=<key>`. It checks that no request URL holds the key, and that a key in `?admin=` gives only the demo admin. It uses Playwright:
+
+```bash
+BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
+```
+
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`. Administrator with the key: `http://localhost:8788/#admin=<ADMIN_TOKEN in .dev.vars>`.
 
 ## Deployment
 
