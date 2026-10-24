@@ -112,7 +112,7 @@ try {
   };
   const addPhoto = async (label, color) => {
     await page.locator("#photoIn").setInputFiles(await png(label, color));
-    await page.locator("#photoPrev img").waitFor({ state:"visible", timeout:10000 });
+    await page.locator("#photoPrev img").last().waitFor({ state:"visible", timeout:10000 });
   };
 
   // An edit while a photo request is pending invalidates the preview and prevents a stale write.
