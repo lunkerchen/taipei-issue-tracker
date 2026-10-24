@@ -17,6 +17,8 @@ const lat = 25.033, lng = 121.5654;
 const own = { title, body:`本機合成地圖入口測試 ${crypto.randomUUID()}`,
   createdAt:new Date().toISOString(), author:visitorId, dept:"1999 待分派", tags:[], photos:[], notes:[],
   lat, lng, district:"信義區", category:"" };
+assert.equal((await post("/api/contact", { "x-visitor":visitor.id }, { item:key, name:"回歸測試", phone:"0912000000",
+  email:"test@example.com", realName:false })).status, 200, "save contact before creating a case");
 assert.equal((await post("/api/db", { "x-visitor":visitor.id },
   { op:"update", path:`reports/${visitorId}`, data:{ items:{ [key]:own } } })).status, 200,
   "create a private test case with a location");
