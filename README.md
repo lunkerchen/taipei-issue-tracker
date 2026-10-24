@@ -259,6 +259,12 @@ BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 觸控目標測試使用 390px 手機視窗，確認地圖縮放鈕、圖層鈕、彈窗關閉鈕、彈窗按鈕、行政區返回鈕、照片選擇區與移除照片鈕都至少有 44px。測試會在本機 Worker 寫入一件私人案件，結束時刪除。請使用獨立的 Worker 持久化目錄。
 
 ```bash
+BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
+```
+
+里返回焦點測試使用桌機與 390×844 手機視窗，確認從里頁面返回各里清單時，鍵盤焦點會回到剛剛瀏覽的該里按鈕上。
+
+```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 ```
 

@@ -259,6 +259,12 @@ BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
+```
+
+The Li back focus test checks both desktop and 390x844 mobile viewports. It checks that returning from a Li page to the Li list returns keyboard focus to the button of the Li that was just open.
+
+```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 ```
 
