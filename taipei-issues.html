@@ -95,6 +95,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .bot .h{font-size:13px;background:var(--hover);padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
 .bot .b{padding:8px 10px;font-size:14px;overflow-wrap:anywhere}
 .admin{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.admin .note{overflow-wrap:anywhere;min-width:0;max-width:100%}
 .empty{padding:36px 16px;text-align:center;color:var(--muted)}
 .new{display:flex;flex-direction:column;gap:10px;padding:14px}
 .new textarea{min-height:96px;resize:vertical;width:100%;box-sizing:border-box}
@@ -446,7 +447,7 @@ Switched to branch 'taipei'
   </section>
 
   <div class="bar">
-    <input type="search" id="q" placeholder="is:issue 搜尋標題或內容" aria-label="搜尋">
+    <input type="search" id="q" placeholder="搜尋標題或內容" aria-label="搜尋">
     <select id="deptFilter" aria-label="依局處篩選"></select>
     <select id="msFilter" aria-label="依里程碑篩選"></select>
     <select id="sort" aria-label="排序">
@@ -766,7 +767,7 @@ function applyRole() {
   $("roleLink").textContent = admin ? "回到市民畫面" : "局處後台（示範，免驗證）"; $("roleLink").href = admin ? "?citizen#map" : "?admin#admin";
   $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
   $("cancelBtn").textContent = admin ? "Cancel" : "取消";
-  $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";
+  $("q").placeholder = admin ? "搜尋標題或內容" : "搜尋標題、內容或行政區";
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -2587,6 +2588,13 @@ function pushCaseHash(hash) {
   try { window.history.pushState({ caseDetail: true }, "", location.pathname + location.search + hash); } catch {}
   syncedLocation = location.href;
 }
+function scrollActiveNav() {
+  const nav = $("nav"), tab = nav?.querySelector('[aria-current="page"]');
+  if (!nav || !tab) return;
+  const n = nav.getBoundingClientRect(), b = tab.getBoundingClientRect();
+  if (b.left < n.left) nav.scrollLeft -= n.left - b.left;
+  else if (b.right > n.right) nav.scrollLeft += b.right - n.right; // horizontal only: never pull the page back to the top
+}
 function show(v, replace, preserveHash = false, preserveNotice = false) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
   if (!preserveHash && location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
@@ -2599,6 +2607,7 @@ function show(v, replace, preserveHash = false, preserveNotice = false) {
   VIEWS.forEach(x => { const el = $("v-" + x); if (el) el.hidden = x !== page; });
   $("v-issues").classList.toggle("mine", view.mine); if (wasMine !== view.mine && db) render();
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  scrollActiveNav();
   if (v === "map") openMap();
 }
 function resolveShareRoute() {
@@ -2801,6 +2810,7 @@ function renderViews(c) {
   const all = prs(), openPrs = all.filter(p => !p.merged);
   $("cIssues").textContent = issues.filter(i => i.status !== "fixed").length || "";
   $("cPulls").textContent = openPrs.length || "";
+  scrollActiveNav();
 
   $("prHead").textContent = `${openPrs.length} Open · ${all.length - openPrs.length} Merged`;
   $("prList").innerHTML = all.length ? all.sort((a, b) => b.n - a.n).map(p => `<div class="row-item">
@@ -2907,13 +2917,13 @@ function renderAdmin(c) {
     ? (loading ? "連線中斷，無法載入後台資料。請重新整理頁面。" : "連線中斷，以下數字可能不是最新。")
     : "正在載入後台資料…";
   if (loading) { $("admKpi").innerHTML = $("admQueues").innerHTML = $("admDept").innerHTML = $("admCat").innerHTML = ""; return; }
-  const open = issues.filter(i => i.status !== "fixed" && !hiddenFor(i)), today = dayKey(Date.now());
+  const openAll = issues.filter(i => i.status !== "fixed"), open = openAll.filter(i => !hiddenFor(i)), today = dayKey(Date.now());
   const fixed = issues.filter(closedAt), avg = fixed.length ? fixed.reduce((s, i) => s + closedAt(i) - +new Date(i.createdAt), 0) / fixed.length / DAY : null;
   const age = i => (Date.now() - +new Date(i.createdAt)) / DAY;
   const review = issues.filter(i => i.flagged && i.hidden === undefined), unassigned = open.filter(i => i.dept === PENDING && !hiddenFor(i));
   const overdue = open.filter(i => age(i) > STALE_DAYS && !hiddenFor(i)).sort((a, b) => age(b) - age(a));
   const k = (n, t, warn) => `<div class="${warn && n ? "warn" : ""}"><b>${n}</b><span>${t}</span></div>`;
-  $("admKpi").innerHTML = k(issues.filter(i => dayKey(i.createdAt) === today).length, "今日通報") + k(open.length, "未結案件")
+  $("admKpi").innerHTML = k(issues.filter(i => dayKey(i.createdAt) === today).length, "今日通報") + k(openAll.length, "未結案件")
     + k(review.length, "待審核", 1) + k(unassigned.length, "待分派", 1) + k(overdue.length, `超過 ${STALE_DAYS} 天未結`, 1)
     + k(avg === null ? "—" : avg.toFixed(1), "平均修復天數");
   const row = (i, extra) => `<div class="row-item"><div class="grow"><button class="title" data-go="${esc(i.id)}">${esc(i.title)}</button>
