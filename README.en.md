@@ -69,7 +69,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Case links**: Each case has a stable link from its data ID, not its number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
-- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24. A pause and resume button with an `aria-pressed` state and a 44px touch target stops the CSS marquee or the reduced-motion rotation. The browser keeps your paused selection across page reloads.
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
@@ -257,6 +257,12 @@ BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 ```
 
 The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/ticker-pause.mjs
+```
+
+The ticker pause test uses desktop and 390×844 viewports. It checks that the pause button can be reached by keyboard, has a 44px touch target, and updates `aria-pressed` and `aria-label`. It verifies that pausing stops the continuous marquee animation for 2 seconds and stops headline rotation under `prefers-reduced-motion: reduce` for 6 seconds. It also verifies that the paused preference persists across page reloads. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs

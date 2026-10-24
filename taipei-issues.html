@@ -321,6 +321,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
 .ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
+.tk-btn{flex:none;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;color:var(--term-fg);cursor:pointer;padding:0;font-size:14px;line-height:1}
+.tk-btn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.ticker.paused .tk-track{animation-play-state:paused!important}
 .tk-view{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 .tk-track{display:flex;width:max-content}
 .tk-set{display:flex;flex:none}
@@ -561,7 +564,7 @@ Switched to branch 'taipei'
 
   <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
-<div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
+<div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><button type="button" class="tk-btn" id="tkPause" aria-pressed="false" aria-label="暫停新聞跑馬燈"><span aria-hidden="true">⏸</span></button><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <dialog class="doc" id="privacy" aria-labelledby="privacyH">
@@ -2382,8 +2385,31 @@ async function togglePickMap() {
 $("pinBtn").onclick = () => togglePickMap();
 
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
-let newsItems = [], tkTimer = 0, tkI = 0;
+let newsItems = [], tkTimer = 0, tkI = 0, tkPaused = localStorage.getItem("tit-ticker-paused") === "1";
 const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
+function syncTkPauseBtn() {
+  const btn = $("tkPause");
+  if (!btn) return;
+  btn.setAttribute("aria-pressed", tkPaused ? "true" : "false");
+  btn.setAttribute("aria-label", tkPaused ? "繼續播放新聞跑馬燈" : "暫停新聞跑馬燈");
+  btn.innerHTML = `<span aria-hidden="true">${tkPaused ? "▶" : "⏸"}</span>`;
+  $("ticker").classList.toggle("paused", tkPaused);
+}
+function toggleTkPause() {
+  tkPaused = !tkPaused;
+  if (tkPaused) localStorage.setItem("tit-ticker-paused", "1");
+  else localStorage.removeItem("tit-ticker-paused");
+  syncTkPauseBtn();
+  if (reduceMQ.matches) {
+    clearInterval(tkTimer);
+    if (!tkPaused && newsItems.length) {
+      const el = $("ticker"), n = newsItems.length;
+      tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within") && !tkPaused) { $("tkView").innerHTML = tkItem(newsItems[tkI++ % n]).replace(/^<a /, '<a class="it" '); } }, 5000);
+    }
+  }
+}
+const tkPauseBtn = $("tkPause");
+if (tkPauseBtn) tkPauseBtn.addEventListener("click", toggleTkPause);
 // PTT gives "10/24"; Bing and Threads give an ISO time, shown as the Taipei date
 const tkDate = s => { const m = /^\s*(\d{1,2})\/(\d{1,2})/.exec(s), t = Date.parse(s); return m ? `${+m[1]}/${+m[2]}` : t ? new Intl.DateTimeFormat("en-US", { timeZone:"Asia/Taipei", month:"numeric", day:"numeric" }).format(t) : ""; };
 const tkItem = (n, hid) => { const t = `${n.date ? `<span class="src">${n.date}</span>` : ""}<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
@@ -2393,10 +2419,14 @@ function drawTicker() {
   const el = $("ticker"), n = newsItems.length;
   el.hidden = !n; document.documentElement.classList.toggle("has-tk", !!n);
   if (!n) return;
+  syncTkPauseBtn();
   if (reduceMQ.matches) {
-    // static rotation: one headline at a time, every 5s, held while the pointer or focus is on the bar
+    // static rotation: one headline at a time, every 5s, held while the pointer or focus is on the bar or when paused
     const one = () => { $("tkView").innerHTML = tkItem(newsItems[tkI++ % n]).replace(/^<a /, '<a class="it" '); };
-    one(); tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within")) one(); }, 5000);
+    one();
+    if (!tkPaused) {
+      tkTimer = setInterval(() => { if (!el.matches(":hover,:focus-within") && !tkPaused) one(); }, 5000);
+    }
   } else {
     const set = hid => `<span class="tk-set"${hid ? ' aria-hidden="true"' : ""}>${newsItems.map(x => tkItem(x, hid)).join("")}</span>`;
     $("tkView").innerHTML = `<div class="tk-track" style="animation-duration:${Math.max(40, n * 9)}s">${set(false)}${set(true)}</div>`;
