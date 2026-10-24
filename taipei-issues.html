@@ -1451,6 +1451,7 @@ $("dupBox").addEventListener("click", async e => {
   if (b.dataset.dup === "new") {
     const revision = reportRevision;
     reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
+    $("newStatus").textContent = "送出中…";
     return shrinking.then(() => {
       if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
       return create({ ...t, dup:null }, text, signature, maskedN, restoreOnFailure);
@@ -1514,6 +1515,7 @@ function completeCreatedReport(attempt) {
 }
 async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
+  $("newStatus").textContent = "送出中…";
   let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
   if (!attempt) {
     const { dup, address, outside, vague, ...fields } = t;
@@ -1527,6 +1529,7 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     }
     const where = await locate(address, fields.district);
     if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    $("newStatus").textContent = "送出中…";
     const id = crypto.randomUUID();
     const item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
     const contact = contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), email:$("cEmail").value.trim(), realName:!$("cRealRow").hidden && $("cReal").checked } : null;
