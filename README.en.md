@@ -76,7 +76,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed". Each queue shows 20 cases at first. The **顯示更多** button shows the other cases. After an action, a quick second click cannot change a different case. If the data cannot load, the back office shows a connection error and no zero counts.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
 - **Repair order feedback**: A repair order title has a maximum of 80 characters, and the field shows the limit. After you make a repair order, the field is empty and the page shows the PR number. After you merge a repair order or mark a case fixed, the page shows a message. If the case leaves the Open list, the detail closes and the page shows the case list again.
-- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
+- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. If you hide a case after a release, the public release notes no longer show it, and the visible count goes down. The administrator still sees the stored release. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
 - **Reset demo data** (重設模擬資料, Worker website only): Puts the full database back to the seed data in `worker/data.json`. It removes all citizen reports, additions, +1 votes, contact data and demo snapshots. Push the button two times in 10 seconds. All open pages show the change immediately. Uploaded photos stay in R2. If the reset fails, the status line says that it did not complete, and you can push the button again. A successful reset still shows its result if the page cannot reload.
@@ -293,6 +293,12 @@ BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 ```
 
 The stable case number test uses two visitors and one administrator. It checks that a case keeps the same number in the staff view and the owner's citizen view. It releases and hides another case and checks for the same number. It also reloads the page and takes a new snapshot. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:8788 node worker/test/release-hidden-after-publish.mjs
+```
+
+The release hide test publishes one release with two fixed cases and then hides one case. It checks that the public release drops the hidden case number, title and count, and keeps the other case. It also checks that a longer number with the same start stays, that the administrator still sees the stored release, and that the case returns after it is public again. The test deletes its documents when it ends. Use a separate local Worker persistence directory.
 
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
