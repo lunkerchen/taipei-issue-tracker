@@ -2589,13 +2589,18 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
   }
   resetArmed = 0; $("resetBtn").textContent = "重設到快照"; $("snapStatus").textContent = "重設中…";
   // ponytail: one write at a time; a failure midway leaves a partial reset, and pressing reset again finishes it
-  const cur = Object.fromEntries(t.map(d => [d.id, JSON.stringify(d.data())]));
-  for (const [id, data] of Object.entries(snap.triage)) if (cur[id] !== JSON.stringify(data)) await db.doc("triage/" + id).set(data);
-  for (const [c, docs] of extra) for (const d of docs) await db.doc(`${c}/${d.id}`).delete();
-  const mv = (snap.votes || {})[me];
-  await (mv ? db.doc("votes/" + me).set(mv) : db.doc("votes/" + me).delete());
-  view.open.clear(); view.closed = false;
-  $("snapStatus").textContent = "已重設到快照";
+  try {
+    const cur = Object.fromEntries(t.map(d => [d.id, JSON.stringify(d.data())]));
+    for (const [id, data] of Object.entries(snap.triage)) if (cur[id] !== JSON.stringify(data)) await db.doc("triage/" + id).set(data);
+    for (const [c, docs] of extra) for (const d of docs) await db.doc(`${c}/${d.id}`).delete();
+    const mv = (snap.votes || {})[me];
+    await (mv ? db.doc("votes/" + me).set(mv) : db.doc("votes/" + me).delete());
+    view.open.clear(); view.closed = false;
+    $("snapStatus").textContent = "已重設到快照";
+  } catch (e) {
+    $("snapStatus").textContent = "重設沒有完成，再按一次「重設到快照」即可繼續。";
+    throw e;
+  }
 });
 // 重設模擬資料: the whole database back to the seed data (worker/data.json). Worker host only; two clicks like 重設到快照.
 let seedFn = null, seedArmed = 0;
@@ -2608,9 +2613,14 @@ $("seedBtn").onclick = () => run($("seedBtn"), async () => {
     return;
   }
   seedArmed = 0; $("seedBtn").textContent = "重設模擬資料"; $("snapStatus").textContent = "重設中…";
-  const r = await seedFn();
-  view.open.clear(); view.closed = false; render();
-  $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+  try {
+    const r = await seedFn();
+    view.open.clear(); view.closed = false; render();
+    $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+  } catch (e) {
+    $("snapStatus").textContent = "重設沒有完成，請再按一次「重設模擬資料」。";
+    throw e;
+  }
 });
 
 // Issue templates fill the textarea with the fields 1999 needs.
