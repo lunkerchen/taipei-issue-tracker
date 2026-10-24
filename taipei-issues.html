@@ -242,7 +242,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .pop .btn{margin-top:8px;min-height:44px;padding:7px 16px}
 .mapbox .leaflet-control-container .leaflet-bar a,.pickbox .leaflet-control-container .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:22px}
 .mapbox .leaflet-container a.leaflet-popup-close-button,.pickbox .leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;line-height:44px;font-size:24px;padding:0}
-.pickbox.minimap{height:180px;margin:0 0 12px}
+.pickbox.minimap{height:180px;margin:0 0 8px}.mapopen{margin:0 0 12px}#map:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
 .pin-wrap{background:none;border:0}
@@ -470,7 +470,7 @@ Switched to branch 'taipei'
     <div class="mapgrid">
       <div class="mapcol">
       <div class="mapbox">
-        <div id="map" role="application" aria-label="陳情地圖"></div>
+        <div id="map" role="application" aria-label="陳情地圖" tabindex="-1"></div>
         <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
         <div class="mapnote" id="dataNote" role="status" hidden><span id="dataNoteText"></span><button class="btn sm" type="button" id="dataNoteRetry">重新整理</button></div>
@@ -1142,7 +1142,7 @@ function render() {
         </form>`;
         })() : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
-        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
+        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div><button class="btn mapopen" type="button" data-openmap="${esc(i.id)}">在地圖上開啟</button>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
@@ -1200,6 +1200,8 @@ function render() {
 }
 
 async function onListClick(e) {
+  const mapOpen = e.target.closest("[data-openmap]");
+  if (mapOpen) return openIssueOnMap(mapOpen.dataset.openmap);
   const o = e.target.closest("[data-open]");
   if (o) {
     const id = o.dataset.open, closing = view.open.has(id);
@@ -1843,6 +1845,7 @@ async function openMap() {
   mapMessage("");
   if (curView !== "map") return;
   mainLM.invalidateSize(); syncMap(); // show() already unhid the view, so layout is current
+  if (mapCaseWanted) { const id = mapCaseWanted; mapCaseWanted = null; showCaseOnMap(id); }
   if (histWanted && !histOn) void activateHistory(histIntentVersion);
 }
 function mapMessage(message, retry = false) {
@@ -2260,6 +2263,29 @@ function goIssue(e) {
   $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
   show("issues"); activeShareId = i.id; replaceHash(issueHash(i.id)); render();
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
+}
+
+// "在地圖上開啟" from a case detail: show the map at the case point and open its pop-up.
+let mapCaseWanted = null;
+function openIssueOnMap(id) {
+  if (!issues.some(i => i.id === id)) return;
+  mapCaseWanted = id;
+  show("map");
+  $("map").focus({ preventScroll:true });
+}
+function showCaseOnMap(id) {
+  if (!mainLM) return;
+  const r = markers.get(id); if (!r) return;
+  if (histOn || histWanted) setHist(false);
+  if (curDist && r.dist !== curDist) closeDistrict();
+  if (!curDist && layerOn[r.key] !== true) {
+    layerOn[r.key] = true;
+    const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true;
+    allBtn(); setPins();
+  }
+  $("map").scrollIntoView({ block:"center", behavior:motionBehavior() });
+  mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16));
+  mainLM.once("moveend", () => { r.m.openPopup(); $("map").focus({ preventScroll:true }); });
 }
 
 // ---- History timeline: 1999 dispatch records Jan–Sep 2026 (data.taipei), one day at a time ----
