@@ -307,6 +307,12 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
 .has-tk .toast{bottom:48px}
 @media (max-width:760px){.has-tk .mapgrid{height:auto}}
+@media (max-width:760px){
+  #v-map.indist :is(.tline,.mapact,.livebox){display:none}
+  #v-map.indist .mapbox{height:48vh;height:48svh}
+  #v-map.inli .mapbox{height:30vh;height:30svh}
+  .lipanel li button{min-height:48px}
+}
 </style>
 
 <div class="wrap" id="wrap">
@@ -1251,7 +1257,7 @@ function openDistrict(d) {
   const l = distLayers[d]; if (!l) return;
   curDist = d;
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
-  l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone");
+  l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone"); mapMode();
   mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
   $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
   $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
@@ -1260,12 +1266,19 @@ function openDistrict(d) {
 function closeDistrict() {
   curDist = ""; curLi = "";
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
-  liGroup?.clearLayers(); liLayers = {};
+  liGroup?.clearLayers(); liLayers = {}; mapMode();
   $("layerPanel").hidden = false; $("liPanel").hidden = $("liDetail").hidden = true; setPins();
   cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
   $("distBack").hidden = true;
 }
 $("distBack").addEventListener("click", closeDistrict);
+// Phones: inside a district the map gets shorter and the 里 list / 里 page follows it directly (CSS .indist / .inli);
+// the map is resized before any fly so the new bounds use the new height.
+function mapMode() {
+  const v = $("v-map"); v.classList.toggle("indist", !!curDist); v.classList.toggle("inli", !!curLi);
+  mainLM.invalidateSize({ pan:false });
+  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:"smooth" }), 600);
+}
 
 // Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
 let liGeo = null, liP = null, liGroup = null, liLayers = {}, curLi = "";
@@ -1294,14 +1307,14 @@ function drawLi(d) {
 function selectLi(li) {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
   curLi = li; const l = liLayers[li]; if (!l) return;
-  l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront();
+  l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront(); mapMode();
   mainLM.flyToBounds(l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
   for (const b of document.querySelectorAll("#liList button")) b.setAttribute("aria-current", b.dataset.li === li);
   $("liPanel").hidden = true; $("liDetail").hidden = false; renderLiDetail();
 }
 function backToList() {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
-  curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList();
+  curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList(); mapMode();
   if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
 }
 $("liBack").onclick = backToList;
@@ -1743,8 +1756,8 @@ const themeLabel = () => { $("themeBtn").textContent = darkNow() ? "淺色模式
 $("themeBtn").onclick = () => { const t = darkNow() ? "light" : "dark"; document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch {} themeLabel(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeLabel);
 themeLabel();
-// Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
-const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
+// Every visitor lands on the district map; a #view in the URL still opens that view.
+const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "map";
 show(homeView(), true);
 addEventListener("popstate", () => show(homeView(), true));
 
