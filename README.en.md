@@ -30,7 +30,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
-- **Personal data mask**: The website hides telephone numbers, email addresses and ID numbers before it sends the report. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
+- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash separators and the `+886` and `00886` mobile prefixes, email addresses and ID numbers before it sends a report or an addition. Contact fields stay private. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, there are two buttons: **Live** (the newest reports of today) and **Report**. Purple dashed lines show the boundaries of the 12 districts.
 - **Dispatch history timeline**: The timeline shows 128,640 real 1999 dispatches from January to September 2026. You can look at one day at a time or play the days in sequence. If you select history while the map loads, it opens when the map is ready. You can cancel this selection or retry a failed load. Each point shows only the road section. It does not show the house number.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
@@ -148,12 +148,13 @@ node worker/test/votes.mjs
 node worker/test/visitor.mjs
 ```
 
-Browser regression tests need Playwright and a running local Worker. Install Playwright in your test environment. You can set `PLAYWRIGHT_MODULE` to a module path and `CHROME_EXECUTABLE_PATH` to an installed Chrome executable.
+Browser regression tests need Playwright and a running local Worker. Install Playwright in your test environment. You can set `PLAYWRIGHT_MODULE` to a module path and `CHROME_EXECUTABLE_PATH` to an installed Chrome executable. The phone mask test uses port 8788 by default; set `PHONE_MASK_BASE` to use another local URL. Set `PHONE_MASK_EVIDENCE_DIR` to save a browser screenshot.
 
 ```bash
 node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
 node worker/test/addendum-flow.mjs
+node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
 ```
