@@ -17,11 +17,12 @@ const keys = { public:`public-${runId}`, flagged:`flagged-${runId}`, hidden:`hid
 const texts = { public:`PUBLIC CASE ${runId}`, flagged:`FLAGGED SECRET ${runId}`, hidden:`HIDDEN SECRET ${runId}` };
 const item = (key, title, flagged) => ({ id:key, n:1, title, body:`body of ${title}`, createdAt:new Date().toISOString(),
   dept:"環保局", district:"大安區", tags:["噪音"], author:owner, status:"open", photos:[], notes:[], ...(flagged ? { flagged:true } : {}) });
+const contact = { name:"合成市民", phone:"0912345678", email:"citizen@example.com", realName:false };
 const written = [];
 
 try {
   for (const [key, flagged] of [[keys.public, false], [keys.flagged, true], [keys.hidden, false]]) {
-    const r = await post("/api/db", { op:"create-report", path:`reports/${owner}`, data:{ key, item:item(key, texts[key === keys.public ? "public" : key === keys.flagged ? "flagged" : "hidden"], flagged) } }, { "content-type":"application/json", "x-visitor":token });
+    const r = await post("/api/db", { op:"create-report", path:`reports/${owner}`, data:{ key, item:item(key, texts[key === keys.public ? "public" : key === keys.flagged ? "flagged" : "hidden"], flagged), contact } }, { "content-type":"application/json", "x-visitor":token });
     assert.equal(r.status, 200, `create ${key}`);
     written.push(`reports/${owner}`);
   }

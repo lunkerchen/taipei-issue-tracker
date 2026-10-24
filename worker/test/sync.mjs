@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 const src = readFileSync(new URL("../build.mjs", import.meta.url), "utf8");
 const code = src.slice(src.indexOf("const pathSeq = {};"), src.indexOf("// ready is replaced"));
 const replies = [];
-const make = new Function("req", "fire", `let DATA = {}; ${code}; return { apply, load, data: () => DATA };`);
-const s = make(async () => { const body = replies.shift(); return { ok: true, json: async () => body }; }, () => {});
+const make = new Function("req", "fire", "adminToken", `let DATA = {}; ${code}; return { apply, load, data: () => DATA };`);
+const s = make(async () => { const body = replies.shift(); return { ok: true, json: async () => body }; }, () => {}, "");
 
 replies.push({ _seq: 20, reports: { a: { v: 20 } } });
 await s.load();

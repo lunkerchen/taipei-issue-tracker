@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 const src = readFileSync(new URL("../../taipei-issues.html", import.meta.url), "utf8");
 const handler = src.slice(src.indexOf("function setVote("), src.indexOf("function heatmap()"));
 const make = new Function("db", "initial", `
-  let myVotes = { ...initial }, me = "visitor";
+  let myVotes = { ...initial }, me = "visitor", votesRevision = 0;
   const pendingVoteWrites = new Map();
   const render = () => {}, fail = () => {};
   ${handler}

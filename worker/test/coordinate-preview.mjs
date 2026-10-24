@@ -38,6 +38,7 @@ try {
       await page.locator("#navReport").click();
       await page.locator("#cName").fill("合成市民");
       await page.locator("#cPhone").fill("0912345678");
+      await page.locator("#cEmail").fill("citizen@example.com");
       await page.locator("#newText").fill("合成測試：路口號誌故障，需要修復");
       await page.locator("#agree").check();
       await page.locator("#pinBtn").click();
