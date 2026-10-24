@@ -406,6 +406,12 @@ BASE=http://localhost:8788 node worker/test/pr-merge-feedback.mjs
 修繕單回饋測試使用桌面與 390px 手機視窗，確認長標題只保留 80 字、點一次只建立一張修繕單。測試也確認建立後欄位會清空，以及合併或標記已修復會顯示提示並回到案件列表。測試結束時會刪除自己建立的案件。請使用獨立的 Worker 持久化目錄。
 
 ```bash
+BASE=http://localhost:8788 node worker/test/reduced-motion-fly.mjs
+```
+
+減少動態效果地圖飛行動畫測試使用 `prefers-reduced-motion: reduce` 與 `no-preference`。在減少動態效果模式下，確認選擇行政區時會立即切換視角，不觸發 `.leaflet-zoom-anim` 動畫樣式且耗時極短；在一般模式下則確認維持平滑飛行動畫。可用 `BASE` 指定本機網址。測試不寫入資料。
+
+```bash
 BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 ```
 
