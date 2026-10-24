@@ -30,6 +30,16 @@ assert.equal(r.status, 200, "A can write own votes");
 const m = await wb.next(x => x.path === `votes/${A.id}`);
 assert.deepEqual(m.data, { issues: { smoke: true } });
 await wa.next(x => x.path === `votes/${A.id}`);
+const va = write({ "x-visitor": A.token }, "update", `votes/${A.id}`, { issues: { "smoke-a": true } });
+const vb = write({ "x-visitor": A.token }, "update", `votes/${A.id}`, { issues: { "smoke-b": true } });
+assert.deepEqual((await Promise.all([va, vb])).map(x => x.status), [200, 200], "concurrent votes accepted");
+let voteState = (await (await fetch(BASE + "/api/db")).json()).votes[A.id].issues;
+assert.equal(voteState["smoke-a"], true, "first concurrent vote kept");
+assert.equal(voteState["smoke-b"], true, "second concurrent vote kept");
+assert.equal((await write({ "x-visitor": A.token }, "update", `votes/${A.id}`, { issues: { "smoke-a": false } })).status, 200, "vote cancellation accepted");
+voteState = (await (await fetch(BASE + "/api/db")).json()).votes[A.id].issues;
+assert.equal(voteState["smoke-a"], false, "cancelled vote is false");
+assert.equal(voteState["smoke-b"], true, "other vote stays true after cancellation");
 
 // forged / missing / foreign visitor, wrong admin token -> 403
 const forged = A.id + "." + "0".repeat(64);
@@ -47,6 +57,33 @@ assert.equal((await write({ "x-visitor": A.token }, "set", `reports/${A.id}`, { 
 
 // anti-flood on new reports: one per write, fresh createdAt, 3 per visitor per 10 min, no copy of a recent report
 const F = await visitor(), G = await visitor(), tag = Date.now().toString(36), now = () => new Date().toISOString();
+const R = await visitor(), reportKey = "retry-case", originalReport = { title: "原始通報", body: `重試建案 ${tag}`, createdAt: now(), author: R.id };
+const createReport = (headers, item = originalReport) => write(headers, "create-report", `reports/${R.id}`, { key: reportKey, item });
+assert.equal((await createReport({ "x-visitor": F.token })).status, 403, "another visitor cannot create in this report document");
+assert.equal((await createReport({ "x-admin": admin })).status, 403, "create-report requires the citizen identity");
+assert.equal((await createReport({ "x-visitor": R.token }, { ...originalReport, author: F.id })).status, 400, "report author must match the visitor");
+const creations = await Promise.all([createReport({ "x-visitor": R.token }), createReport({ "x-visitor": R.token })]);
+assert.deepEqual(creations.map(r => r.status), [200, 200], "concurrent retries succeed");
+const creationResults = await Promise.all(creations.map(r => r.json()));
+assert.deepEqual(creationResults.map(r => r.created).sort(), [false, true], "exactly one request creates the case");
+const retryNote = { key: reportKey, id: "10000000-0000-4000-8000-000000000001", text: "重試前已有補充", photos: [] };
+const noteBeforeRetry = await write({ "x-visitor": R.token }, "append-note", `reports/${R.id}`, retryNote);
+assert.equal(noteBeforeRetry.status, 200);
+const noteBeforeRetryResult = await noteBeforeRetry.json();
+const retryResult = await (await createReport({ "x-visitor": R.token }, { ...originalReport, title: "不應覆寫" })).json();
+assert.equal(retryResult.created, false);
+assert.equal(retryResult.seq, noteBeforeRetryResult.seq, "an existing report retry does not write or consume another sequence");
+assert.equal(retryResult.data.items[reportKey].title, originalReport.title, "retry preserves the original report");
+assert.equal(retryResult.data.items[reportKey].notes[0].text, retryNote.text, "retry preserves additions that arrived after creation");
+assert.equal((await write({ "x-admin": admin }, "delete", `reports/${R.id}`)).status, 200);
+const K = await visitor();
+const createKey = (key, createdAt = now()) => write({ "x-visitor": K.token }, "create-report", `reports/${K.id}`, {
+  key, item: { author: K.id, title: "邊界測試", body: `繼承屬性測試 ${tag} ${key}`, createdAt }
+});
+assert.equal((await createKey("constructor", "2020-01-01T00:00:00Z")).status, 400, "inherited property names do not bypass creation time checks");
+for (const key of ["constructor", "__proto__", "toString"]) assert.equal((await createKey(key)).status, 200, "fresh inherited-name report " + key);
+assert.equal((await createKey("hasOwnProperty")).status, 429, "inherited-name reports count toward the visitor quota");
+assert.equal((await write({ "x-admin": admin }, "delete", `reports/${K.id}`)).status, 200);
 const rep = (who, key, body, createdAt = now()) => write({ "x-visitor": who.token }, "update", `reports/${who.id}`, { items: { [key]: { title: "t", body, createdAt } } });
 assert.equal((await write({ "x-visitor": F.token }, "update", `reports/${F.id}`, { items: { a: { body: "x1", createdAt: now() }, b: { body: "x2", createdAt: now() } } })).status, 400, "two new reports in one write");
 assert.equal((await rep(F, "old", "backdated " + tag, "2026-01-01T00:00:00Z")).status, 400, "backdated createdAt");
@@ -56,7 +93,35 @@ assert.equal((await rep(G, "copy", `路燈不亮${tag}第1件！`)).status, 409,
 assert.equal((await rep(G, "own", `人行道破損 ${tag}`)).status, 200, "G's own report");
 assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${G.id}`, { items: { s1: { target: "x", t: now(), text: "補充", photos: [] } } })).status, 200, "own addenda");
 assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${F.id}`, { items: {} })).status, 403, "someone else's addenda");
+const N = await visitor(), Nkey = "note-case", Nitem = { title: "原案件", body: `補充回歸測試 ${tag}`, createdAt: now(), author: N.id, department: "測試局處" };
+assert.equal((await write({ "x-visitor": N.token }, "update", `reports/${N.id}`, { items: { [Nkey]: Nitem } })).status, 200, "note test report");
+const appendNote = (headers, note) => write(headers, "append-note", `reports/${N.id}`, { key: Nkey, ...note });
+const noteA = { id: "00000000-0000-4000-8000-000000000001", text: "同時補充甲", photos: [] };
+const noteB = { id: "00000000-0000-4000-8000-000000000002", text: "同時補充乙", photos: [`${N.id}/smoke.jpg`] };
+assert.equal((await appendNote({}, noteA)).status, 403, "anonymous note refused");
+assert.equal((await write({ "x-visitor": F.token }, "append-note", `reports/${N.id}`, { key: Nkey, ...noteA })).status, 403, "another visitor cannot append");
+assert.equal((await write({ "x-admin": admin }, "append-note", `reports/${N.id}`, { key: Nkey, ...noteA })).status, 403, "admin cannot use citizen note operation");
+assert.equal((await appendNote({ "x-visitor": N.token }, { ...noteA, id: "bad-id" })).status, 400, "bad note id");
+assert.equal((await appendNote({ "x-visitor": N.token }, { ...noteA, text: "x".repeat(501) })).status, 400, "note text limit");
+assert.equal((await appendNote({ "x-visitor": N.token }, { ...noteA, photos: Array(4).fill(`${N.id}/smoke.jpg`) })).status, 400, "note photo count limit");
+assert.equal((await appendNote({ "x-visitor": N.token }, { ...noteA, photos: [`${F.id}/foreign.jpg`] })).status, 400, "foreign photo key refused");
+assert.equal((await appendNote({ "x-visitor": N.token }, { ...noteA, text: "  ", photos: [] })).status, 400, "empty note refused");
+const concurrentNotes = await Promise.all([appendNote({ "x-visitor": N.token }, noteA), appendNote({ "x-visitor": N.token }, noteB)]);
+assert.deepEqual(concurrentNotes.map(x => x.status), [200, 200], "concurrent notes accepted");
+const noteSnapshot = async () => (await (await fetch(BASE + "/api/db")).json()).reports[N.id].items[Nkey];
+let savedNotes = await noteSnapshot();
+assert.equal(savedNotes.notes.length, 2, "both concurrent notes kept");
+assert.deepEqual(new Set(savedNotes.notes.map(x => x.text)), new Set([noteA.text, noteB.text]));
+for (const [k, v] of Object.entries(Nitem)) assert.deepEqual(savedNotes[k], v, "original report field " + k + " kept");
+for (let i = 0; i < 8; i++) assert.equal((await appendNote({ "x-visitor": N.token }, { id: `00000000-0000-4000-8000-${String(i + 3).padStart(12, "0")}`, text: `第 ${i + 3} 則補充`, photos: [] })).status, 200, "note " + (i + 3));
+assert.equal((await appendNote({ "x-visitor": N.token }, noteA)).status, 200, "same note id retry is successful");
+assert.equal((await appendNote({ "x-visitor": N.token }, { id: "00000000-0000-4000-8000-000000000011", text: "第 11 則補充", photos: [] })).status, 400, "11th note refused");
+savedNotes = await noteSnapshot();
+assert.equal(savedNotes.notes.length, 10, "note retry does not duplicate and limit stays at ten");
+assert.equal(savedNotes.notes.filter(x => x.id === noteA.id).length, 1, "retry id is stored once");
+for (const [k, v] of Object.entries(Nitem)) assert.deepEqual(savedNotes[k], v, "original report field " + k + " remains after appends");
 for (const w of [F, G]) assert.equal((await write({ "x-admin": admin }, "delete", `reports/${w.id}`)).status, 200);
+assert.equal((await write({ "x-admin": admin }, "delete", `reports/${N.id}`)).status, 200);
 assert.equal((await write({ "x-admin": admin }, "delete", `addenda/${G.id}`)).status, 200);
 
 // admin writes anywhere; B receives; then clean up

@@ -324,8 +324,8 @@ Switched to branch 'taipei'
       <label class="note"><input type="checkbox" id="agree" required> 我已閱讀<a href="#privacy" data-doc="privacy">隱私權告知</a>與<a href="#terms" data-doc="terms">使用條款</a>，同意本站依告知內容蒐集、處理及利用我填寫的資料。</label>
       <div class="row">
         <select id="newDistrict" aria-label="行政區"></select>
-        <button class="btn primary" id="submitBtn" type="submit">Submit new issue</button>
-        <button class="btn" type="button" id="cancelBtn">Cancel</button>
+        <button class="btn primary" id="submitBtn" type="submit">預覽通報</button>
+        <button class="btn" type="button" id="cancelBtn">取消</button>
         <span class="status" id="newStatus" role="status"></span>
       </div>
     </form>
@@ -602,6 +602,7 @@ const ICON = {
 
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
+let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false;
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -628,6 +629,9 @@ function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
   $("newBtn").hidden = $("navReport").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
+  $("cancelBtn").textContent = admin ? "Cancel" : "取消";
+  $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -769,11 +773,17 @@ async function act(i, list, patch = {}) {
 }
 
 async function setVote(id, on) {
-  const prev = myVotes, next = { ...myVotes };
-  if (on) next[id] = true; else delete next[id];
-  myVotes = next; render();
-  try { await db.collection("votes").doc(me).set({ issues: next }); }
-  catch (e) { myVotes = prev; fail(e); render(); }
+  const prev = myVotes[id];
+  myVotes = { ...myVotes, [id]: on }; render();
+  try {
+    const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
+    if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
+    else await ref.set(patch);
+  }
+  catch (e) {
+    if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+    fail(e); render();
+  }
 }
 
 function heatmap() {
@@ -849,7 +859,11 @@ function render() {
   if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
-  const typed = {}, focused = document.activeElement && document.activeElement.id;
+  const typed = {}, active = document.activeElement;
+  const focused = active && $("list").contains(active) ? {
+    id: active.id, open: active.dataset.open, vote: active.dataset.vote,
+    start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection
+  } : null;
   document.querySelectorAll("#list input[id^=pr-],#list textarea[id^=note-]").forEach(x => typed[x.id] = x.value);
   $("list").innerHTML = rows.map(i => {
     const st = STATUS[i.status] || STATUS.open;
@@ -873,10 +887,11 @@ function render() {
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
         ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
-          <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明"></textarea>
-          <div class="phprev">${(notePics.get(i.id) || []).map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
-          <div class="row">${photoFn && (notePics.get(i.id) || []).length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple></label>` : ""}
-            <button class="btn" type="submit">新增補充</button><span class="status" role="status"></span></div>
+          ${(() => { const s = noteStates.get(i.id) || {}; const busy = s.uploading || s.sending; const pics = notePics.get(i.id) || [];
+            return `<textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${s.sending ? "disabled" : ""}></textarea>
+          <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
+          <div class="row">${photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
+            <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
         </form>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
         ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
@@ -901,7 +916,15 @@ function render() {
     </div>`;
   }).join("");
   for (const id in typed) if ($(id)) $(id).value = typed[id];
-  if (focused && focused.startsWith("pr-") && $(focused)) $(focused).focus();
+  if (focused) {
+    const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
+      focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : null;
+    if (target) {
+      target.focus({ preventScroll: true });
+      if (typeof target.setSelectionRange === "function" && Number.isInteger(focused.start))
+        target.setSelectionRange(focused.start, focused.end, focused.direction);
+    }
+  }
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
@@ -942,11 +965,31 @@ $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
 let formFrom = "issues";
 $("newBtn").onclick = () => {
-  if ($("newBox").hidden) formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
+  if ($("newBox").hidden) {
+    formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
+    const active = document.activeElement;
+    formOpener = active && active !== document.body && !$("newBox").contains(active) ? active : $("newBtn");
+  }
   if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
   renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
 };
-$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); clearShots(); if (formFrom === "map") show("map"); };
+function restoreFormFocus() {
+  const visible = el => el && el.isConnected && !el.hidden && el.getClientRects().length;
+  const target = visible(formOpener) ? formOpener : visible($("newBtn")) ? $("newBtn") : null;
+  formOpener = null;
+  target && target.focus({ preventScroll:true });
+}
+function clearReportFlow() {
+  reportRevision++; previewRun++; pending = null; reportAttempt = null;
+  $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+  if (!reportCreating) $("submitBtn").disabled = false;
+}
+$("cancelBtn").onclick = () => {
+  if (reportCreating) return;
+  clearReportFlow(); $("newBox").hidden = true; clearPick(); clearShots();
+  if (formFrom === "map") show("map");
+  restoreFormFocus();
+};
 
 async function triage(text, district, aspect) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
@@ -998,6 +1041,8 @@ const contactText = c => c ? `聯絡人：${esc(c.name)} · ${esc(c.phone)} · $
 const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|佔用|攤販|油煙|污染|排放|食品|過期|擾民|施工/;
 // Follow-up photos upload as soon as they are picked, so a live re-render of the list cannot drop them
 const notePics = new Map();
+const noteStates = new Map();
+const noteAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 const photoUrl = k => photoFn ? photoFn.url(k) : "";
@@ -1018,78 +1063,111 @@ function clearShots(only) {
   shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
   $("photoIn").value = ""; drawShots();
 }
+function reportInputStamp() {
+  const aspect = document.querySelector("#aspects input:checked");
+  return JSON.stringify({
+    text:$("newText").value, district:$("newDistrict").value, aspect:aspect ? aspect.value : "",
+    location:picked ? { lat:picked.lat, lng:picked.lng, loc:picked.loc, address:picked.address || "" } : null,
+    contact:contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""),
+      realName:!$("cRealRow").hidden && $("cReal").checked } : null,
+    photos:shots.map(s => s.key)
+  });
+}
+function invalidateReportPreview() {
+  const stamp = reportInputStamp();
+  if (reportAttempt && reportAttempt.signature !== stamp) reportAttempt = null;
+  reportRevision++; previewRun++; pending = null;
+  $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+  if (!reportCreating) $("submitBtn").disabled = false;
+}
+const reportInputChanged = e => {
+  if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#aspects input")) invalidateReportPreview();
+};
+$("newForm").addEventListener("input", reportInputChanged);
+$("newForm").addEventListener("change", e => {
+  if (e.target.matches("#newDistrict,#cReal,#aspects input")) reportInputChanged(e);
+});
 $("photoIn").addEventListener("change", () => {
   // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
   if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
+  invalidateReportPreview();
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     for (const f of files) {
       if (shots.length >= PHOTO_MAX || gen !== shotGen) break;
-      try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ blob, url:URL.createObjectURL(blob) }); drawShots(); }
+      try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
       catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
     }
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
-$("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); });
+$("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!db || !canWrite || $("submitBtn").disabled) return;
-  $("submitBtn").disabled = true; await shrinking; $("submitBtn").disabled = false; // photos still shrinking belong to this report
-  const m = maskPII($("newText").value.trim()), text = m.text;
-  if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
-  if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
-  if (contactFn) {
-    if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
-    if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
-    try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
-  }
-  maskedN = m.count;
-  $("newText").value = text;
+  if (!db || !canWrite || $("submitBtn").disabled || reportCreating) return;
+  const run = ++previewRun, revision = reportRevision;
+  const current = () => run === previewRun && revision === reportRevision;
+  const finish = () => { if (run === previewRun) $("submitBtn").disabled = false; };
   $("submitBtn").disabled = true;
-  const note = m.count ? `已遮蔽 ${m.count} 項個資。` : "";
-  $("newStatus").textContent = note + (sample ? "taipei-bot 正在分類…" : "送出中…");
-  const t = await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
-  // Not Taipei, or too vague to dispatch: ask before creating a case, but let the citizen send anyway (AI can be wrong)
-  if (t.outside || t.vague) {
-    pending = { t, text };
+  try {
+    await shrinking; // Photos still shrinking belong to this report.
+    if (!current()) return;
+    const m = maskPII($("newText").value.trim()), text = m.text;
+    if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
+    if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
+    if (contactFn) {
+      if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
+    }
+    $("newText").value = text;
+    const signature = reportInputStamp();
+    const stillCurrent = () => current() && signature === reportInputStamp();
+    const cached = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
+    maskedN = cached ? cached.maskedN : m.count;
+    const note = maskedN ? `已遮蔽 ${maskedN} 項個資。` : "";
+    $("newStatus").textContent = note + (sample && !cached ? "taipei-bot 正在分類…" : "");
+    const t = cached ? cached.t : await triage(text, $("newDistrict").value, (document.querySelector("#aspects input:checked") || {}).value || "");
+    if (!stillCurrent()) return;
+    // Not Taipei, or too vague to dispatch: ask before creating a case, but let the citizen send anyway (AI can be wrong).
+    if (t.outside || t.vague) {
+      pending = { t, text, signature };
+      $("newStatus").textContent = note;
+      $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
+        <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
+        <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+      $("dupBox").hidden = false;
+      return;
+    }
+    if (t.dup) {
+      $("newStatus").textContent = note;
+      showDup(t, text, true, undefined, signature);
+      return;
+    }
+    // Preview what taipei-bot decided; nothing is created until the citizen confirms.
+    pending = { t, text, signature };
     $("newStatus").textContent = note;
-    $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
-      <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
-      <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+    const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
+    $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
+      <dl class="pv"><dt>標題</dt><dd>${esc(t.title)}</dd>
+      <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
+      <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
+      <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
+      ${addr ? `<dt>地點</dt><dd>${esc(addr)}</dd>` : ""}
+      ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
+      ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
+      ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
+      <div class="row"><button class="btn primary" type="button" data-dup="new">確認送出</button>
+      <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
-    $("submitBtn").disabled = false;
-    return;
-  }
-  if (t.dup) {
-    $("newStatus").textContent = note;
-    showDup(t, text, true);
-    $("submitBtn").disabled = false;
-    return;
-  }
-  // Preview what taipei-bot decided; nothing is created until the citizen confirms
-  pending = { t, text };
-  $("newStatus").textContent = note;
-  const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
-  $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
-    <dl class="pv"><dt>標題</dt><dd>${esc(t.title)}</dd>
-    <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
-    <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
-    <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
-    ${addr ? `<dt>地點</dt><dd>${esc(addr)}</dd>` : ""}
-    ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
-    ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
-    ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
-    <div class="row"><button class="btn primary" type="button" data-dup="new">確認送出</button>
-    <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
-  $("dupBox").hidden = false;
-  $("submitBtn").disabled = false;
-  $("dupBox").querySelector("[data-dup=new]").focus();
+    $("dupBox").querySelector("[data-dup=new]").focus();
+  } catch (err) { if (current()) { $("newStatus").textContent = ""; fail(err); } }
+  finally { finish(); }
 });
 
 // Same or similar case found (AI dup, or the server refused an exact copy): add this text/photos to that case, +1 it,
 // or still send a new one (not offered when the server already refused the copy).
-function showDup(t, text, canNew, photos) {
-  pending = { t, text, photos };
+function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
+  pending = { t, text, photos, signature };
   $("dupBox").innerHTML = `<div>${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
     <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
     <div class="row"><button class="btn primary" type="button" data-dup="add">補充到 #${esc(t.dup.n)}</button>
@@ -1099,8 +1177,10 @@ function showDup(t, text, canNew, photos) {
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
 function doneReport(openId) {
+  clearReportFlow();
   view.open.add(openId); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
+  restoreFormFocus();
 }
 // A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
 async function supplement(t, text, photos) {
@@ -1115,10 +1195,18 @@ async function supplement(t, text, photos) {
 $("dupBox").addEventListener("click", e => {
   const b = e.target.closest("[data-dup]");
   if (!b || !pending) return;
-  const { t, text, photos } = pending;
+  const { t, text, photos, signature } = pending;
+  if (signature !== reportInputStamp()) { invalidateReportPreview(); $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
   pending = null; $("dupBox").hidden = true;
   if (b.dataset.dup === "edit") return $("newText").focus();
-  if (b.dataset.dup === "new") { $("submitBtn").disabled = true; return shrinking.then(() => create({ ...t, dup: null }, text)).finally(() => $("submitBtn").disabled = false); }
+  if (b.dataset.dup === "new") {
+    const revision = reportRevision;
+    reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
+    return shrinking.then(() => {
+      if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      return create({ ...t, dup:null }, text, signature, maskedN);
+    }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
+  }
   if (b.dataset.dup === "add") return supplement(t, text, photos);
   setVote(t.dup.id, true);
   doneReport(t.dup.id);
@@ -1139,36 +1227,68 @@ async function locate(address, district) {
   return { lat:+(la + j()).toFixed(5), lng:+(ln + j()).toFixed(5), loc:"district" };
 }
 
-async function create(t, text) {
-  const { dup, address, outside, vague, ...fields } = t;
-  const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
-  const sent = shots.slice(); // picks are refused while submitBtn is disabled, so this is the report's full set
-  let photos = [];
-  try { photos = await Promise.all(sent.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
-  catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
-  const where = await locate(address, fields.district);
-  // n is ignored on read (build() numbers citizen items), kept only as a hint
-  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
-  const full = `${me}:${id}`;
-  if (contactFn) try { await contactFn.save(id, { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), realName:!$("cRealRow").hidden && $("cReal").checked }); }
-  catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
-  const ref = db.doc("reports/" + me);
+function completeCreatedReport(attempt) {
+  const { id, item, signature } = attempt, full = `${me}:${id}`;
+  reportAttempt = null;
+  if (!all.some(i => i.id === full)) mine = full;
+  if (!admin) show("mine"); // Phones land on 我的陳情, not the 20th row of the list.
+  view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
+  const unchanged = signature === reportInputStamp();
+  if (unchanged) {
+    clearReportFlow();
+    $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true;
+    $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); restoreFormFocus();
+  } else {
+    pending = null; $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+    $("newStatus").textContent = "通報已送出；目前修改中的內容已保留";
+  }
+  render();
+  if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
+  else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
+}
+async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN) {
+  const startRevision = reportRevision;
+  let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
+  if (!attempt) {
+    const { dup, address, outside, vague, ...fields } = t;
+    const addr = (picked && picked.address) || address;
+    let photos = [];
+    try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); }
+    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; return; }
+    const where = await locate(address, fields.district);
+    if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    const id = crypto.randomUUID();
+    const item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
+    const contact = contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), realName:!$("cRealRow").hidden && $("cReal").checked } : null;
+    attempt = { id, item, t, text, photos, contact, signature, maskedN:maskedCount };
+    reportAttempt = attempt;
+  }
+  const { id, item, contact } = attempt, full = `${me}:${id}`, ref = db.doc("reports/" + me);
   try {
-    const snap = await ref.get();
-    // db.updateCreates (Worker): update creates the doc atomically, so two tabs of one visitor cannot both set() it
-    await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
-    // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
-    if (!all.some(i => i.id === full)) mine = full;
-    if (!admin) show("mine"); // phones land on 我的陳情, not the 20th row of the list
-    view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
-    $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
-    render();
-    if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
-    else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
+    if (contactFn) try { await contactFn.save(id, contact); }
+    catch (e) { $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試"; return; }
+    if (db.createReport) {
+      if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      // The Worker creates this report ID only once; a retry cannot replace a report or later additions.
+      // A prior attempt may be more than ten minutes old. The server keeps the
+      // original createdAt when this ID already exists, while a still-missing
+      // report can be created with a fresh timestamp on a later manual retry.
+      item.createdAt = new Date().toISOString();
+      const result = await db.createReport("reports/" + me, id, item);
+      if (!result || typeof result.created !== "boolean") throw new Error("bad_create_report_response");
+      completeCreatedReport(attempt);
+    } else {
+      const snap = await ref.get(), stored = snap.exists && (snap.data().items || {})[id];
+      // Older shims can recognize an existing cached item, then avoid replacing it.
+      if (stored) { completeCreatedReport(attempt); return; }
+      if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      await (snap.exists || db.updateCreates ? ref.update({ items:{ [id]:item } }) : ref.set({ items:{ [id]:item } }));
+      completeCreatedReport(attempt);
+    }
   } catch (e) {
     mine = null; $("newStatus").textContent = "";
     const twin = e && e.error === "duplicate_report" && issues.find(i => i.id !== full && normBody(i.body) === normBody(text));
-    if (twin) return showDup({ ...t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, photos);
+    if (twin) { reportAttempt = null; return showDup({ ...attempt.t, dup:{ id:twin.id, n:twin.n, title:twin.title, reason:"" } }, text, false, attempt.photos, signature); }
     fail(e);
   }
 }
@@ -1256,8 +1376,10 @@ function reportAt({ lat, lng }, how, geo) {
   $("newBox").scrollIntoView({ block:"start" });
 }
 function applyGeo(geo, lat, lng) {
+  const before = reportInputStamp();
   if (geo && geo.address) picked.address = geo.address.slice(0, 100);
   if (geo && DISTRICTS.includes(geo.district) && !$("newDistrict").value) $("newDistrict").value = geo.district;
+  if (reportInputStamp() !== before) invalidateReportPreview();
   setLoc(`位置：${geo && geo.address ? `${geo.address}（${coordText(lat, lng)}）` : geo === undefined ? `${coordText(lat, lng)}，地址查詢中…` : coordText(lat, lng)}，可按「在地圖上標記位置」調整`);
 }
 // Locate button: blue dot + accuracy circle, popup offers to report right there
@@ -1451,6 +1573,7 @@ let picked = null, pickLM = null, pinM = null;
 const setLoc = msg => $("locStatus").textContent = msg;
 function setPicked(lat, lng, loc) {
   picked = { lat:+lat.toFixed(5), lng:+lng.toFixed(5), loc };
+  invalidateReportPreview();
   $("clrLoc").hidden = false; setLoc(loc === "gps" ? "已使用你的位置" : "已標記位置，可拖曳調整");
 }
 function placePin(lat, lng) {
@@ -1464,10 +1587,11 @@ function placePin(lat, lng) {
 }
 function clearPick() {
   picked = null; setLoc(""); $("clrLoc").hidden = true;
+  invalidateReportPreview();
   if (pinM) { pinM.remove(); pinM = null; }
   $("pickMap").hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
 }
-$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; setLoc(""); $("clrLoc").hidden = true; };
+$("clrLoc").onclick = () => { if (pinM) { pinM.remove(); pinM = null; } picked = null; invalidateReportPreview(); setLoc(""); $("clrLoc").hidden = true; };
 $("gpsBtn").onclick = () => {
   if (!navigator.geolocation) return setLoc("這個瀏覽器不支援定位，請改在地圖上標記位置");
   setLoc("定位中…");
@@ -1550,30 +1674,68 @@ $("lbClose").onclick = () => $("lb").close();
 $("lb").addEventListener("click", e => { if (e.target === $("lb")) $("lb").close(); });
 $("lb").addEventListener("keydown", e => { if (lbList.length > 1 && (e.key === "ArrowLeft" || e.key === "ArrowRight")) (e.key === "ArrowLeft" ? $("lbPrev") : $("lbNext")).click(); });
 // 補充：the reporter adds text and/or photos to their own case (an update of their own reports doc)
+const noteState = id => {
+  let state = noteStates.get(id);
+  if (!state) { state = { uploading:false, sending:false, status:"" }; noteStates.set(id, state); }
+  return state;
+};
 $("list").addEventListener("change", async e => {
   const inp = e.target.closest("[data-notepic]"); if (!inp || !photoFn) return;
-  const id = inp.dataset.notepic, st = inp.closest("form").querySelector(".status"), files = [...inp.files];
-  st.textContent = "照片上傳中…";
-  try { for (const f of files) { const cur = notePics.get(id) || []; if (cur.length >= PHOTO_MAX) break; notePics.set(id, [...cur, await photoFn(await shrink(f))]); } st.textContent = ""; }
-  catch (err) { st.textContent = err && err.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "有一張照片無法上傳，請改用 JPEG 或 PNG"; }
-  render();
+  const id = inp.dataset.notepic, files = [...inp.files], state = noteState(id);
+  if (state.uploading || state.sending || !files.length) return;
+  const selected = files.slice(0, Math.max(0, PHOTO_MAX - (notePics.get(id) || []).length));
+  if (!selected.length) { state.status = "最多可加入三張照片"; render(); return; }
+  state.uploading = true; state.status = "照片上傳中…"; render();
+  let uploaded = 0;
+  try {
+    for (const file of selected) {
+      const key = await photoFn(await shrink(file), true);
+      notePics.set(id, [...(notePics.get(id) || []), key]); uploaded++;
+      state.status = `照片上傳中…（已完成 ${uploaded}/${selected.length} 張）`;
+      render();
+    }
+    state.status = files.length > selected.length ? "最多可加入三張照片，其餘照片未加入" : "";
+  } catch (err) {
+    const left = selected.length - uploaded;
+    state.status = err && err.status === 429
+      ? `照片上傳太頻繁；已保留 ${uploaded} 張，${left} 張尚未上傳，請稍後重試。`
+      : `有照片無法上傳；已保留 ${uploaded} 張，${left} 張尚未上傳，請改用 JPEG 或 PNG 後重選。`;
+  } finally {
+    state.uploading = false;
+    render();
+  }
 });
 $("list").addEventListener("submit", async e => {
   const f = e.target.closest("[data-note]"); if (!f) return; e.preventDefault();
-  const id = f.dataset.note, i = issues.find(x => x.id === id), btn = f.querySelector("[type=submit]"), st = f.querySelector(".status");
-  if (!i || i.author !== me || btn.disabled) return;
+  const id = f.dataset.note, i = issues.find(x => x.id === id), state = noteState(id);
+  if (!i || i.author !== me || state.uploading || state.sending) return;
   const ta = f.querySelector("textarea"), m = maskPII(ta.value.trim()), pics = notePics.get(id) || [];
-  if (!m.text && !pics.length) { st.textContent = "請寫下補充說明或加入照片"; ta.focus(); return; }
-  btn.disabled = true; st.textContent = "送出中…";
+  if (!m.text && !pics.length) { state.status = "請寫下補充說明或加入照片"; render(); $("note-" + id)?.focus(); return; }
+  const signature = JSON.stringify([m.text, pics]);
+  let attempt = noteAttempts.get(id);
+  if (!attempt || attempt.signature !== signature) {
+    attempt = { signature, id:crypto.randomUUID() };
+    noteAttempts.set(id, attempt);
+  }
+  state.sending = true; state.status = "送出中…"; render();
   try {
-    // update() replaces a whole item, so write the stored item back with the note appended
-    const key = id.slice(me.length + 1), note = { t:new Date().toISOString(), text:m.text, photos:pics }, ref = db.doc("reports/" + me);
-    const snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
-    if (!raw) throw new Error("not_found");
-    await ref.update({ items:{ [key]:{ ...raw, notes:[...(Array.isArray(raw.notes) ? raw.notes : []), note].slice(-10) } } });
+    const key = id.slice(me.length + 1), note = { id:attempt.id, text:m.text, photos:pics };
+    if (typeof db.appendNote === "function") await db.appendNote("reports/" + me, key, note);
+    else {
+      const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
+      if (!raw) throw new Error("not_found");
+      const notes = Array.isArray(raw.notes) ? raw.notes : [];
+      if (notes.length >= 10) throw new Error("note_limit");
+      await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
+    }
     // a live re-render may already have replaced this form: clear the current one by id
-    notePics.delete(id); const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
-  } catch (err) { st.textContent = ""; fail(err); } finally { btn.disabled = false; }
+    notePics.delete(id); noteAttempts.delete(id); noteStates.delete(id);
+    const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
+  } catch (err) {
+    state.sending = false;
+    state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
+    render(); fail(err);
+  }
 });
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 $("navReport").onclick = () => $("newBtn").click();
@@ -1821,6 +1983,10 @@ document.addEventListener("keydown", e => {
   admin = user ? await user.canEdit() : false;
   canWrite = !!me;
   applyRole();
+  if (typeof user?.storageBlocked === "function" && await user.storageBlocked()) {
+    const message = "瀏覽器無法保留你的通報身分。請允許網站儲存資料後重新整理，再開始通報。";
+    $("who").textContent = message; toast(message);
+  }
   const lost = () => { loadErr = true; render(); };
   db.collection("reports").onSnapshot(s => { loadErr = false; reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
