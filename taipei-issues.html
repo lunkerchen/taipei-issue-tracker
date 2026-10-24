@@ -1169,6 +1169,7 @@ function initMap() {
   addBase(mainLM);
   // Non-interactive, so long-press and marker clicks still go through
   for (const ring of Object.values(DISTRICT_RINGS)) L.polygon(ring, { className:"district", interactive:false }).addTo(mainLM);
+  mainLM.attributionControl.addAttribution('區界 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>');
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
