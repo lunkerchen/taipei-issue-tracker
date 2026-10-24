@@ -96,7 +96,8 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
 | `data/history-roads.json` | Cache of road coordinates |
 | `data/districts.geojson`, `data/li.geojson` | Boundaries of the 12 districts and the 456 villages (里), WGS84 |
-| `data/li-contacts.json`, `data/councilors.json` | Village chief per village (by village code) and councillors per election zone (6 zones). Fill `chief`, `phone`, `name`, `party` by hand. Use office phone numbers, not personal mobile numbers. |
+| `data/li-contacts.json`, `data/councilors.json` | Village chief per village (by village code) and councillors per election zone (6 zones). `scripts/fill-contacts.mjs` fills them from `data/offices.json`. They contain office phone numbers only, not personal mobile numbers. The 2 citywide indigenous zones are not included. |
+| `data/offices.json` | Taipei city councillors (council office phone, fax, address, email) and the 456 village offices (phone, village chief mobile, address). The Hub loads it into the `offices` table at start. It is not sent to the page. |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
@@ -106,6 +107,8 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 |---|---|
 | `scripts/fetch-1999-history.mjs` | Downloads the data.taipei 1999 dispatch CSV files, gets the road sections, finds the coordinates, and makes `data/history-2026.json` |
 | `scripts/build-li.mjs` | Downloads the data.taipei village boundary map (TWD97 shapefile), changes it to WGS84, simplifies it, and makes `data/li.geojson` and `data/districts.geojson`. Needs `unzip`. |
+| `scripts/fetch-offices.mjs` | Gets the current councillors from the Taipei City Council website and the village office lists from the 12 district offices, and makes `data/offices.json`. Run it again to update. The Hub loads the file again only when the date in the file changes. |
+| `scripts/fill-contacts.mjs` | Copies the village chief names, the village office phones and the councillors from `data/offices.json` into `data/li-contacts.json` and `data/councilors.json`. Run it after `fetch-offices.mjs`. |
 | `scripts/history-releases.mjs` | Makes the monthly dispatch reports from the history data (`--write` writes them to the live database) |
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |

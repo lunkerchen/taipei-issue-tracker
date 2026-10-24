@@ -96,7 +96,7 @@ Cloudflare Worker（worker/src/index.js）
 | `data/history-2026.json` | 2026 年 1 月到 9 月的 1999 派工（路段層級） |
 | `data/history-roads.json` | 路段座標快取 |
 | `data/districts.geojson`、`data/li.geojson` | 12 個行政區與 456 個里的界線（WGS84） |
-| `data/li-contacts.json`、`data/councilors.json` | 各里里長（以里代碼對應）與各選區市議員（6 個選區）。手動填入 `chief`、`phone`、`name`、`party`。請填辦公室電話，不要填個人手機。 |
+| `data/li-contacts.json`、`data/councilors.json` | 各里里長（以里代碼對應）與各選區市議員（6 個選區）。由 `scripts/fill-contacts.mjs` 從 `data/offices.json` 填入，只放辦公室電話，不放個人手機。不含全市的 2 個原住民選區。 |
 | `data/offices.json` | 台北市議員（議會辦公室電話、傳真、地址、信箱）與 456 里辦公處（電話、里長手機、地址），Hub 啟動時載入 `offices` 表，不傳給前端 |
 | `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
@@ -108,6 +108,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/fetch-1999-history.mjs` | 下載 data.taipei 的 1999 派工 CSV，取出路段、查詢座標，並產生 `data/history-2026.json` |
 | `scripts/build-li.mjs` | 下載 data.taipei 的臺北市里界圖（TWD97 shapefile），轉成 WGS84 並簡化，產生 `data/li.geojson` 與 `data/districts.geojson`。需要 `unzip`。 |
 | `scripts/fetch-offices.mjs` | 抓臺北市議會「現任議員」與 12 區公所「里辦公處一覽表」，產生 `data/offices.json`（重跑即更新；檔內日期變了 Hub 才重載） |
+| `scripts/fill-contacts.mjs` | 把 `data/offices.json` 的里長姓名、里辦公處電話與議員複製到 `data/li-contacts.json` 與 `data/councilors.json`。在 `fetch-offices.mjs` 之後執行。 |
 | `scripts/history-releases.mjs` | 由歷史資料產生每月派工報告（`--write` 寫入線上資料庫） |
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
