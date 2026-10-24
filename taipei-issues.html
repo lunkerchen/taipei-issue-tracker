@@ -1,4 +1,5 @@
 <title>台北市 Issue Tracker</title>
+<script>try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
 <style>
 /* Layout: repo-style header, one issue list column; filters wrap above it on phones */
 /* GitHub Primer palette, light + dark */
@@ -262,6 +263,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 <div class="wrap" id="wrap">
   <header class="repo">
     <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北 1999 <b>快速通報</b></span></h1>
+    <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
     <button class="btn primary" id="newBtn" type="button"><span class="gh">New issue</span><span class="cz">我要通報</span></button>
   </header>
 
@@ -1497,6 +1499,12 @@ $("list").addEventListener("submit", async e => {
 });
 $("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
 $("navReport").onclick = () => $("newBtn").click();
+// Light/dark: follows the system until the viewer picks one; the choice is kept per browser (set before paint in <head>)
+const darkNow = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+const themeLabel = () => { $("themeBtn").textContent = darkNow() ? "淺色模式" : "深色模式"; $("themeBtn").setAttribute("aria-pressed", String(darkNow())); };
+$("themeBtn").onclick = () => { const t = darkNow() ? "light" : "dark"; document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch {} themeLabel(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeLabel);
+themeLabel();
 // Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
 const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
 show(homeView(), true);
