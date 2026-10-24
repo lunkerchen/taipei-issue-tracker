@@ -32,7 +32,7 @@ try {
     await page.locator("#cEmail").fill(bad);
     await page.locator("#submitBtn").click();
     assert.equal(await page.locator("#cEmail").getAttribute("aria-invalid"), "true", `email "${bad}" is marked invalid`);
-    assert.equal(await page.locator("#newStatus").innerText(), "請填寫 Email（用來通知處理進度）");
+    assert.equal(await page.locator("#formErr").innerText(), "請填寫有效的 Email（本站不會寄送通知）");
     assert.equal(await page.evaluate(() => document.activeElement.id), "cEmail", `"${bad}" moves focus to the email field`);
   }
   assert.equal(sampleCalls, 0, "no preview for a malformed email");
