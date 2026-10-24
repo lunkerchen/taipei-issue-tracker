@@ -46,7 +46,7 @@ assert.equal((await write({ "x-visitor": forged }, "set", `votes/${A.id}`, { iss
 assert.equal((await write({}, "set", `votes/${A.id}`, { issues: {} })).status, 403, "no visitor header");
 assert.equal((await write({ "x-visitor": A.token }, "set", `votes/${B.id}`, { issues: {} })).status, 403, "A writing B's votes");
 assert.equal((await write({ "x-visitor": A.token }, "set", "triage/x", { status: "open" })).status, 403, "visitor writing triage/x");
-assert.notEqual((await write({ "x-admin": "any" }, "set", "triage/x", {})).status, 403, "demo mode: any x-admin value is admin");
+assert.equal((await write({ "x-admin": "any" }, "set", "triage/x", { status: "open" })).status, 200, "demo mode: any x-admin value is admin");
 assert.equal((await write({ "x-visitor": A.token }, "set", "bad path/x", {})).status, 400, "bad path");
 
 // limits
