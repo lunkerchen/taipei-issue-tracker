@@ -1,4 +1,4 @@
-<title>台北市 Issue Tracker</title>
+<title>台北市，你給我聽好了｜市民 1999 通報地圖</title>
 <script>try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
 <style>
 /* Layout: repo-style header, one issue list column; filters wrap above it on phones */
@@ -24,6 +24,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 .repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
 .repo h1 b{font-weight:600}
+.repo h1 .cz b{display:inline-block} /* the platform name wraps as one piece on phones */
 .repo .vis{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:99px;padding:1px 8px;color:var(--muted);margin-left:6px;vertical-align:middle}
 .term{background:var(--term);color:var(--term-fg);font-family:var(--mono);font-size:13px;border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
 .term .p{color:var(--term-dim)}
@@ -346,7 +347,7 @@ html.citizen [hidden]{display:none!important}
 
 <div class="wrap" id="wrap">
   <header class="repo">
-    <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北 1999 <b>快速通報</b></span></h1>
+    <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北市，你給我聽好了｜<b>市民 1999 通報地圖</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
     <button class="btn primary" id="newBtn" type="button" hidden><span class="gh">New issue</span><span class="cz">我要通報</span></button>
   </header>

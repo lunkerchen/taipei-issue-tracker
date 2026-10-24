@@ -6,7 +6,7 @@
 
 這個網站把台北市呈現成一個 GitHub repo。市民的 1999 陳情是 issue。局處的修繕是 pull request。每月的派工摘要是 release。
 
-這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。
+這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。網站標題是「台北市，你給我聽好了｜市民 1999 通報地圖」。
 
 - 線上網站：<https://taipei-issue-tracker.labanchen.workers.dev>
 - 黑客松題目：[puma.taipei/hackathon](https://puma.taipei/hackathon)「你看見的市政 bug」
@@ -122,6 +122,7 @@ Cloudflare Worker（worker/src/index.js）
 | `data/offices.json` | 台北市議員（議會辦公室電話、傳真、地址、信箱）與 456 里辦公處（電話、里長手機、地址），Hub 啟動時載入 `offices` 表，不傳給前端 |
 | `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
+| `docs/og.jpg` | 社群分享縮圖（1200 × 630），以 GPT Image 產生。`worker/build.mjs` 會把它複製到網站，並加上 `og:` 與 `twitter:` 標籤。 |
 | `docs/screens/` | 本說明文件用的網站截圖 |
 | `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
 | `PLAN.md` | 各階段任務與驗收紀錄 |

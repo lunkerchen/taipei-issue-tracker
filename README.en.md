@@ -6,7 +6,7 @@
 
 This website shows Taipei City as a GitHub repository. A 1999 citizen report is an issue. A repair by a city department is a pull request. Each monthly dispatch summary is a release.
 
-This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately.
+This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖」.
 
 - Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
 - Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
@@ -122,6 +122,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/offices.json` | Taipei city councillors (council office phone, fax, address, email) and the 456 village offices (phone, village chief mobile, address). The Hub loads it into the `offices` table at start. It is not sent to the page. |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
+| `docs/og.jpg` | Share card (1200 × 630) for links on social media. Made with GPT Image. `worker/build.mjs` copies it to the site and adds the `og:` and `twitter:` tags. |
 | `docs/screens/` | Screenshots of the website for this README |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
 | `PLAN.md` | Tasks and acceptance records for each phase |

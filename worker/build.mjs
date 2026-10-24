@@ -176,8 +176,14 @@ window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) 
 </script>`;
 
 mkdirSync(here("public"), { recursive: true });
+// Share card: og:image needs an absolute URL, so the live site address is fixed here
+const SITE = "https://taipei-issue-tracker.labanchen.workers.dev", TITLE = "台北市，你給我聽好了｜市民 1999 通報地圖";
+const DESC = "手機優先的 1999 快速通報網站：送出陳情，AI 分類並分派給負責局處，陳情立即出現在地圖上。";
+copyFileSync(here("../docs/og.jpg"), here("public/og.jpg"));
 for (const f of ["history-2026.json", "districts.geojson", "li.geojson", "li-contacts.json", "councilors.json"]) if (existsSync(here("../data/" + f))) copyFileSync(here("../data/" + f), here("public/" + f));
-writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台北市 Issue Tracker</title></head><body style="margin:0">
+writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${TITLE}</title>
+<meta name="description" content="${DESC}"><meta property="og:type" content="website"><meta property="og:site_name" content="${TITLE}"><meta property="og:title" content="${TITLE}"><meta property="og:description" content="${DESC}">
+<meta property="og:url" content="${SITE}/"><meta property="og:image" content="${SITE}/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${TITLE}"><meta name="twitter:card" content="summary_large_image"></head><body style="margin:0">
 <div style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">展示版：資料為模擬資料，所有訪客共用、即時同步。</div>
 ${shim}${page}</body></html>`);
 console.log("built public/index.html");
