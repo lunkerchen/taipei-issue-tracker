@@ -716,12 +716,13 @@ function maskPII(s) {
   }
   const hits = [];
   // Keep the old two-character hyphen/dot/whitespace separators and allow bounded whitespace around a slash.
-  const sep = String.raw`(?:[-.\s]{0,2}|\s{0,2}/\s{0,2})`;
+  // Any Unicode dash (en dash, em dash, minus) counts as a separator, because pasted numbers often use one.
+  const sep = String.raw`(?:[-\u2212\p{Pd}.\s]{0,2}|\s{0,2}/\s{0,2})`;
   for (const re of [
     /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,                                           // email
     /(?<![A-Z0-9])[A-Z][12]\d{8}(?!\d)/gi,                                       // national ID
-    new RegExp(String.raw`(?<!\d)(?:(?:\+|00)?886${sep}?0?9\d{2}${sep}?\d{3}${sep}?\d{3}|09\d{2}${sep}?\d{3}${sep}?\d{3})(?!\d)`, "g"), // Taiwan mobile, including +886 and 00886
-    new RegExp(String.raw`(?<!\d)\(?0[2-8]\d?\)?${sep}?\d{3,4}${sep}?\d{3,4}(?!\d)`, "g") // landline, 2- or 3-digit area code
+    new RegExp(String.raw`(?<!\d)(?:(?:\+|00)?886${sep}?0?9\d{2}${sep}?\d{3}${sep}?\d{3}|09\d{2}${sep}?\d{3}${sep}?\d{3})(?!\d)`, "gu"), // Taiwan mobile, including +886 and 00886
+    new RegExp(String.raw`(?<!\d)(?:(?:\+|00)?886${sep}?0?[2-8]\d?|\(?0[2-8]\d?\)?)${sep}?\d{3,4}${sep}?\d{3,4}(?!\d)`, "gu") // landline, 2- or 3-digit area code, including +886 and 00886
   ]) for (const m of norm.matchAll(re)) {
     const a = at[m.index], b = end[m.index + m[0].length - 1];
     if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);

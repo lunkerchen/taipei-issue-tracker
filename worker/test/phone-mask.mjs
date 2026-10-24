@@ -83,8 +83,8 @@ try {
     { name:"合成測試市民", phone:"0912000111", realName:false }, "contact field keeps the supplied private values");
 
   await page.locator('#list form[data-note]').waitFor({ state:"visible" });
-  const noteText = "補充：電話 0912 / 345 / 678，舊格式 0912--345--678，換行格式 0912\r\n345\r\n678，國際格式 00886 / 912 / 345 / 678，市話 02 / 2720 / 8889，Email note@example.com，身分證 B234567890。";
-  const maskedNote = "補充：電話 ［已遮蔽］，舊格式 ［已遮蔽］，換行格式 ［已遮蔽］，國際格式 ［已遮蔽］，市話 ［已遮蔽］，Email ［已遮蔽］，身分證 ［已遮蔽］。";
+  const noteText = "補充：電話 0912 / 345 / 678，舊格式 0912--345--678，換行格式 0912\r\n345\r\n678，國際格式 00886 / 912 / 345 / 678，市話 02 / 2720 / 8889，國碼市話 +886-2-2720-8889，破折號 0912–345–678，Email note@example.com，身分證 B234567890。";
+  const maskedNote = "補充：電話 ［已遮蔽］，舊格式 ［已遮蔽］，換行格式 ［已遮蔽］，國際格式 ［已遮蔽］，市話 ［已遮蔽］，國碼市話 ［已遮蔽］，破折號 ［已遮蔽］，Email ［已遮蔽］，身分證 ［已遮蔽］。";
   const note = page.locator('#list form[data-note]');
   await note.locator("textarea").fill(noteText);
   await note.locator('button[type="submit"]').click();
