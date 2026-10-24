@@ -166,7 +166,11 @@ export default {
     const { pathname, searchParams } = new URL(req.url);
     if (pathname === "/api/health") return Response.json({ ai: !!(env.ANTHROPIC_API_KEY || env.AI_PROXY_URL) });
     if (pathname === "/api/db") {
-      if (req.method === "GET") return Response.json(await hub(env).snapshot(), { headers: { "cache-control": "no-store" } });
+      if (req.method === "GET") {
+        const adminHdr = req.headers.get("x-admin");
+        const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+        return Response.json(await hub(env).snapshot(admin), { headers: { "cache-control": "no-store" } });
+      }
       return req.method === "POST" ? writeDb(req, env) : err(405, "method_not_allowed");
     }
     if (pathname === "/api/ws") return hub(env).fetch(req);

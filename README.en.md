@@ -74,6 +74,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 **Security and limits**
 
 - A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. The Worker compares the administrator token in constant time.
+- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket uses the same token as the page.
 - Protection against a flood of reports. The server examines each new report:
   - Each request can add only one report.
   - The creation time must be the current time. A report with an earlier time is not accepted.

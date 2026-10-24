@@ -47,6 +47,13 @@ async function get(url, headers, gap = 500) {
   throw last;
 }
 
+const enc = new TextEncoder();
+// Hash before compare so the timing does not depend on the input length
+const sameText = async (a, b) => {
+  if (!a || !b) return false;
+  const [x, y] = await Promise.all([a, b].map(s => crypto.subtle.digest("SHA-256", enc.encode(s))));
+  return crypto.subtle.timingSafeEqual(x, y);
+};
 const ent = s => s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) => {
   const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[e.toLowerCase()];
   if (named) return named;
@@ -78,6 +85,7 @@ async function pttNews() {
 export class Hub extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    this.env = env;
     this.sql = ctx.storage.sql;
     this.pending = 0; this.chain = Promise.resolve(); this.lastGeo = 0;
     ctx.blockConcurrencyWhile(async () => {
@@ -107,10 +115,15 @@ export class Hub extends DurableObject {
     });
   }
 
-  // seq orders writes so clients can drop stale data; the snapshot carries the seq it reflects
-  snapshot() {
+  // seq orders writes so clients can drop stale data; the snapshot carries the seq it reflects.
+  // Visitors only get docs they may see: hidden or not-yet-approved cases stay out of the public snapshot.
+  snapshot(admin = false) {
     const out = { _seq: this.seq };
-    for (const { path, data } of this.sql.exec("SELECT path, data FROM docs")) { const [c, id] = path.split("/"); (out[c] ||= {})[id] = JSON.parse(data); }
+    for (const { path, data } of this.sql.exec("SELECT path, data FROM docs")) {
+      const doc = JSON.parse(data), visible = admin ? doc : this.publicDoc(path, doc);
+      if (visible === null) continue;
+      const [c, id] = path.split("/"); (out[c] ||= {})[id] = visible;
+    }
     return out;
   }
 
@@ -128,6 +141,24 @@ export class Hub extends DurableObject {
     const triage = this.sql.exec("SELECT data FROM docs WHERE path = ?", `triage/${target}`).toArray()[0];
     const status = triage ? JSON.parse(triage.data) : {};
     return status.hidden !== true && !(item.flagged === true && status.hidden !== false);
+  }
+
+  // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
+  publicDoc(path, doc) {
+    if (path.startsWith("reports/")) {
+      if (!isObj(doc) || !isObj(doc.items)) return {};
+      const owner = path.slice(8), items = {};
+      for (const [key, item] of Object.entries(doc.items)) if (this.publicCase(owner === "demo-seed" ? key : `${owner}:${key}`)) items[key] = item;
+      return { ...doc, items };
+    }
+    if (path.startsWith("triage/")) return this.publicCase(path.slice(7)) ? doc : null;
+    if (path.startsWith("addenda/")) {
+      if (!isObj(doc) || !isObj(doc.items)) return {};
+      const items = {};
+      for (const [id, addendum] of Object.entries(doc.items)) if (isObj(addendum) && this.publicCase(addendum.target)) items[id] = addendum;
+      return { ...doc, items };
+    }
+    return doc;
   }
 
   // The Worker has already checked who may write where; this checks the data and applies it.
@@ -229,15 +260,32 @@ export class Hub extends DurableObject {
       if (failure) return failure;
     } else this.sql.exec("DELETE FROM docs WHERE path = ?", path);
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
-    const msg = JSON.stringify({ path, data: doc, seq: this.seq });
-    for (const ws of this.ctx.getWebSockets()) try { ws.send(msg); } catch {}
+    // A triage change can hide or reveal a case, so visitors also need the owner's report doc re-filtered;
+    // otherwise deleting the triage doc would make the still-cached report item visible again.
+    let reportPath = null, reportPublic = null;
+    if (path.startsWith("triage/")) {
+      const target = path.slice(7), colon = target.indexOf(":");
+      reportPath = `reports/${colon < 0 ? "demo-seed" : target.slice(0, colon)}`;
+      const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", reportPath).toArray()[0];
+      if (row) reportPublic = this.publicDoc(reportPath, JSON.parse(row.data));
+    }
+    for (const ws of this.ctx.getWebSockets()) {
+      const adminSocket = ws.deserializeAttachment()?.admin === true;
+      try {
+        if (reportPath && reportPublic && !adminSocket) ws.send(JSON.stringify({ path: reportPath, data: reportPublic, seq: this.seq }));
+        const data = adminSocket || doc === null ? doc : this.publicDoc(path, doc);
+        ws.send(JSON.stringify({ path, data, seq: this.seq }));
+      } catch {}
+    }
     return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 
-  fetch(req) {
+  async fetch(req) {
     if (req.headers.get("upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
+    // The admin page adds ?admin=<token>; sockets without a valid token get the visitor view.
+    server.serializeAttachment({ admin: await sameText(new URL(req.url).searchParams.get("admin") || "", this.env.ADMIN_TOKEN || "") });
     return new Response(null, { status: 101, webSocket: client });
   }
   webSocketMessage() {} // read-only socket: clients write through POST /api/db

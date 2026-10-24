@@ -171,7 +171,8 @@ assert.equal((await write({ "x-admin": admin }, "delete", `addenda/${G.id}`)).st
 // admin writes anywhere; B receives; then clean up
 r = await write({ "x-admin": admin }, "set", "triage/smoke-x", { status: "open" });
 assert.equal(r.status, 200, "admin write");
-await wb.next(x => x.path === "triage/smoke-x" && x.data?.status === "open");
+// smoke-x is not a public case, so visitors get the doc removed rather than its contents
+await wb.next(x => x.path === "triage/smoke-x" && x.data === null);
 assert.equal((await write({ "x-admin": admin }, "delete", "triage/smoke-x")).status, 200);
 await wb.next(x => x.path === "triage/smoke-x" && x.data === null);
 assert.equal((await write({ "x-visitor": A.token }, "delete", `votes/${A.id}`)).status, 200);
