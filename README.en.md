@@ -272,6 +272,12 @@ BASE=http://localhost:8788 node worker/test/report-contact.mjs
 BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
 ```
 
+The visitor document schema test checks input validation for visitor writes to `votes/<visitor>` and `addenda/<visitor>`. It confirms that invalid vote shapes, non-boolean values, and non-case keys return 400 `bad_item`, and that unvalidated or oversized addenda are excluded from the public snapshot:
+
+```bash
+BASE=http://localhost:8788 node worker/test/visitor-doc-schema.mjs
+```
+
 ```bash
 cd worker && node test/sync.mjs
 ```

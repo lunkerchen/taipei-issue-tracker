@@ -1,5 +1,5 @@
 // Serves the demo page (static assets), proxies its two AI prompts to the Claude API, and fronts the shared Hub database.
-import { validEmail } from "./hub.js";
+import { validEmail, isObj, CASE_ID } from "./hub.js";
 export { Hub } from "./hub.js";
 const MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5" };
 // ponytail: the page builds the prompt, so this is a capped proxy: prefix check, length/token caps and a per-IP rate limit bound abuse.
@@ -39,7 +39,23 @@ async function writeDb(req, env) {
     if (admin || path !== `reports/${id}`) return err(403, "forbidden");
   } else if (op === "append-addendum") {
     if (admin || path !== `addenda/${id}`) return err(403, "forbidden");
-  } else if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
+  } else if (!admin) {
+    if (path === `votes/${id}`) {
+      if (op === "delete") {
+        // ok
+      } else if (op === "set" || op === "update") {
+        if (text.includes('"__proto__"')) return err(400, "bad_item");
+        if (!isObj(data) || !isObj(data.issues)) return err(400, "bad_item");
+        for (const [k, v] of Object.entries(data.issues)) {
+          if (!CASE_ID.test(k) || k === "__proto__" || k === "constructor" || k === "prototype" || typeof v !== "boolean") return err(400, "bad_item");
+        }
+      } else {
+        return err(403, "forbidden");
+      }
+    } else if (path !== `reports/${id}` && path !== `addenda/${id}`) {
+      return err(403, "forbidden");
+    }
+  }
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 
