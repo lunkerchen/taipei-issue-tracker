@@ -298,6 +298,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
 .citizen .gh,.citizen .term{display:none!important}.citizen .cz{display:inline!important}.citizen .cz-only{display:inline-flex!important}
+html.citizen [hidden]{display:none!important}
 .citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
 @media (max-width:760px){
 .citizen .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;margin:0;gap:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
@@ -324,14 +325,14 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
   <header class="repo">
     <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北 1999 <b>快速通報</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
-    <button class="btn primary" id="newBtn" type="button"><span class="gh">New issue</span><span class="cz">我要通報</span></button>
+    <button class="btn primary" id="newBtn" type="button" hidden><span class="gh">New issue</span><span class="cz">我要通報</span></button>
   </header>
 
   <nav class="nav" id="nav" aria-label="專案分頁">
     <button type="button" data-view="code">Code</button>
     <button type="button" data-view="issues" aria-current="page"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="gh">Issues</span><span class="cz">陳情列表</span> <span class="cnt" id="cIssues"></span></button>
     <button type="button" data-view="map"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="gh">Map</span><span class="cz">地圖</span></button>
-    <button type="button" id="navReport" class="cz-only"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>通報</button>
+    <button type="button" id="navReport" class="cz-only" hidden><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>通報</button>
     <button type="button" data-view="mine" class="cz-only"><svg class="ni" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>我的陳情</button>
     <button type="button" data-view="pulls">Pull requests <span class="cnt" id="cPulls"></span></button>
     <button type="button" data-view="milestones">Milestones</button>
@@ -434,8 +435,8 @@ Switched to branch 'taipei'
       </div>
       <div class="mapact">
         <button class="btn" type="button" id="liveBtn" aria-pressed="false" aria-controls="liveBox"><span class="live-dot" aria-hidden="true"></span>Live</button>
-        <button class="btn primary" type="button" id="reportBtn">回報</button>
-        <span class="note" id="lpHint">或長按地圖，直接回報那個位置</span>
+        <button class="btn primary" type="button" id="reportBtn" hidden>回報</button>
+        <span class="note" id="lpHint" hidden>或長按地圖，直接回報那個位置</span>
       </div>
       <section class="box livebox" id="liveBox" aria-label="今天最新的 1999 陳情" hidden>
         <div class="boxhead"><b>今天最新的陳情</b><span class="spacer"></span><span class="note" id="liveCount"></span></div>
@@ -695,7 +696,7 @@ function fail(e, statusNode = null) {
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
-  $("newBtn").hidden = $("navReport").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("newBtn").hidden = $("navReport").hidden = $("reportBtn").hidden = $("lpHint").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
   $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
   $("cancelBtn").textContent = admin ? "Cancel" : "取消";
   $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";
@@ -1068,6 +1069,7 @@ $("tabOpen").onclick = () => { view.closed = false; render(); };
 $("tabClosed").onclick = () => { view.closed = true; render(); };
 let formFrom = "issues", formEpoch = 0, locationIntent = 0, pickMapIntent = 0;
 $("newBtn").onclick = () => {
+  if (!canWrite) return;
   if ($("newBox").hidden) {
     formEpoch++; locationIntent++;
     formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
@@ -1704,6 +1706,7 @@ const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">
 const lookup = (lat, lng) => revgeo ? tryTwice(() => revgeo(lat, lng), 10000).catch(() => null) : Promise.resolve(null);
 let askM = null;
 function askReport({ lat, lng }) {
+  if (!canWrite) return;
   if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
   if (askM) askM.remove();
   const m = askM = L.marker([lat, lng], { keyboard:false, icon:L.divIcon({ className:"pin-wrap", html:'<span class="pin"></span>', iconSize:[22,22], iconAnchor:[11,22] }) }).addTo(mainLM);
@@ -1713,6 +1716,7 @@ function askReport({ lat, lng }) {
     else if (m.confirmed && m.formIntent === locationIntent && picked && picked.lat === +lat.toFixed(5) && picked.lng === +lng.toFixed(5)) applyGeo(g, lat, lng, m.formIntent); }); // confirmed before the lookup came back
 }
 function reportAt({ lat, lng }, how, geo, locationMarker) {
+  if (!canWrite) return;
   if (!inTaipei(lat, lng)) return toast("這個位置不在台北市範圍內");
   $("newBtn").click(); const intent = setPicked(lat, lng, how === "定位" ? "gps" : "pin");
   if (locationMarker) locationMarker.formIntent = intent;
@@ -1740,7 +1744,7 @@ $("locBtn").onclick = () => {
     meM ? meM.setLatLng(ll) : meM = L.marker(ll, { keyboard:false, icon:L.divIcon({ className:"", html:'<span class="me"></span>', iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(mainLM);
     meC ? meC.setLatLng(ll).setRadius(acc) : meC = L.circle(ll, { radius:acc, color:"#1a73e8", weight:1, fillOpacity:.12, interactive:false }).addTo(mainLM);
     const inside = inTaipei(lat, lng);
-    const pop = g => `<b>你的位置</b><div class="meta">${g ? esc(g.address) + " · " : ""}誤差約 ${Math.round(acc)} 公尺</div><div class="meta">座標 ${coordText(lat, lng)}</div>` + (inside ? `<button class="btn primary" type="button" data-here style="margin-top:8px">在這裡回報</button>` : `<div class="meta">不在台北市範圍內</div>`);
+    const pop = g => `<b>你的位置</b><div class="meta">${g ? esc(g.address) + " · " : ""}誤差約 ${Math.round(acc)} 公尺</div><div class="meta">座標 ${coordText(lat, lng)}</div>` + (inside && canWrite ? `<button class="btn primary" type="button" data-here style="margin-top:8px">在這裡回報</button>` : !inside ? `<div class="meta">不在台北市範圍內</div>` : "");
     meM.geo = null; meM.bindPopup(pop());
     if (inside) lookup(lat, lng).then(g => { meM.geo = g; meM.setPopupContent(pop(g)); });
     mainLM.setView(ll, inside ? Math.max(mainLM.getZoom(), 16) : 12); meM.openPopup();
