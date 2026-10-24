@@ -330,6 +330,30 @@ BASE=http://localhost:8788 node worker/test/text-scale-layout.mjs
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
+`worker/.dev.vars` 必須有 `ADMIN_TOKEN`。smoke 測試、聯絡資料測試、進度通知測試、管理者金鑰測試、修繕單回饋測試、補充聯絡資料測試與後台小型 UX 測試會從這個檔案讀取金鑰。進度通知測試需要會模擬寄信的 Worker，請在 `worker/` 啟動並設定 `NOTICE_FROM`。資料請用空資料夾，因為測試跑多次後，每個 IP 的通報上限會擋下新陳情：
+
+```bash
+cd worker && npx wrangler dev --port 8806 --persist-to <空資料夾> --var NOTICE_FROM:notice@example.com
+```
+
+```bash
+BASE=http://localhost:8806 node worker/test/progress-notice.mjs
+```
+
+通知回滾測試不需要 Worker：它用 Node SQLite 與可控制的寄信 stub 執行 `worker/src/hub.js`，檢查寄送失敗與多封通知交錯的情況：
+
+```bash
+node worker/test/notice-undo.mjs
+```
+
+管理者金鑰測試會用 `#admin=<金鑰>` 與 `?admin=<金鑰>` 各開一次頁面，確認沒有任何請求網址帶著金鑰，而且放在 `?admin=` 的金鑰只會變成示範後台。這個測試使用 Playwright：
+
+```bash
+BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
+```
+
+持金鑰的管理者：`http://localhost:8788/#admin=<.dev.vars 裡的 ADMIN_TOKEN>`。
+
 ```bash
 BASE=http://localhost:8788 node worker/test/long-token-wrap.mjs
 ```
@@ -385,29 +409,7 @@ BASE=http://localhost:8788 node worker/test/case-title-double-click.mjs
 
 案件標題連點測試使用桌面視窗。測試確認連續點兩下只開啟一份詳情，網址停在該案件；之後點一下會關閉詳情並把網址帶回列表。測試結束時會刪除自己建立的案件。請使用獨立的 Worker 持久化目錄。
 
-`worker/.dev.vars` 必須有 `ADMIN_TOKEN`。smoke 測試、聯絡資料測試、進度通知測試、管理者金鑰測試、修繕單回饋測試、補充聯絡資料測試與後台小型 UX 測試會從這個檔案讀取金鑰。進度通知測試需要會模擬寄信的 Worker，請在 `worker/` 啟動並設定 `NOTICE_FROM`。資料請用空資料夾，因為測試跑多次後，每個 IP 的通報上限會擋下新陳情：
-
-```bash
-cd worker && npx wrangler dev --port 8806 --persist-to <空資料夾> --var NOTICE_FROM:notice@example.com
-```
-
-```bash
-BASE=http://localhost:8806 node worker/test/progress-notice.mjs
-```
-
-通知回滾測試不需要 Worker：它用 Node SQLite 與可控制的寄信 stub 執行 `worker/src/hub.js`，檢查寄送失敗與多封通知交錯的情況：
-
-```bash
-node worker/test/notice-undo.mjs
-```
-
-管理者金鑰測試會用 `#admin=<金鑰>` 與 `?admin=<金鑰>` 各開一次頁面，確認沒有任何請求網址帶著金鑰，而且放在 `?admin=` 的金鑰只會變成示範後台。這個測試使用 Playwright：
-
-```bash
-BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
-```
-
-本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。持金鑰的管理者：`http://localhost:8788/#admin=<.dev.vars 裡的 ADMIN_TOKEN>`。
+本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。
 
 ## 部署
 

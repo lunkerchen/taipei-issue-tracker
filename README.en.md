@@ -330,6 +330,30 @@ The text-scale layout test uses 390×844 and 320×568 phone viewports. It sets t
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
+`worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test, the progress notice test, the admin key test, the repair order feedback test, the supplement contact test and the admin small UX test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
+
+```bash
+cd worker && npx wrangler dev --port 8806 --persist-to <empty folder> --var NOTICE_FROM:notice@example.com
+```
+
+```bash
+BASE=http://localhost:8806 node worker/test/progress-notice.mjs
+```
+
+The notice undo test needs no Worker. It runs `worker/src/hub.js` with Node SQLite and a controlled send stub. It checks failed and overlapping sends:
+
+```bash
+node worker/test/notice-undo.mjs
+```
+
+The admin key test opens the page with `#admin=<key>` and with `?admin=<key>`. It checks that no request URL holds the key, and that a key in `?admin=` gives only the demo admin. It uses Playwright:
+
+```bash
+BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
+```
+
+Administrator with the key: `http://localhost:8788/#admin=<ADMIN_TOKEN in .dev.vars>`.
+
 ```bash
 BASE=http://localhost:8788 node worker/test/long-token-wrap.mjs
 ```
@@ -385,29 +409,7 @@ BASE=http://localhost:8788 node worker/test/case-title-double-click.mjs
 
 The case title double click test uses a desktop viewport. It checks that a double click opens one detail and keeps the URL on the case. It also checks that one later click closes the detail and returns the URL to the list. The test deletes its case when it ends. Use a separate local Worker persistence directory.
 
-`worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test, the progress notice test, the admin key test, the repair order feedback test, the supplement contact test and the admin small UX test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
-
-```bash
-cd worker && npx wrangler dev --port 8806 --persist-to <empty folder> --var NOTICE_FROM:notice@example.com
-```
-
-```bash
-BASE=http://localhost:8806 node worker/test/progress-notice.mjs
-```
-
-The notice undo test needs no Worker. It runs `worker/src/hub.js` with Node SQLite and a controlled send stub. It checks failed and overlapping sends:
-
-```bash
-node worker/test/notice-undo.mjs
-```
-
-The admin key test opens the page with `#admin=<key>` and with `?admin=<key>`. It checks that no request URL holds the key, and that a key in `?admin=` gives only the demo admin. It uses Playwright:
-
-```bash
-BASE=http://localhost:8806 PLAYWRIGHT_MODULE=<playwright> node worker/test/admin-key-fragment.mjs
-```
-
-Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`. Administrator with the key: `http://localhost:8788/#admin=<ADMIN_TOKEN in .dev.vars>`.
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment
 
