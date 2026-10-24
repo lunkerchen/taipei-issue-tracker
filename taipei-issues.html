@@ -183,6 +183,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+#dataNote{left:12px;right:auto}
+#dataNote[hidden]{display:none}
+#dataNote button{margin-left:8px}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
 .mapcol{display:flex;flex-direction:column;gap:10px;min-height:0}
 .issue.hl{outline:2px solid var(--link);outline-offset:2px;border-radius:6px}
@@ -445,6 +448,7 @@ Switched to branch 'taipei'
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+        <div class="mapnote" id="dataNote" role="status" hidden><span id="dataNoteText"></span><button class="btn sm" type="button" id="dataNoteRetry">重新整理</button></div>
         <button class="btn distback" type="button" id="distBack" hidden></button>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
@@ -516,6 +520,7 @@ Switched to branch 'taipei'
   </div>
 
   <div class="view" id="v-admin" hidden>
+    <div class="empty" id="admLoad" role="status" hidden></div>
     <div class="kpi" id="admKpi"></div>
     <div class="q" id="admQueues"></div>
     <div class="adm-grid">
@@ -946,6 +951,13 @@ function timeline(i) {
   }).join("")}${isStale(i) ? `<div class="ev"><b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度 · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
 }
 
+function syncDataNote() {
+  const loading = !gotReports || !gotTriage;
+  $("dataNoteText").textContent = loading ? "連線中斷，無法載入陳情資料。請重新整理頁面。" : "連線中斷，陳情資料可能不是最新。";
+  $("dataNoteRetry").hidden = !loading;
+  $("dataNote").hidden = !loadErr;
+}
+$("dataNoteRetry").onclick = () => location.reload();
 function render() {
   heatmap();
   const c = counts();
@@ -968,7 +980,7 @@ function render() {
   const ms = $("msFilter").value;
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
-  renderViews(c); if (admin) renderAdmin(c);
+  renderViews(c); if (admin) renderAdmin(c); syncDataNote();
   trackNew(); syncMap(); renderLive();
 
   let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
@@ -2541,6 +2553,12 @@ ${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).joi
 // ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
 const PENDING = "1999 待分派";
 function renderAdmin(c) {
+  const loading = !gotReports || !gotTriage;
+  $("admLoad").hidden = !(loadErr || loading);
+  $("admLoad").textContent = loadErr
+    ? (loading ? "連線中斷，無法載入後台資料。請重新整理頁面。" : "連線中斷，以下數字可能不是最新。")
+    : "正在載入後台資料…";
+  if (loading) { $("admKpi").innerHTML = $("admQueues").innerHTML = $("admDept").innerHTML = $("admCat").innerHTML = ""; return; }
   const open = issues.filter(i => i.status !== "fixed" && !hiddenFor(i)), today = dayKey(Date.now());
   const fixed = issues.filter(closedAt), avg = fixed.length ? fixed.reduce((s, i) => s + closedAt(i) - +new Date(i.createdAt), 0) / fixed.length / DAY : null;
   const age = i => (Date.now() - +new Date(i.createdAt)) / DAY;
