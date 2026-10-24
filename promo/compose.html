@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>Taipei 1999 Promo</title>
+<!-- 30 s vertical promo. Every frame is a pure function of t: render.mjs calls render(t) and takes a screenshot. -->
+<style>
+:root{--bg:#0d1117;--panel:#151b23;--line:#3d444d;--fg:#f0f6fc;--muted:#9198a1;--green:#3fb950;--btn:#238636;--purple:#a371f7;--merged:#8957e5;--orange:#d29922;--blue:#4493f8;--red:#f85149;--pink:#db61a2;
+  --sans:"Source Han Sans TC","PingFang TC",sans-serif;--mono:Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--sans)}
+#stage,#cv,#fx,.L{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.L{visibility:hidden}
+.mono{font-family:var(--mono)}
+.c{position:absolute;left:0;right:0;text-align:center}
+.cap{font-weight:900;font-size:78px;letter-spacing:2px;line-height:1.15}
+.sub{font-family:var(--mono);font-size:28px;color:var(--muted);letter-spacing:2px}
+.chip{display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:24px;border:2px solid var(--line);font-size:26px;font-weight:700;color:var(--muted);white-space:nowrap}
+.chip.pink{color:var(--pink);border-color:#db61a266;background:#db61a218}
+/* s1 terminal */
+#term{position:absolute;left:84px;top:800px;font-size:54px;line-height:1.6;white-space:pre}
+#term .pr{color:var(--green)}
+.cur{display:inline-block;width:30px;height:60px;background:var(--fg);vertical-align:-10px;margin-left:4px}
+#scan1{position:absolute;inset:0;background:repeating-linear-gradient(0deg,#ffffff08 0 2px,transparent 2px 6px)}
+/* s3 problems */
+.big{font-weight:900;font-size:108px;letter-spacing:4px}
+/* s4 repo */
+#shot{position:absolute;left:-260px;top:520px;width:1600px;opacity:.42;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent)}
+#shot img{width:1600px;display:block;border-radius:28px}
+.row{position:absolute;left:120px;width:840px;height:110px;display:flex;align-items:center;border-bottom:2px solid #3d444d88;font-size:56px;font-weight:900}
+.row .zh{width:300px}
+.row .arr{width:90px;color:var(--muted);font-weight:400}
+.row .en{font-family:var(--mono);font-weight:700;font-size:50px}
+/* s5 phone */
+#s5{perspective:2200px}
+#phone{position:absolute;left:270px;top:440px;width:540px;height:1080px;border-radius:72px;background:#0d1117;border:12px solid #30363d;box-shadow:0 0 0 2px #6e7681 inset,0 60px 140px #000c,0 0 120px #3fb95022;overflow:hidden;transform-style:preserve-3d}
+.island{position:absolute;left:50%;top:18px;width:150px;height:42px;margin-left:-75px;border-radius:21px;background:#000}
+.ph{position:absolute;left:36px;right:36px}
+.ph-lab{font-size:24px;color:var(--muted)}
+.cats{display:flex;gap:10px}
+.cats span{flex:1;height:66px;border-radius:16px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
+.ta{height:196px;border-radius:16px;border:2px solid var(--line);background:#010409;padding:16px 18px;font-size:29px;line-height:1.45;overflow:hidden}
+.caret{display:inline-block;width:3px;height:32px;background:var(--blue);vertical-align:-6px}
+.mask{background:#d2992233;color:var(--orange);border-radius:6px;padding:0 4px}
+.btn{height:76px;border-radius:16px;background:var(--btn);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#fff}
+#bot{top:676px;height:300px;border:2px solid var(--line);border-radius:18px;overflow:hidden;background:#0d1117}
+.bot-h{height:56px;display:flex;align-items:center;padding:0 20px;background:var(--panel);border-bottom:2px solid var(--line);font-size:22px}
+.bot-b{padding:16px 20px}
+.bot-t{font-size:30px;font-weight:900;margin-bottom:14px}
+.bot-b .chip{height:42px;font-size:23px;padding:0 16px;margin-right:8px}
+.kv{font-size:23px;margin-top:12px;color:#d1d7e0}
+.kv b{color:var(--muted);font-weight:400;margin-right:14px}
+#pii{position:absolute;right:52px;top:512px;height:40px;padding:0 16px;border-radius:20px;background:#d2992233;border:2px solid #d2992288;color:var(--orange);font-size:22px;font-weight:700;display:flex;align-items:center}
+#scan{position:absolute;left:0;right:0;height:140px;background:linear-gradient(180deg,transparent,#3fb95033 70%,#3fb950cc 98%,#ffffff 100%);pointer-events:none}
+#think{position:absolute;left:56px;top:700px;font-size:24px;color:var(--green)}
+#toast{position:absolute;left:36px;right:36px;top:80px;height:84px;border-radius:20px;background:#1f2b1f;border:2px solid #3fb95088;display:flex;align-items:center;padding:0 22px;font-size:26px;font-weight:700;color:var(--fg)}
+#glare{position:absolute;inset:-200px;background:linear-gradient(115deg,transparent 42%,#ffffff14 48%,#ffffff05 54%,transparent 60%)}
+.rip{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:4px solid #fff}
+/* s6 pr flow */
+.card{position:absolute;left:80px;width:920px;border:2px solid var(--line);border-radius:20px;background:#0d1117ee}
+.badge{display:inline-flex;align-items:center;height:50px;padding:0 22px;border-radius:25px;font-size:26px;font-weight:700;color:#fff}
+.sla{position:absolute;left:80px;width:920px;height:92px;display:flex;align-items:center;border-bottom:2px solid #3d444d88;font-size:30px}
+.sla .d{flex:1}
+.sla .n{width:170px;text-align:right;color:var(--muted);font-family:var(--mono);font-size:26px;margin-right:28px}
+.ci{display:inline-flex;height:44px;border-radius:8px;overflow:hidden;font-size:24px;font-weight:700;font-family:var(--sans)}
+.ci span{display:flex;align-items:center;padding:0 14px}
+/* s7 live */
+#live{position:absolute;left:80px;width:920px;top:1370px;height:110px;border-radius:22px;border:2px solid var(--line);background:#0d1117e6;display:flex;align-items:center;padding:0 28px;gap:22px}
+#live .dot{width:20px;height:20px;border-radius:50%;background:var(--red)}
+/* s8 end */
+.shine{background:linear-gradient(100deg,#f0f6fc 35%,#7ee787 47%,#4493f8 53%,#f0f6fc 65%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+#url{position:absolute;left:50%;top:1250px;transform:translateX(-50%);height:76px;padding:0 34px;border-radius:38px;border:2px solid #3fb95099;background:#3fb95014;display:flex;align-items:center;font-family:var(--mono);font-size:30px;color:#7ee787;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv" width="1080" height="1920"></canvas>
+
+  <div id="s1" class="L"><div id="scan1"></div>
+    <div id="term" class="mono"><div><span class="pr">$</span> <span id="t1"></span><span id="cur" class="cur"></span></div><div id="t2" style="color:var(--green)"></div></div>
+  </div>
+
+  <div id="s2" class="L">
+    <div class="c sub" style="top:262px">台北市 1999 派工 · 2026 年 1–9 月</div>
+    <div class="c" style="top:300px;font-size:132px;font-weight:700;line-height:1.2"><span id="cnt" class="mono">0</span><span style="font-size:60px;font-weight:900;margin-left:12px">件</span></div>
+    <div class="c mono" style="top:470px;font-size:26px;color:var(--green)"><span id="day">2026-01-01</span>　·　data.taipei 真實資料</div>
+  </div>
+
+  <div id="s3" class="L">
+    <div class="c sub" id="p0" style="top:560px">// 打完 1999 之後</div>
+    <div class="c big" id="p1" style="top:620px">看不到進度</div>
+    <div class="c big" id="p2" style="top:780px">不知道有人報過</div>
+    <div class="c big" id="p3" style="top:940px">不知道該找誰</div>
+    <div class="c" id="p4" style="top:1150px;font-size:62px;font-weight:900;color:var(--red);letter-spacing:6px">陳情，像丟進黑洞</div>
+  </div>
+
+  <div id="s4" class="L">
+    <div id="shot"><img src="../deck/screens/issues.png" alt=""></div>
+    <div class="c mono" id="r0" style="top:400px;font-size:40px;color:var(--blue)">taipei-city / 1999</div>
+    <div class="c" id="r1" style="top:470px;font-size:124px;font-weight:900">如果台北市</div>
+    <div class="c" id="r2" style="top:630px;font-size:124px;font-weight:900">是一個 <span class="mono" style="color:var(--green);font-weight:700">repo</span>？</div>
+    <div class="row" id="m0" style="top:900px"><span class="zh">陳情</span><span class="arr">→</span><span class="en" style="color:var(--green)" data-t="issue"></span></div>
+    <div class="row" id="m1" style="top:1010px"><span class="zh">+1</span><span class="arr">→</span><span class="en" style="color:var(--orange)" data-t="reaction"></span></div>
+    <div class="row" id="m2" style="top:1120px"><span class="zh">修繕單</span><span class="arr">→</span><span class="en" style="color:var(--purple)" data-t="pull request"></span></div>
+    <div class="row" id="m3" style="top:1230px"><span class="zh">派工月報</span><span class="arr">→</span><span class="en" style="color:var(--blue)" data-t="release"></span></div>
+  </div>
+
+  <div id="s5" class="L">
+    <div class="c" id="h5" style="top:256px"><div class="sub" id="h5s"></div><div class="cap" id="h5t"></div></div>
+    <div id="phone">
+      <div class="island"></div>
+      <div class="ph mono" style="top:84px;font-size:22px;color:var(--blue)">taipei-city / 1999</div>
+      <div class="ph" style="top:118px;font-size:46px;font-weight:900">回報問題</div>
+      <div class="ph ph-lab" style="top:200px">大方向（可略過）</div>
+      <div class="ph cats" style="top:240px"><span>食</span><span>住</span><span id="catx">行</span><span>育</span><span>樂</span><span>醫療</span></div>
+      <div class="ph ph-lab" style="top:330px">描述問題</div>
+      <div class="ph ta" style="top:370px"><span id="ta"></span><span id="tac" class="caret"></span></div>
+      <div id="pii">已遮蔽 1 項個資</div>
+      <div class="ph btn" id="bprev" style="top:584px">預覽通報</div>
+      <div id="think" class="mono"></div>
+      <div class="ph" id="bot">
+        <div class="bot-h mono">taipei-bot 自動分派</div>
+        <div class="bot-b">
+          <div class="bot-t" id="bt">敦化南路二段路口號誌閃黃燈</div>
+          <div><span class="chip pink" id="k1">交通局</span><span class="chip" id="k2">交通號誌</span><span class="chip" id="k3">大安區</span></div>
+          <div class="kv" id="k4"><b>1999 分類</b>交通號誌異常</div>
+          <div class="kv" id="k5"><b>理由</b>號誌故障屬交通局業務</div>
+        </div>
+      </div>
+      <div class="ph btn" id="bsend" style="top:984px">確認送出</div>
+      <div id="scan"></div>
+      <div id="toast"><span style="color:var(--green);margin-right:14px" class="mono">#31</span>已送出 · 即時出現在地圖上</div>
+      <div id="glare"></div>
+      <div class="rip" id="rip"></div>
+    </div>
+  </div>
+
+  <div id="s6" class="L">
+    <div class="c" id="h6" style="top:256px"><div class="sub" id="h6s"></div><div class="cap" id="h6t"></div></div>
+    <div class="card" id="iss" style="top:470px;height:150px;padding:26px 30px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <svg width="40" height="40" viewBox="0 0 16 16" id="issico"><circle cx="8" cy="8" r="6.5" fill="none" stroke="#3fb950" stroke-width="1.5"/><circle cx="8" cy="8" r="1.6" fill="#3fb950"/></svg>
+        <span style="font-size:38px;font-weight:900;flex:1">信義路四段人行道磚塊鬆動</span>
+        <span class="badge" id="isb" style="background:var(--btn)">Open</span>
+      </div>
+      <div class="mono" style="font-size:24px;color:var(--muted);margin-top:16px;margin-left:58px">#1 · 大安區 · 工務局新工處</div>
+    </div>
+    <div id="conn" style="position:absolute;left:138px;top:620px;width:4px;height:80px;background:var(--line);transform-origin:top"></div>
+    <div class="card" id="pr" style="top:700px;height:270px;padding:26px 30px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <svg width="40" height="40" viewBox="0 0 16 16" id="prico"><g fill="none" stroke="#3fb950" stroke-width="1.5"><circle cx="4" cy="3.5" r="1.8"/><circle cx="4" cy="12.5" r="1.8"/><circle cx="12" cy="12.5" r="1.8"/><path d="M4 5.3v5.4M12 10.7V6a2 2 0 0 0-2-2H7.5"/><path d="M9 2.5 7.5 4 9 5.5"/></g></svg>
+        <span style="font-size:36px;font-weight:900;flex:1">人行道磚面全段重鋪</span>
+        <span class="mono" style="font-size:28px;color:var(--muted)">#13</span>
+      </div>
+      <div style="margin:18px 0 0 58px;display:flex;gap:14px;align-items:center">
+        <span class="mono" style="font-size:26px;color:var(--muted);border:2px solid var(--line);border-radius:10px;padding:4px 14px">Closes #1</span>
+        <span class="badge" id="prb" style="background:var(--btn);height:44px;font-size:24px">Open</span>
+      </div>
+      <div class="btn" id="mbtn" style="margin-top:22px;height:72px;font-size:30px">Merge pull request</div>
+    </div>
+    <div class="c sub" id="slah" style="top:1012px;font-size:24px">各局處處理速度 · SLA 平均 7 天內修好</div>
+    <div class="sla" id="sl0" style="top:1060px"><span class="d"><span class="chip" style="color:#3fb950;border-color:#3fb95066">工務局公園處</span></span><span class="n">4.5 天</span><span class="ci"><span style="background:#555">SLA</span><span style="background:#2ea043">passing</span></span></div>
+    <div class="sla" id="sl1" style="top:1160px"><span class="d"><span class="chip" style="color:#bf8700;border-color:#bf870066">環保局</span></span><span class="n">1.9 天</span><span class="ci"><span style="background:#555">SLA</span><span style="background:#2ea043">passing</span></span></div>
+    <div class="sla" id="sl2" style="top:1260px"><span class="d"><span class="chip" style="color:#a371f7;border-color:#a371f766">台電/路燈管理</span></span><span class="n">3.8 天</span><span class="ci"><span style="background:#555">SLA</span><span style="background:#2ea043">passing</span></span></div>
+    <svg id="cursor" width="64" height="64" viewBox="0 0 24 24" style="position:absolute;left:0;top:0"><path d="M4 2l15 11-6.5 1 3.8 7.4-3 1.5-3.8-7.4L4 20z" fill="#fff" stroke="#0d1117" stroke-width="1.4"/></svg>
+    <div class="rip" id="rip6"></div>
+  </div>
+
+  <div id="s7" class="L">
+    <div class="c" style="top:256px"><div class="sub">07 / live map</div><div class="cap">每一件，都在地圖上</div></div>
+    <div id="live"><span class="dot" id="ldot"></span><span class="mono" style="color:var(--red);font-size:26px;font-weight:700">Live</span>
+      <span style="flex:1"><span style="display:block;font-size:30px;font-weight:900">敦化南路二段路口號誌閃黃燈</span><span class="mono" style="font-size:22px;color:var(--muted)">大安區 · 交通局 · 剛剛</span></span>
+      <span class="mono" style="font-size:26px;border:2px solid var(--line);border-radius:22px;padding:4px 16px" id="lplus">+1 1</span></div>
+  </div>
+
+  <div id="s8" class="L">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 620px 640px at 540px 940px,#0d1117f2 30%,#0d111700)"></div>
+    <div class="c mono" id="e0" style="top:500px;font-size:36px;color:var(--green)">$ git checkout taipei</div>
+    <div class="c shine" id="e1" style="top:590px;font-size:168px;font-weight:900;line-height:1.15">台北 1999</div>
+    <div class="c shine" id="e2" style="top:790px;font-size:168px;font-weight:900;line-height:1.15">快速通報</div>
+    <div class="c" id="e3" style="top:1020px;font-size:44px;color:#d1d7e0;letter-spacing:4px">看得見 · 找得到人 · 追得到進度</div>
+    <div class="c mono" id="e4" style="top:1120px;font-size:34px;color:var(--muted)">target: <span style="color:var(--green)">0 open issues</span></div>
+    <div id="url">taipei-issue-tracker.labanchen.workers.dev</div>
+    <div class="c" id="e5" style="top:1400px;font-size:22px;color:var(--muted)">案件為模擬資料；歷史派工為 data.taipei 真實資料</div>
+  </div>
+</div>
+<canvas id="fx" width="1080" height="1920"></canvas>
+
+<script>
+"use strict";
+const W = 1080, H = 1920, CX = 540, DUR = 29.5;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eo = k => 1 - (1 - k) ** 3, ei = k => k * k * k;
+const eio = k => k < .5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+const back = k => { const c = 2.2; return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2; };
+const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const imp = (t, T, d = 10) => t < T ? 0 : Math.exp(-(t - T) * d);
+const win = (t, a, b, fi = .25, fo = .25) => Math.min(seg(t, a, a + fi), 1 - seg(t, b - fo, b));
+const chars = s => [...s];
+const typed = (s, t, t0, dt) => chars(s).slice(0, clamp(Math.floor((t - t0) / dt), 0, 1e9)).join("");
+const GL = "!<>-_/[]{}=+*^?#01ABCDEF";
+const scramble = (s, k, seed) => { const a = chars(s), m = Math.floor(k * a.length); return a.map((c, i) => i < m || c === " " ? c : GL[Math.floor(hash(seed * 13.1 + i * 7.3) * GL.length)]).join(""); };
+function show(el, o, tf = "", filter = "") {
+  el.style.visibility = o > .001 ? "visible" : "hidden";
+  el.style.opacity = o; el.style.transform = tf; el.style.filter = filter;
+}
+// Red/cyan split used on glitches and slams.
+const rgb = dx => dx > .3 ? `${dx}px 0 #ff2a6dcc,${-dx}px 0 #05d9e8cc` : "none";
+
+/* ---------- map projection and data ---------- */
+const D = window.DATA;
+const LON0 = 121.4588, LON1 = 121.6659, LAT0 = 24.9603, LAT1 = 25.2102, KC = Math.cos(25.085 * Math.PI / 180);
+const MW = 840, SC = MW / ((LON1 - LON0) * KC), MH = (LAT1 - LAT0) * SC, MX = (W - MW) / 2, MCY = 1060, MY = MCY - MH / 2;
+const proj = (lon, lat) => [MX + (lon - LON0) * KC * SC, MY + (LAT1 - lat) * SC];
+
+const districts = D.districts.features.map(f => {
+  const pts = f.geometry.coordinates[0].map(([lo, la]) => proj(lo, la));
+  let len = 0; const cum = [0];
+  for (let i = 1; i < pts.length; i++) { len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); cum.push(len); }
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  return { name: f.properties.district, pts, cum, len, cx, cy };
+});
+const DCOL = ["#1f6feb", "#2ea043", "#bf8700", "#8957e5", "#db61a2", "#1b7c83", "#d1242f", "#57ab5a", "#e16f24", "#539bf5", "#a371f7", "#3fb950"];
+
+const HIS = D.history, dayKeys = Object.keys(HIS.days).sort();
+let N = 0; for (const k of dayKeys) N += HIS.days[k].length;
+const TX = new Float32Array(N), TY = new Float32Array(N), SR = new Float32Array(N), SA = new Float32Array(N), COL = new Uint8Array(N), DAY = new Uint16Array(N);
+const CAT = { "TYPEA-AC0100": 0, "TYPEA-AC0200": 1, "TYPEA-AC0300": 2, "TYPEA-AC0500": 3, "TYPEA-AC0700": 4 };
+const PAL = [[63, 185, 80], [210, 153, 34], [68, 147, 248], [219, 97, 162], [163, 113, 247]];
+const GCX = CX, GCY = 1000;
+{
+  let i = 0;
+  dayKeys.forEach((k, di) => {
+    for (const [r, it] of HIS.days[k].slice().sort((a, b) => a[2] - b[2])) {
+      const rd = HIS.roads[r]; let [x, y] = proj(rd[3], rd[2]);
+      // Roads share one coordinate, so spread each dispatch around its road point.
+      const u = Math.max(hash(i * 1.31 + .1), 1e-6), v = hash(i * 2.17 + .7), g = Math.sqrt(-2 * Math.log(u)) * 8.5;
+      TX[i] = x + g * Math.cos(2 * Math.PI * v); TY[i] = y + g * Math.sin(2 * Math.PI * v);
+      const arm = Math.floor(hash(i * 5.1 + .2) * 3), r0 = 50 + 470 * Math.pow(hash(i * 3.7 + .3), .65);
+      SR[i] = r0; SA[i] = arm * 2.094 + r0 * .012 + (hash(i * 7.9 + .4) - .5) * .8;
+      COL[i] = CAT[HIS.items[it][1]] ?? 0; DAY[i] = di; i++;
+    }
+  });
+}
+const road = name => { const r = HIS.roads.find(x => x[1] === name); return proj(r[3], r[2]); };
+const PINS = [ // [road, colour, +1, drop time]
+  ["信義路四段", "#8957e5", 3, 25.0], ["興隆路三段", "#d29922", 3, 25.12], ["研究院路二段", "#3fb950", 3, 25.24],
+  ["民生東路五段", "#a371f7", 3, 25.36], ["中山北路五段", "#db61a2", 3, 25.48], ["環河南路二段", "#3fb950", 3, 25.6],
+  ["承德路三段", "#4493f8", 2, 25.72], ["內湖路一段", "#d29922", 2, 25.84], ["羅斯福路四段", "#db61a2", 7, 25.96],
+  ["北投路二段", "#3fb950", 2, 26.08], ["敦化南路二段", "#db61a2", 1, 24.75],
+].map(([n, c, p, t0]) => { const [x, y] = road(n); return { x, y, c, p, t0, hot: n === "敦化南路二段" }; });
+const FOC = road("敦化南路二段");
+
+/* ---------- canvases ---------- */
+const cv = $("cv"), ctx = cv.getContext("2d"), fx = $("fx"), fctx = fx.getContext("2d");
+const pc = document.createElement("canvas"); pc.width = W; pc.height = H; const pctx = pc.getContext("2d");
+const pimg = pctx.createImageData(W, H), PD = pimg.data;
+const bl1 = document.createElement("canvas"); bl1.width = 270; bl1.height = 480; const b1 = bl1.getContext("2d");
+const bl2 = document.createElement("canvas"); bl2.width = 90; bl2.height = 160; const b2 = bl2.getContext("2d");
+const grain = [0, 1, 2, 3].map(s => {
+  const c = document.createElement("canvas"); c.width = 540; c.height = 960;
+  const g = c.getContext("2d"), im = g.createImageData(540, 960);
+  let x = 1234567 + s * 99991;
+  for (let j = 0; j < im.data.length; j += 4) { x = (x * 1103515245 + 12345) & 0x7fffffff; const v = x & 255; im.data[j] = im.data[j + 1] = im.data[j + 2] = v; im.data[j + 3] = 10; }
+  g.putImageData(im, 0, 0); return c;
+});
+const vig = document.createElement("canvas"); vig.width = W; vig.height = H;
+{ const g = vig.getContext("2d"), gr = g.createRadialGradient(CX, 960, 380, CX, 960, 1250); gr.addColorStop(0, "#0000"); gr.addColorStop(1, "#000c"); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+const dots = document.createElement("canvas"); dots.width = 54; dots.height = 54;
+{ const g = dots.getContext("2d"); g.fillStyle = "#ffffff12"; g.fillRect(26, 26, 3, 3); }
+const dotPat = ctx.createPattern(dots, "repeat");
+
+/* ---------- camera: screen = C + z * R(rot) * (p - focus) ---------- */
+function camera(t) {
+  let z = 1, rot = 0, fx_ = CX, fy = MCY;
+  if (t < 8.6) { const k = eo(seg(t, 3.3, 8.2)); z = lerp(1.22, 1, k); rot = lerp(-.42, 0, k); }
+  else if (t < 12) z = 1 + .05 * seg(t, 8.6, 11);
+  else if (t < 27) { const k = eio(seg(t, 24.5, 26.4)); z = lerp(2.3, 1.08, k); fx_ = lerp(FOC[0], CX, k); fy = lerp(FOC[1], MCY, k); }
+  else { const k = eio(seg(t, 27, 29.5)); z = lerp(1.08, .94, k); }
+  return { z, c: Math.cos(rot), s: Math.sin(rot), fx: fx_, fy };
+}
+const camP = (x, y, m) => { const dx = x - m.fx, dy = y - m.fy; return [CX + (dx * m.c - dy * m.s) * m.z, MCY + (dx * m.s + dy * m.c) * m.z]; };
+const camT = (g, m) => g.setTransform(m.z * m.c, m.z * m.s, -m.z * m.s, m.z * m.c, CX - m.z * (m.c * m.fx - m.s * m.fy), MCY - m.z * (m.s * m.fx + m.c * m.fy));
+
+/* ---------- particles: 128,640 real dispatches ---------- */
+const launch = i => 3.5 + (i / N) * 3.4; // every dispatch has landed by 7.9 s
+function pgain(t) {
+  if (t < 3) return 0;
+  if (t < 8.6) return lerp(.36, .22, seg(t, 7, 8.2));
+  if (t < 11) return lerp(.22, .14, seg(t, 8.5, 8.9));
+  if (t < 12.02) return .14 + 1.2 * ei(seg(t, 11, 12));
+  if (t < 24.5) return 0;
+  if (t < 27) return .22;
+  return lerp(.22, .07, seg(t, 27, 27.8));
+}
+function particles(t, m) {
+  PD.fill(0);
+  const gain = pgain(t); if (!gain) return false;
+  const vort = t < 12.02 ? eio(seg(t, 11, 12)) : 0, VX = CX, VY = 900;
+  const rev = t >= 24.5 ? 1700 * eo(seg(t, 24.6, 25.9)) : -1;
+  const rx = rev >= 0 ? camP(FOC[0], FOC[1], m) : null;
+  for (let i = 0; i < N; i++) {
+    let x, y, g = gain;
+    if (t < 8.6) {
+      const L = launch(i), k = clamp((t - L) / 1.0), r = SR[i];
+      const a = SA[i] + 1.5 * (120 / (r + 60)) * (Math.min(t, L) - 3);
+      const gx = GCX + Math.cos(a) * r, gy = GCY + Math.sin(a) * r * .9;
+      if (k <= 0) { x = gx; y = gy; g *= .75; }
+      else {
+        const [tx, ty] = camP(TX[i], TY[i], m), e = eio(k), dx = tx - gx, dy = ty - gy, len = Math.hypot(dx, dy) || 1;
+        const curl = Math.sin(Math.PI * k) * 160 * (hash(i * .7) - .5);
+        x = lerp(gx, tx, e) - dy / len * curl; y = lerp(gy, ty, e) + dx / len * curl;
+        if (k < 1) g *= 1 + 3.5 * (1 - k);
+      }
+    } else {
+      [x, y] = camP(TX[i], TY[i], m);
+      if (vort > 0) {
+        const dx = x - VX, dy = y - VY, r = Math.hypot(dx, dy), th = Math.atan2(dy, dx) + vort * vort * (4 + 500 / (r + 80));
+        const r2 = r * (1 - vort) ** 1.7; x = VX + Math.cos(th) * r2; y = VY + Math.sin(th) * r2;
+      }
+      if (rev >= 0) {
+        const d = Math.hypot(x - rx[0], y - rx[1]); if (d > rev) continue;
+        if (rev - d < 60) g *= 1 + 3 * (1 - (rev - d) / 60); // bright reveal edge
+      }
+    }
+    if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
+    const p = ((y | 0) * W + (x | 0)) * 4, c = PAL[COL[i]], r = c[0] * g, gg = c[1] * g, b = c[2] * g;
+    PD[p] += r; PD[p + 1] += gg; PD[p + 2] += b; PD[p + 3] = 255;
+    PD[p + 4] += r; PD[p + 5] += gg; PD[p + 6] += b; PD[p + 7] = 255;
+    const q = p + W * 4;
+    PD[q] += r; PD[q + 1] += gg; PD[q + 2] += b; PD[q + 3] = 255;
+    PD[q + 4] += r; PD[q + 5] += gg; PD[q + 6] += b; PD[q + 7] = 255;
+  }
+  pctx.putImageData(pimg, 0, 0);
+  return true;
+}
+function drawParticles() {
+  b1.clearRect(0, 0, 270, 480); b1.drawImage(pc, 0, 0, 270, 480);
+  b2.clearRect(0, 0, 90, 160); b2.drawImage(bl1, 0, 0, 90, 160);
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.imageSmoothingQuality = "high";
+  ctx.globalAlpha = .9; ctx.drawImage(bl2, 0, 0, W, H);
+  ctx.globalAlpha = .8; ctx.drawImage(bl1, 0, 0, W, H);
+  ctx.globalAlpha = 1; ctx.drawImage(pc, 0, 0);
+  ctx.restore();
+}
+
+/* ---------- map outlines, labels, pins ---------- */
+function outlines(t, m) {
+  let a = 0, k = 1, fill = 0;
+  if (t >= 3 && t < 12) { a = .55 * (1 - seg(t, 10.8, 11.6)); k = eio(seg(t, 3.6, 6.6)); }
+  else if (t >= 24.5) { a = .55 * seg(t, 24.6, 25.4) * (t > 27 ? lerp(1, .5, seg(t, 27, 27.8)) : 1); fill = a * .32; }
+  if (a <= 0) return;
+  ctx.save(); camT(ctx, m); ctx.lineJoin = "round";
+  districts.forEach((d, j) => {
+    ctx.beginPath(); const lim = d.len * k;
+    ctx.moveTo(d.pts[0][0], d.pts[0][1]);
+    for (let i = 1; i < d.pts.length && d.cum[i - 1] < lim; i++) {
+      if (d.cum[i] <= lim) ctx.lineTo(d.pts[i][0], d.pts[i][1]);
+      else { const f = (lim - d.cum[i - 1]) / (d.cum[i] - d.cum[i - 1]); ctx.lineTo(lerp(d.pts[i - 1][0], d.pts[i][0], f), lerp(d.pts[i - 1][1], d.pts[i][1], f)); }
+    }
+    if (fill) { ctx.globalAlpha = fill; ctx.fillStyle = DCOL[j]; ctx.fill(); }
+    ctx.globalAlpha = a; ctx.strokeStyle = "#8bb8ff"; ctx.lineWidth = 2.2 / m.z; ctx.stroke();
+  });
+  ctx.restore();
+  if (t >= 24.5) { // district names
+    const la = seg(t, 25.3, 25.9) * (t > 27 ? 1 - seg(t, 27, 27.5) : 1); if (la <= 0) return;
+    ctx.save(); ctx.font = "700 26px 'Source Han Sans TC'"; ctx.textAlign = "center"; ctx.fillStyle = "#f0f6fc"; ctx.globalAlpha = la * .75;
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 8;
+    for (const d of districts) { const [x, y] = camP(d.cx, d.cy, m); ctx.fillText(d.name, x, y); }
+    ctx.restore();
+  }
+}
+function pin(x, y, col, s, alpha, label) {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(s, s);
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-6, -14, -22, -26, -22, -42); ctx.arc(0, -42, 22, Math.PI, 0); ctx.bezierCurveTo(22, -26, 6, -14, 0, 0); ctx.closePath();
+  ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 26; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "#ffffffaa"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -42, 8, 0, 2 * Math.PI); ctx.fillStyle = "#0d1117"; ctx.fill();
+  if (label) {
+    ctx.font = "700 22px Menlo"; const w = ctx.measureText(label).width + 22;
+    ctx.fillStyle = "#0d1117ee"; ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(26, -86, w, 36, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#f0f6fc"; ctx.fillText(label, 37, -60);
+  }
+  ctx.restore();
+}
+function pins(t, m) {
+  if (t < 24.6) return;
+  const fade = t > 27 ? 1 - seg(t, 27, 27.6) : 1; if (fade <= 0) return;
+  for (const p of PINS) {
+    const k = seg(t, p.t0, p.t0 + .45); if (k <= 0) continue;
+    const [x, y] = camP(p.x, p.y, m);
+    if (p.hot) for (let r = 0; r < 3; r++) { // ripple rings on the new report
+      const q = ((t - p.t0) * .9 + r / 3) % 1;
+      ctx.save(); ctx.globalAlpha = (1 - q) * .8 * fade; ctx.strokeStyle = p.c; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(x, y, 20 + q * 120, (20 + q * 120) * .45, 0, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+    }
+    pin(x, y - 260 * (1 - eo(k)), p.c, (.85 + .05 * p.p) * back(k), clamp(k * 3) * fade, k > .6 ? "+" + (p.hot ? Math.min(3, 1 + Math.floor(seg(t, 25.6, 26.6) * 3)) : p.p) : "");
+  }
+}
+
+/* ---------- background ---------- */
+const GLOW = [[0, [68, 147, 248]], [3, [63, 185, 80]], [8.6, [248, 81, 73]], [12, [68, 147, 248]], [14.5, [63, 185, 80]], [20, [137, 87, 229]], [24.5, [63, 185, 80]], [27, [68, 147, 248]]];
+function background(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#0d1117"; ctx.fillRect(0, 0, W, H);
+  let c = GLOW[0][1];
+  for (let i = 1; i < GLOW.length; i++) if (t >= GLOW[i][0]) { const k = seg(t, GLOW[i][0], GLOW[i][0] + .8); c = GLOW[i - 1][1].map((v, j) => lerp(v, GLOW[i][1][j], k)); }
+  const gr = ctx.createRadialGradient(CX, 980, 0, CX, 980, 1100);
+  gr.addColorStop(0, `rgba(${c.map(Math.round)},.16)`); gr.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(0, -(t * 18) % 54); ctx.fillStyle = dotPat; ctx.fillRect(0, 0, W, H + 54); ctx.restore();
+}
+
+/* ---------- scenes ---------- */
+function caption(t, list, sub, cap) { // list: [t0, sub, text]
+  let cur = list[0]; for (const it of list) if (t >= it[0]) cur = it;
+  sub.textContent = cur[1]; cap.textContent = cur[2];
+  const k = eo(seg(t, cur[0], cur[0] + .35));
+  return { o: k, y: (1 - k) * 50, blur: (1 - k) * 12 };
+}
+function s1(t) {
+  const el = $("s1"); if (t >= 3.02) return show(el, 0);
+  $("t1").textContent = typed("git checkout taipei", t, .35, .065);
+  $("t2").textContent = t >= 1.85 ? typed("Switched to branch 'taipei'", t, 1.85, .018) : "";
+  $("cur").style.opacity = (t < 1.6 || Math.floor(t * 2.5) % 2 === 0) ? 1 : 0;
+  const g = seg(t, 2.45, 3), jit = g > 0 ? (hash(Math.floor(t * 30)) - .5) * 60 * g : 0;
+  const z = 1 + 9 * ei(g);
+  $("term").style.textShadow = rgb(g * 26 + (t > 1.85 && t < 2.05 ? 8 : 0));
+  show(el, 1, `translate(${jit}px,0) scale(${z}) skewX(${jit * .2}deg)`, g > .5 ? `blur(${(g - .5) * 14}px)` : "");
+  el.style.transformOrigin = "540px 860px";
+}
+function s2(t, idx) {
+  const el = $("s2"), o = win(t, 3.6, 8.7, .4, .3); show(el, o, `translateY(${(1 - eo(seg(t, 3.6, 4.1))) * -40}px)`);
+  if (!o) return;
+  const n = Math.round(N * eo(seg(t, 4.5, 7.9)));
+  $("cnt").textContent = n.toLocaleString("en-US");
+  $("day").textContent = dayKeys[DAY[Math.max(0, Math.min(N - 1, n - 1))]];
+}
+function s3(t) {
+  const el = $("s3"); if (t < 8.5 || t > 12.05) return show(el, 0);
+  const v = eio(seg(t, 11, 12));
+  show(el, 1 - v * v, `rotate(${v * v * 160}deg) scale(${1 - v * .95})`, v ? `blur(${v * 16}px)` : "");
+  el.style.transformOrigin = "540px 900px";
+  show($("p0"), seg(t, 8.55, 8.8));
+  [[$("p1"), 8.7], [$("p2"), 9.35], [$("p3"), 10.0]].forEach(([e, T]) => {
+    const k = seg(t, T, T + .16);
+    show(e, k, `scale(${lerp(2.4, 1, eo(k))})`, k < 1 ? `blur(${(1 - k) * 18}px)` : "");
+    e.style.textShadow = rgb(26 * imp(t, T, 5));
+  });
+  const k4 = seg(t, 10.55, 10.8); show($("p4"), k4, `translateY(${(1 - eo(k4)) * 30}px)`); $("p4").style.textShadow = rgb(14 * imp(t, 10.55, 4));
+}
+function s4(t) {
+  const el = $("s4"), o = win(t, 12, 14.7, .12, .2);
+  show(el, o, `scale(${lerp(1.08, 1, eo(seg(t, 12, 12.8)))})`, t > 14.5 ? `blur(${seg(t, 14.5, 14.7) * 20}px)` : "");
+  if (!o) return;
+  const sh = $("shot"); sh.style.transform = `perspective(1400px) rotateX(52deg) rotateZ(-14deg) translateY(${-200 - (t - 12) * 140}px)`;
+  [["r0", 12.05], ["r1", 12.15], ["r2", 12.35]].forEach(([id, T]) => { const k = seg(t, T, T + .3); show($(id), k, `translateY(${(1 - eo(k)) * 60}px)`, `blur(${(1 - k) * 10}px)`); });
+  [0, 1, 2, 3].forEach(i => {
+    const T = 13.0 + i * .18, k = seg(t, T, T + .3), e = $("m" + i), en = e.querySelector(".en");
+    show(e, k, `translateX(${(1 - eo(k)) * -120}px)`);
+    en.textContent = scramble(en.dataset.t, seg(t, T + .1, T + .5), Math.floor(t * 30) + i * 50);
+  });
+}
+const TA = "敦化南路二段路口紅綠燈一直閃黃燈，有事請打 ", TEL = "0912-345-678";
+function ripple(e, x, y, t, T, scale = 1) {
+  const k = seg(t, T, T + .45);
+  show(e, k > 0 && k < 1 ? 1 - k : 0, `scale(${(1 + k * 5) * scale})`);
+  e.style.left = x + "px"; e.style.top = y + "px";
+}
+function s5(t) {
+  const el = $("s5"), o = win(t, 14.5, 20.15, .15, .25); show(el, o); if (!o) return;
+  const c = caption(t, [[14.5, "01 / 通報", "一句話，就能通報"], [17.6, "02 / taipei-bot", "AI 自動分派局處"], [18.55, "03 / 隱私", "個資自動遮蔽"]], $("h5s"), $("h5t"));
+  show($("h5"), c.o, `translateY(${c.y}px)`, `blur(${c.blur}px)`);
+  const ki = eo(seg(t, 14.45, 15.15)), ko = ei(seg(t, 19.85, 20.15));
+  const sway = Math.sin((t - 14.5) * 1.3) * 2.5;
+  $("phone").style.transform = `translate(${-ko * 900}px,${(1 - ki) * 1100}px) rotateX(${lerp(38, 5, ki)}deg) rotateY(${lerp(-30, -9, ki) + sway - ko * 60}deg) rotateZ(${lerp(-8, 0, ki)}deg) scale(${lerp(.9, 1.08, ki)})`;
+  $("phone").style.filter = ko ? `blur(${ko * 20}px)` : "";
+  $("glare").style.transform = `translateX(${lerp(-700, 700, seg(t, 14.6, 16))}px)`;
+  const pick = seg(t, 15.0, 15.15);
+  const cx = $("catx"); cx.style.background = pick ? "#238636" : ""; cx.style.borderColor = pick ? "#3fb950" : ""; cx.style.transform = `scale(${pick ? back(pick) : 1})`;
+  // typing, then the phone number scrambles into the mask
+  const full = TA + TEL, ty = typed(full, t, 15.3, .042);
+  const mk = seg(t, 18.5, 18.9);
+  if (t < 18.5) $("ta").textContent = ty;
+  else $("ta").innerHTML = TA + (mk < 1 ? `<span class="mask">${scramble(TEL, mk, Math.floor(t * 30))}</span>` : `<span class="mask">［已遮蔽］</span>`);
+  $("tac").style.opacity = t < 16.9 && Math.floor(t * 3) % 2 === 0 ? 1 : (t < 16.8 ? 1 : 0);
+  const pk = seg(t, 18.9, 19.15); show($("pii"), pk, `scale(${pk ? back(pk) : 0})`);
+  const press = (id, T) => { const k = seg(t, T, T + .2); $(id).style.transform = `scale(${1 - .06 * Math.sin(Math.PI * k)})`; };
+  press("bprev", 16.9); press("bsend", 19.35);
+  $("bprev").style.opacity = t > 17.6 ? .35 : 1;
+  // scan beam + thinking line, then the bot card
+  const sc = seg(t, 16.98, 17.62); show($("scan"), sc > 0 && sc < 1 ? 1 : 0); $("scan").style.top = (sc * 1100 - 140) + "px";
+  show($("think"), t > 17.0 && t < 17.6 ? 1 : 0); $("think").textContent = "taipei-bot 分析中" + ".".repeat(1 + Math.floor(t * 8) % 3);
+  const bk = eo(seg(t, 17.55, 17.85)); show($("bot"), bk, `translateY(${(1 - bk) * 60}px) scale(${lerp(.92, 1, bk)})`);
+  $("bt").textContent = scramble("敦化南路二段路口號誌閃黃燈", seg(t, 17.6, 17.95), Math.floor(t * 30));
+  [["k1", 17.85], ["k2", 17.95], ["k3", 18.05]].forEach(([id, T]) => { const k = seg(t, T, T + .25); show($(id), k ? 1 : 0, `scale(${k ? back(k) : 0})`); $(id).style.display = "inline-flex"; });
+  [["k4", 18.12], ["k5", 18.24]].forEach(([id, T]) => { const k = seg(t, T, T + .25); show($(id), k, `translateX(${(1 - eo(k)) * 30}px)`); });
+  const tk = eo(seg(t, 19.5, 19.75)); show($("toast"), tk, `translateY(${(1 - tk) * -140}px)`);
+  // finger taps
+  const taps = [[15.0, 270, 273], [16.9, 234, 622], [19.35, 234, 1022]];
+  let tp = taps[0]; for (const x of taps) if (t >= x[0]) tp = x;
+  ripple($("rip"), tp[1], tp[2], t, tp[0], 1.4);
+}
+function s6(t) {
+  const el = $("s6"), ki = eo(seg(t, 20.0, 20.45)), ko = seg(t, 24.25, 24.6);
+  const o = win(t, 20.0, 24.6, .2, .35); show(el, o, `translateX(${(1 - ki) * 700}px) scale(${1 + ko * .3})`, ko ? `blur(${ko * 18}px)` : (ki < 1 ? `blur(${(1 - ki) * 16}px)` : ""));
+  if (!o) return;
+  const c = caption(t, [[20.0, "04 / pull request", "修繕單就是 PR"], [21.95, "05 / merge", "Merge 就結案"], [22.6, "06 / insights", "局處速度變 CI 徽章"]], $("h6s"), $("h6t"));
+  show($("h6"), c.o, `translateY(${c.y}px)`, `blur(${c.blur}px)`);
+  const ik = eo(seg(t, 20.15, 20.5)); show($("iss"), ik, `translateY(${(1 - ik) * 40}px)`);
+  $("conn").style.transform = `scaleY(${eo(seg(t, 20.45, 20.7))})`;
+  const pk = eo(seg(t, 20.6, 20.95)); show($("pr"), pk, `translateY(${(1 - pk) * 40}px)`);
+  const merged = t >= 21.9;
+  const mb = $("mbtn"); mb.textContent = merged ? "Pull request merged" : "Merge pull request";
+  mb.style.background = merged ? "#8957e5" : "#238636";
+  mb.style.transform = `scale(${1 - .05 * Math.sin(Math.PI * seg(t, 21.8, 22.0))})`;
+  const prb = $("prb"); prb.textContent = merged ? "Merged" : "Open"; prb.style.background = merged ? "#8957e5" : "#238636";
+  const fl = seg(t, 21.95, 22.25), isb = $("isb");
+  isb.textContent = fl > .5 ? "已修復" : "Open"; isb.style.background = fl > .5 ? "#8957e5" : "#238636";
+  isb.style.transform = `rotateX(${fl < .5 ? fl * 180 : (1 - fl) * 180}deg) scale(${1 + .25 * Math.sin(Math.PI * fl)})`;
+  const ic = $("issico").querySelectorAll("circle"); ic[0].setAttribute("stroke", fl > .5 ? "#a371f7" : "#3fb950"); ic[1].setAttribute("fill", fl > .5 ? "#a371f7" : "#3fb950");
+  $("prico").querySelector("g").setAttribute("stroke", merged ? "#a371f7" : "#3fb950");
+  // cursor glides to the merge button and clicks
+  const ck = eio(seg(t, 21.0, 21.75)), cx = lerp(900, 560, ck), cy = lerp(1500, 905, ck) + Math.sin(ck * Math.PI) * -80;
+  const cs = 1 - .15 * Math.sin(Math.PI * seg(t, 21.8, 22.0));
+  show($("cursor"), seg(t, 20.9, 21.1) * (1 - seg(t, 22.6, 22.9)), `translate(${cx}px,${cy}px) scale(${cs})`);
+  ripple($("rip6"), cx + 10, cy + 10, t, 21.85, 1.6);
+  const hk = seg(t, 22.55, 22.85); show($("slah"), hk, `translateY(${(1 - eo(hk)) * 20}px)`);
+  [0, 1, 2].forEach(i => { const T = 22.65 + i * .15, k = eo(seg(t, T, T + .35)); show($("sl" + i), k, `translateX(${(1 - k) * 500}px)`); });
+}
+function s7(t) {
+  const el = $("s7"), o = win(t, 24.55, 27.15, .3, .3); show(el, o); if (!o) return;
+  const lk = eo(seg(t, 25.0, 25.4)); show($("live"), lk, `translateY(${(1 - lk) * 80}px)`);
+  $("ldot").style.opacity = .4 + .6 * Math.abs(Math.sin(t * 5));
+  $("lplus").textContent = "+1 " + Math.min(3, 1 + Math.floor(seg(t, 25.6, 26.6) * 3));
+}
+function s8(t) {
+  const el = $("s8"), o = seg(t, 26.95, 27.2); show(el, o); if (!o) return;
+  [["e0", 27.05], ["e1", 27.15], ["e2", 27.3], ["e3", 27.6], ["e4", 27.8], ["e5", 28.1]].forEach(([id, T]) => {
+    const k = seg(t, T, T + .4); show($(id), k, `translateY(${(1 - eo(k)) * 70}px) scale(${lerp(1.15, 1, eo(k))})`, k < 1 ? `blur(${(1 - k) * 14}px)` : "");
+  });
+  ["e1", "e2"].forEach((id, i) => $(id).style.backgroundPosition = `${lerp(100, -60, seg(t, 27.6 + i * .12, 28.9 + i * .12))}% 0`);
+  const uk = seg(t, 27.95, 28.3); show($("url"), uk, `translateX(-50%) scale(${uk ? back(uk) : 0})`);
+  $("e0").textContent = "$ " + typed("git checkout taipei", t, 27.05, .03);
+}
+
+/* ---------- fx layer: confetti, flash, grain, vignette ---------- */
+const FLASH = [[3.0, 1, 9], [12.0, 1, 8], [14.5, .2, 16], [20.0, .2, 16], [21.95, .15, 16], [24.5, .3, 12], [27.0, .25, 12]];
+function fxLayer(t) {
+  fctx.setTransform(1, 0, 0, 1, 0, 0); fctx.clearRect(0, 0, W, H);
+  if (t >= 21.95 && t < 23.6) { // merge confetti from the status badge
+    const dt = t - 21.95;
+    for (let i = 0; i < 120; i++) {
+      const a = hash(i * 3.1) * Math.PI * 2, sp = 500 + hash(i * 5.3) * 1300;
+      const x = 905 + Math.cos(a) * sp * dt, y = 512 + Math.sin(a) * sp * dt * .8 + 1400 * dt * dt;
+      fctx.save(); fctx.globalAlpha = clamp(1 - dt / 1.6); fctx.translate(x, y); fctx.rotate(dt * (6 + i % 7) + i);
+      fctx.fillStyle = ["#a371f7", "#3fb950", "#f0f6fc", "#8957e5", "#7ee787"][i % 5]; fctx.fillRect(-9, -4, 18, 8); fctx.restore();
+    }
+  }
+  let f = 0; for (const [T, a, d] of FLASH) f += a * imp(t, T, d) * (t - T < .06 ? (t - T) / .06 : 1);
+  if (t > 11.85 && t < 12) f += ei(seg(t, 11.85, 12)) * .7; // singularity glow before the flash
+  if (f > .002) { fctx.globalAlpha = clamp(f); fctx.fillStyle = "#f0f6fc"; fctx.fillRect(0, 0, W, H); }
+  fctx.globalAlpha = 1; fctx.drawImage(vig, 0, 0);
+  fctx.globalAlpha = .9; fctx.drawImage(grain[Math.floor(t * 30) % 4], 0, 0, W, H);
+  fctx.globalAlpha = clamp(seg(t, DUR - .35, DUR)); fctx.fillStyle = "#000"; fctx.fillRect(0, 0, W, H);
+}
+// Screen shake on the hard hits.
+const SHAKE = [[3.0, 18], [8.7, 22], [9.35, 22], [10.0, 22], [12.0, 16], [21.95, 14]];
+function shake(t) {
+  let s = 0; for (const [T, a] of SHAKE) s += a * imp(t, T, 9);
+  const f = Math.floor(t * 30);
+  return s > .3 ? `translate(${(hash(f) - .5) * s}px,${(hash(f + 99) - .5) * s}px)` : "";
+}
+
+window.render = t => {
+  const m = camera(t);
+  background(t);
+  outlines(t, m);
+  if (particles(t, m)) drawParticles();
+  pins(t, m);
+  s1(t); s2(t); s3(t); s4(t); s5(t); s6(t); s7(t); s8(t);
+  $("stage").style.transform = shake(t);
+  fxLayer(t);
+};
+Promise.all([...document.images].map(i => i.decode())).then(() => { render(0); window.ready = true; });
+</script>
+</body>
+</html>

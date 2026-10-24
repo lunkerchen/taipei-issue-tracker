@@ -100,6 +100,7 @@ Cloudflare Worker（worker/src/index.js）
 | `data/offices.json` | 台北市議員（議會辦公室電話、傳真、地址、信箱）與 456 里辦公處（電話、里長手機、地址），Hub 啟動時載入 `offices` 表，不傳給前端 |
 | `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
+| `promo/` | 30 秒直式（9:16）宣傳影片。`compose.html` 用真實 1999 資料畫出每一格，`render.mjs` 產生影片。輸出放在 `promo/out/`（不放進 git）。 |
 | `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
 | `PLAN.md` | 各階段任務與驗收紀錄 |
 
@@ -113,6 +114,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
 | `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料 |
+| `promo/render.mjs` | 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）與支援 libx264 的 ffmpeg。給秒數（例如 `node promo/render.mjs 4.5 18`）時只輸出那幾格到 `promo/out/sample/`。加 `--encode` 會直接用現有畫格重新編碼，不重新擷取。 |
 
 ## 本機開發
 

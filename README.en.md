@@ -100,6 +100,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/offices.json` | Taipei city councillors (council office phone, fax, address, email) and the 456 village offices (phone, village chief mobile, address). The Hub loads it into the `offices` table at start. It is not sent to the page. |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
+| `promo/` | 30-second vertical promo video (9:16). `compose.html` draws each frame from the real 1999 data. `render.mjs` makes the video. The output goes to `promo/out/` (not in git). |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
 | `PLAN.md` | Tasks and acceptance records for each phase |
 
@@ -113,6 +114,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
 | `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data |
+| `promo/render.mjs` | Makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, and ffmpeg with libx264. Give seconds (for example `node promo/render.mjs 4.5 18`) to make only those frames in `promo/out/sample/`. Use `--encode` to encode the frames again without a new capture. |
 
 ## Local development
 
