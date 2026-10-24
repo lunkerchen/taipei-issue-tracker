@@ -25,7 +25,7 @@ const mint = async () => {
 const ownerA = await mint(), ownerB = await mint();
 const keys = { long:"long-contact", hide:"hide-me", hidden:"hidden-seed", flagged:"flagged-seed", fix:"fix-me" };
 const title = name => `QA small UX ${name} ${runId}`;
-const longEmail = "a".repeat(120) + "@" + "b".repeat(108) + ".com"; // 233 characters
+const longEmail = "a".repeat(120) + "@" + "b".repeat(54) + "." + "b".repeat(53) + ".com"; // 233 characters; domain labels stay within 63
 assert.equal(longEmail.length, 233, "the long contact email has 233 characters");
 const item = name => ({ title:title(name), body:`本機合成小型後台 UX 測試 ${runId}`, createdAt:new Date().toISOString(),
   author:ownerB.owner, dept:"工務局", district:"大安區", tags:[], photos:[], notes:[] });
