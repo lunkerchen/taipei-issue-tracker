@@ -33,15 +33,27 @@ const deleteDoc = async (path, headers = adminHeaders) => json(await post("/api/
 const own = await createVisitor();
 const firstOwner = await createVisitor();
 const secondOwner = await createVisitor();
+const thirdOwner = await createVisitor();
+const fourthOwner = await createVisitor();
 const runId = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
 const ownKey = `my-${runId}`;
 const firstKey = `other-a-${runId}`;
 const secondKey = `other-b-${runId}`;
+const thirdKey = `other-c-${runId}`;
+const fourthKey = `other-d-${runId}`;
 const ownId = `${own.id}:${ownKey}`;
 const first = { id:`${firstOwner.id}:${firstKey}`, title:`合成外部案件甲 ${runId}`, dept:"工務局新工處" };
 const second = { id:`${secondOwner.id}:${secondKey}`, title:`合成外部案件乙 ${runId}`, dept:"交通局" };
+const third = { id:`${thirdOwner.id}:${thirdKey}`, title:`合成外部案件丙 ${runId}`, dept:"環保局" };
+const fourth = { id:`${fourthOwner.id}:${fourthKey}`, title:`合成外部案件丁 ${runId}`, dept:"交通局" };
+const sortOwners = await Promise.all(Array.from({ length:36 }, () => createVisitor()));
+const sortCases = sortOwners.map((owner, index) => {
+  const key = `sort-${runId}-${index}`;
+  return { owner, key, id:`${owner.id}:${key}`, title:`合成排序案件 ${runId} ${index}`, dept:"交通局" };
+});
 const ownedDocs = [
-  `reports/${own.id}`, `reports/${firstOwner.id}`, `reports/${secondOwner.id}`,
+  `reports/${own.id}`, `reports/${firstOwner.id}`, `reports/${secondOwner.id}`, `reports/${thirdOwner.id}`, `reports/${fourthOwner.id}`,
+  ...sortOwners.map(owner => `reports/${owner.id}`),
   `votes/${own.id}`, `addenda/${own.id}`, `triage/${second.id}`
 ];
 
@@ -50,8 +62,12 @@ try {
   await Promise.all([
     report(own, ownKey, `合成自己的案件 ${runId}`, `我的陳情入口 ${runId}`, "衛生局"),
     report(firstOwner, firstKey, first.title, `合成公開案件內容甲 ${runId}`, first.dept),
-    report(secondOwner, secondKey, second.title, `合成公開案件內容乙 ${runId}`, second.dept)
+    report(secondOwner, secondKey, second.title, `合成公開案件內容乙 ${runId}`, second.dept),
+    report(thirdOwner, thirdKey, third.title, `合成公開案件內容丙 ${runId}`, third.dept),
+    report(fourthOwner, fourthKey, fourth.title, `合成公開案件內容丁 ${runId}`, fourth.dept)
   ]);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  await Promise.all(sortCases.map(item => report(item.owner, item.key, item.title, `合成排序案件內容 ${runId} ${item.key}`, item.dept)));
 
   browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({ viewport:{ width:1280, height:900 } });
@@ -91,15 +107,15 @@ try {
         gate.started();
         await gate.releasePromise;
       }
-      if (voteFailuresRemaining && body?.path === `votes/${own.id}`) {
-        voteFailuresRemaining--;
-        return route.fulfill({ status:503, contentType:"application/json", body:JSON.stringify({ error:"synthetic_vote_failure" }) });
-      }
       if (delayedVoteWrite && body?.path === `votes/${own.id}`) {
         const gate = delayedVoteWrite;
         delayedVoteWrite = null;
         gate.started();
         await gate.releasePromise;
+      }
+      if (voteFailuresRemaining && body?.path === `votes/${own.id}`) {
+        voteFailuresRemaining--;
+        return route.fulfill({ status:503, contentType:"application/json", body:JSON.stringify({ error:"synthetic_vote_failure" }) });
       }
     }
     return route.continue();
@@ -109,6 +125,9 @@ try {
   await page.waitForFunction(id => localStorage.getItem("tit-visitor") === id, own.token);
   await page.locator('#nav [data-view="mine"]').waitFor({ state:"visible" });
   await page.waitForFunction(id => [...document.querySelectorAll("#list [data-open]")].some(el => el.dataset.open === id), ownId);
+  const listedSyntheticCases = await page.locator("#list [data-open]").evaluateAll(nodes => nodes.map(node => node.dataset.open));
+  assert.equal(await page.locator("#sort").inputValue(), "votes", "the navigation scenario uses the default vote sort");
+  assert.ok(sortCases.filter(item => listedSyntheticCases.includes(item.id)).length >= 35, "the vote sort has at least 35 synthetic cases ahead of the older target");
 
   const setMismatchedFilters = async target => {
     if (await page.locator('#nav [data-view="issues"]').getAttribute("aria-current") !== "page")
@@ -175,7 +194,41 @@ try {
     }
     await savedVote;
   };
-  const withDelayedAddition = async duringWrite => {
+  const withDelayedAdditionAndVote = async (duringAddition, duringVote) => {
+    let markStarted, releaseWrite;
+    const additionGate = {
+      startedPromise:new Promise(resolve => { markStarted = resolve; }),
+      releasePromise:new Promise(resolve => { releaseWrite = resolve; }),
+      started:() => markStarted(),
+      release:() => releaseWrite()
+    };
+    let markVoteStarted, releaseVoteWrite;
+    const voteGate = {
+      startedPromise:new Promise(resolve => { markVoteStarted = resolve; }),
+      releasePromise:new Promise(resolve => { releaseVoteWrite = resolve; }),
+      started:() => markVoteStarted(),
+      release:() => releaseVoteWrite()
+    };
+    delayedAdditionWrite = additionGate; delayedVoteWrite = voteGate;
+    const savedAddition = page.waitForResponse(response => response.url().endsWith("/api/db") &&
+      response.request().method() === "POST" && response.request().postDataJSON()?.path === `addenda/${own.id}` && response.ok(), { timeout:10000 });
+    const savedVote = page.waitForResponse(response => response.url().endsWith("/api/db") &&
+      response.request().method() === "POST" && response.request().postDataJSON()?.path === `votes/${own.id}` && response.ok(), { timeout:10000 });
+    try {
+      await page.locator('#dupBox [data-dup="add"]').click();
+      await additionGate.startedPromise;
+      await duringAddition();
+      additionGate.release();
+      await savedAddition;
+      await voteGate.startedPromise;
+      await duringVote();
+    } finally {
+      additionGate.release(); voteGate.release();
+      delayedAdditionWrite = null; delayedVoteWrite = null;
+    }
+    await Promise.all([savedAddition, savedVote]);
+  };
+  const withDelayedSupplementVote = async duringVote => {
     let markStarted, releaseWrite;
     const gate = {
       startedPromise:new Promise(resolve => { markStarted = resolve; }),
@@ -183,18 +236,37 @@ try {
       started:() => markStarted(),
       release:() => releaseWrite()
     };
-    delayedAdditionWrite = gate;
-    const savedAddition = page.waitForResponse(response => response.url().endsWith("/api/db") &&
-      response.request().method() === "POST" && response.request().postDataJSON()?.path === `addenda/${own.id}` && response.ok(), { timeout:10000 });
+    delayedVoteWrite = gate;
+    const savedVote = page.waitForResponse(response => response.url().endsWith("/api/db") &&
+      response.request().method() === "POST" && response.request().postDataJSON()?.path === `votes/${own.id}` && response.ok(), { timeout:10000 });
     try {
       await page.locator('#dupBox [data-dup="add"]').click();
       await gate.startedPromise;
-      await duringWrite();
+      await duringVote();
     } finally {
       gate.release();
-      delayedAdditionWrite = null;
+      delayedVoteWrite = null;
     }
-    await savedAddition;
+    await savedVote;
+  };
+  const withDelayedSupplementVoteFailure = async duringVote => {
+    let markStarted, releaseWrite;
+    const gate = {
+      startedPromise:new Promise(resolve => { markStarted = resolve; }),
+      releasePromise:new Promise(resolve => { releaseWrite = resolve; }),
+      started:() => markStarted(),
+      release:() => releaseWrite()
+    };
+    delayedVoteWrite = gate;
+    try {
+      await page.locator('#dupBox [data-dup="add"]').click();
+      await gate.startedPromise;
+      await duringVote();
+    } finally {
+      gate.release();
+      delayedVoteWrite = null;
+    }
+    await page.waitForFunction(() => document.querySelector("#toast").textContent.includes("+1 尚未成功"));
   };
 
   await setMismatchedFilters(first);
@@ -225,35 +297,111 @@ try {
   await page.locator("#submitBtn").click();
   await page.locator('#dupBox [data-dup="add"]').waitFor({ state:"visible" });
   const delayedAdditionText = `${additionText} 寫入期間修改`;
-  await withDelayedAddition(async () => {
-    await page.locator("#newText").fill(delayedAdditionText);
-  });
+  const delayedVoteAdditionText = `${additionText} 自動 +1 等待中改稿`;
+  await withDelayedAdditionAndVote(
+    async () => page.locator("#newText").fill(delayedAdditionText),
+    async () => {
+      assert.equal(await page.locator("#newBox").isVisible(), true, "the supplement form stays open until its automatic +1 is acknowledged");
+      assert.equal(await page.locator('#nav [data-view="mine"]').getAttribute("aria-current"), "page", "the supplement stays on My reports while its automatic +1 is pending");
+      await page.locator("#newText").fill(delayedVoteAdditionText);
+    }
+  );
   assert.equal(await page.locator("#newBox").isVisible(), true, "an edited draft stays open after the addition succeeds");
-  assert.equal(await page.locator("#newText").inputValue(), delayedAdditionText, "a delayed addition keeps edits made while it was pending");
+  assert.equal(await page.locator("#newText").inputValue(), delayedVoteAdditionText, "a delayed automatic +1 keeps edits made while it was pending");
   assert.equal(await page.locator('#nav [data-view="mine"]').getAttribute("aria-current"), "page", "an edited delayed addition does not redirect from My reports");
   assert.ok((await page.locator("#newStatus").innerText()).includes("保留"), "the status says the edited report remains");
   snapshot = await (await fetch(base + "/api/db")).json();
   assert.ok(Object.values(snapshot.addenda?.[own.id]?.items || {}).some(item => item.target === first.id && item.text === additionText), "the delayed addition saved the reviewed text");
+  assert.equal(snapshot.votes?.[own.id]?.issues?.[first.id], true, "the delayed automatic +1 was acknowledged after the addition");
 
-  nextDuplicate = first;
+  await page.locator('#nav [data-view="issues"]').click();
+  await page.locator("#q").fill("");
+  await page.locator("#deptFilter").selectOption("");
+  await page.locator("#msFilter").selectOption("");
+  const orderBeforeVote = await page.locator("#list [data-open]").evaluateAll(nodes => nodes.map(node => node.dataset.open));
+  const targetIndexBeforeVote = orderBeforeVote.indexOf(third.id);
+  const latestSyntheticIndex = Math.max(...sortCases.map(item => orderBeforeVote.indexOf(item.id)));
+  assert.ok(targetIndexBeforeVote > latestSyntheticIndex, "the unvoted supplement target starts below 35+ newer synthetic cases");
+  await setMismatchedFilters(third);
+  const sortedAdditionText = `合成未投票目標排序導向 ${runId}`;
+  await page.locator("#newText").fill(sortedAdditionText);
+  nextDuplicate = third;
   await page.locator("#submitBtn").click();
   await page.locator('#dupBox [data-dup="add"]').waitFor({ state:"visible" });
-  await page.locator('#dupBox [data-dup="add"]').click();
+  let viewBeforeVoteAck = "";
+  let formVisibleBeforeVoteAck = false;
+  await withDelayedSupplementVote(async () => {
+    viewBeforeVoteAck = await page.locator('#nav button[aria-current="page"]').getAttribute("data-view");
+    formVisibleBeforeVoteAck = await page.locator("#newBox").isVisible();
+    const beforeAck = await (await fetch(base + "/api/db")).json();
+    assert.ok(Object.values(beforeAck.addenda?.[own.id]?.items || {}).some(item => item.target === third.id && item.text === sortedAdditionText), "the synthetic supplement is saved before its automatic +1 acknowledgement");
+    assert.notEqual(beforeAck.votes?.[own.id]?.issues?.[third.id], true, "the target has no prior +1 before this delayed acknowledgement");
+  });
   await page.waitForFunction(() => document.querySelector("#newBox").hidden && document.querySelector('#nav [data-view="issues"]').getAttribute("aria-current") === "page");
+  assert.equal(viewBeforeVoteAck, "mine", "the first supplement waits on My reports for its automatic +1 acknowledgement");
+  assert.equal(formVisibleBeforeVoteAck, true, "the first supplement form stays open until its automatic +1 acknowledgement");
   assert.equal(await page.locator("#q").inputValue(), "", "successful addition clears the search");
   assert.equal(await page.locator("#deptFilter").inputValue(), "", "successful addition clears the department filter");
   assert.equal(await page.locator("#msFilter").inputValue(), "", "successful addition clears the milestone filter");
   assert.equal(await page.locator("#tabOpen").getAttribute("aria-pressed"), "true", "open target selects the open tab");
-  const firstCard = await targetVisible(first);
-  assert.ok((await firstCard.innerText()).includes(additionText), "the saved addition is visible in the expanded target");
-  assert.ok((await firstCard.innerText()).includes(delayedAdditionText), "the new draft is visible after its own successful addition");
+  const thirdCard = await targetVisible(third);
+  assert.ok((await thirdCard.innerText()).includes(sortedAdditionText), "the first successful addition is visible in the expanded target after vote sorting updates");
+  const orderAfterVote = await page.locator("#list [data-open]").evaluateAll(nodes => nodes.map(node => node.dataset.open));
+  const targetIndexAfterVote = orderAfterVote.indexOf(third.id);
+  const earliestSyntheticIndexAfterVote = Math.min(...sortCases.map(item => orderAfterVote.indexOf(item.id)));
+  assert.ok(targetIndexAfterVote < earliestSyntheticIndexAfterVote, "the +1 snapshot sorts the target above the 35+ synthetic zero-vote cases");
   if (evidenceDir) {
     await mkdir(evidenceDir, { recursive:true });
     await page.screenshot({ path:`${evidenceDir}/supplement-open-target.png` });
   }
   snapshot = await (await fetch(base + "/api/db")).json();
-  assert.ok(Object.values(snapshot.addenda?.[own.id]?.items || {}).some(item => item.target === first.id && item.text === additionText), "the local Worker saved the synthetic addition");
-  assert.equal(snapshot.votes?.[own.id]?.issues?.[first.id], true, "a successful addition also gives the target +1");
+  assert.ok(Object.values(snapshot.addenda?.[own.id]?.items || {}).some(item => item.target === third.id && item.text === sortedAdditionText), "the local Worker saved the synthetic addition");
+  assert.equal(snapshot.votes?.[own.id]?.issues?.[third.id], true, "the local Worker saved the automatic +1");
+
+  await page.locator('#nav [data-view="mine"]').click();
+  await setMismatchedFilters(fourth);
+  const partialAdditionText = `合成補充先存但 +1 失敗 ${runId}`;
+  await previewDuplicate(fourth, partialAdditionText);
+  nextDuplicate = fourth;
+  voteFailuresRemaining = 2;
+  const editedAfterPartialAddition = `${partialAdditionText} 等待 +1 時編輯`;
+  await withDelayedSupplementVoteFailure(async () => {
+    const beforeFailure = await (await fetch(base + "/api/db")).json();
+    assert.ok(Object.values(beforeFailure.addenda?.[own.id]?.items || {}).some(item => item.target === fourth.id && item.text === partialAdditionText), "the supplement is saved before the delayed automatic +1 fails");
+    assert.notEqual(beforeFailure.votes?.[own.id]?.issues?.[fourth.id], true, "the target is unvoted before the delayed automatic +1 fails");
+    await page.locator("#newText").fill(editedAfterPartialAddition);
+  });
+  assert.equal(voteFailuresRemaining, 0, "both automatic +1 attempts failed after the supplement was saved");
+  assert.equal(await page.locator("#newBox").isVisible(), true, "an edited draft stays open after the automatic +1 fails");
+  assert.equal(await page.locator("#newText").inputValue(), editedAfterPartialAddition, "automatic +1 failure keeps edits made while it was pending");
+  assert.equal(await page.locator('#nav [data-view="mine"]').getAttribute("aria-current"), "page", "an edited supplement stays on My reports after the automatic +1 fails");
+  assert.ok((await page.locator("#newStatus").innerText()).includes("補充已送出；目前修改中的內容已保留"), "the form status confirms the saved supplement and retained edits");
+  assert.ok((await page.locator("#toast").innerText()).includes("+1 尚未成功"), "the notice reports the partial success");
+  assert.ok((await page.locator("#toast").innerText()).includes("已補充到 #"), "the notice confirms the supplement was saved");
+  snapshot = await (await fetch(base + "/api/db")).json();
+  assert.ok(Object.values(snapshot.addenda?.[own.id]?.items || {}).some(item => item.target === fourth.id && item.text === partialAdditionText), "the local Worker kept the supplement after the automatic +1 failed");
+  assert.notEqual(snapshot.votes?.[own.id]?.issues?.[fourth.id], true, "the local Worker has no +1 for the failed automatic vote");
+
+  await previewDuplicate(fourth, `合成等待原 +1 後再補充 ${runId}`);
+  const pendingVoteSupplementText = `合成原 +1 等待中補充 ${runId}`;
+  const savedPendingVoteSupplement = page.waitForResponse(response => response.url().endsWith("/api/db") &&
+    response.request().method() === "POST" && response.request().postDataJSON()?.path === `addenda/${own.id}` && response.ok(), { timeout:10000 });
+  await withDelayedVote(async () => {
+    await previewDuplicate(fourth, pendingVoteSupplementText);
+    await page.locator('#dupBox [data-dup="add"]').click();
+    await savedPendingVoteSupplement;
+    const whileVotePending = await (await fetch(base + "/api/db")).json();
+    assert.ok(Object.values(whileVotePending.addenda?.[own.id]?.items || {}).some(item => item.target === fourth.id && item.text === pendingVoteSupplementText), "the supplement saves while the earlier +1 is still pending");
+    assert.notEqual(whileVotePending.votes?.[own.id]?.issues?.[fourth.id], true, "the earlier +1 has not reached the Worker before its delayed acknowledgement");
+    assert.equal(await page.locator('#nav [data-view="mine"]').getAttribute("aria-current"), "page", "supplement waits on My reports for an earlier pending +1");
+    assert.equal(await page.locator("#newBox").isVisible(), true, "the supplement form stays open until the earlier +1 is acknowledged");
+  });
+  await page.waitForFunction(() => document.querySelector("#newBox").hidden && document.querySelector('#nav [data-view="issues"]').getAttribute("aria-current") === "page");
+  const fourthCard = await targetVisible(fourth);
+  assert.ok((await fourthCard.innerText()).includes(pendingVoteSupplementText), "the supplement is visible in the target after the earlier +1 acknowledgement");
+  snapshot = await (await fetch(base + "/api/db")).json();
+  assert.equal(snapshot.votes?.[own.id]?.issues?.[fourth.id], true, "the earlier +1 is acknowledged before the supplement redirects");
+  if (evidenceDir) await page.screenshot({ path:`${evidenceDir}/supplement-pending-vote-target.png` });
 
   await page.locator('#nav [data-view="mine"]').click();
   await setMismatchedFilters(second);

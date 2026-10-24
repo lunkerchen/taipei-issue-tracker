@@ -179,7 +179,7 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 
 定位測試使用合成訪客身分，在瀏覽器中延遲 GPS 與地址查詢結果，並攔截資料庫寫入。
 重複案導向回歸測試使用 `DUPLICATE_NAV_BASE`（預設為 `http://localhost:8809`）；需要 Playwright 或指定 Chrome 時，可設定 `PLAYWRIGHT_MODULE` 與 `CHROME_EXECUTABLE_PATH`。`DUPLICATE_NAV_ADMIN_TOKEN` 要與本機 Worker 的 `ADMIN_TOKEN` 相同。測試只會寫入本機 Worker 的隨機合成案件，結束時會刪除。請為此測試使用獨立的本機 Worker 持久化目錄。
-瀏覽器測試也會延遲 +1 與補充寫入，確認改稿、取消或重開通報表單時不會覆蓋目前流程。
+瀏覽器測試也會延遲 +1 與補充寫入，確認改稿、取消或重開通報表單時不會覆蓋目前流程；也會檢查投票排序後的案件導向、等待先前尚未完成的 +1，以及補充已存但 +1 失敗時顯示部分成功。
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs

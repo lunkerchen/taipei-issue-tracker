@@ -660,6 +660,7 @@ const ICON = {
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
+const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -847,21 +848,35 @@ async function act(i, list, patch = {}) {
   } finally { acting = false; }
 }
 
-async function setVote(id, on) {
+function setVote(id, on) {
   const prev = myVotes[id];
   myVotes = { ...myVotes, [id]: on }; render();
-  try {
-    const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
-    if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
-    else await ref.set(patch);
-    // The Worker shim publishes the acknowledged write on the next task; let sorting see it before a redirect scrolls.
-    await new Promise(resolve => setTimeout(resolve, 0));
-    return true;
-  }
-  catch (e) {
-    if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
-    fail(e); render(); return false;
-  }
+  let writes = pendingVoteWrites.get(id);
+  if (!writes) pendingVoteWrites.set(id, writes = new Set());
+  let tracked;
+  tracked = (async () => {
+    try {
+      const ref = db.collection("votes").doc(me), patch = { issues: { [id]: on } };
+      if (db.updateCreates || (await ref.get()).exists) await ref.update(patch);
+      else await ref.set(patch);
+      // The Worker shim publishes the acknowledged write on the next task; let sorting see it before a redirect scrolls.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return true;
+    }
+    catch (e) {
+      if (myVotes[id] === on) myVotes = { ...myVotes, [id]: prev === true };
+      fail(e); render(); return false;
+    }
+  })().finally(() => {
+    writes.delete(tracked);
+    if (!writes.size) pendingVoteWrites.delete(id);
+  });
+  writes.add(tracked);
+  return tracked;
+}
+async function voteForSupplement(id) {
+  while (pendingVoteWrites.has(id)) await Promise.all([...pendingVoteWrites.get(id)]);
+  return myVotes[id] || await setVote(id, true);
 }
 
 function heatmap() {
@@ -1356,11 +1371,11 @@ async function supplement(t, text, photos, signature) {
         throw Object.assign(new Error("idempotency_conflict"), { status:409 });
       if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }) : ref.set({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }));
     }
-    if (!myVotes[attempt.target]) setVote(attempt.target, true);
+    const voteSaved = await voteForSupplement(attempt.target);
     supplementAttempts.delete(attemptKey);
     if (unchanged()) doneReport(attempt.target, { publicTarget:true });
     else { $("newStatus").textContent = "補充已送出；目前修改中的內容已保留"; render(); }
-    toast(`已補充到 #${t.dup.n}`);
+    toast(voteSaved ? `已補充到 #${t.dup.n}` : `已補充到 #${t.dup.n}；+1 尚未成功`);
   } catch (e) { $("newStatus").textContent = ""; fail(e); }
   finally {
     supplementBusy = false; reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false;

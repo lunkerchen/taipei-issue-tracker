@@ -179,7 +179,7 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 
 The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
 The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. Set `DUPLICATE_NAV_ADMIN_TOKEN` to the same local test value as the Worker's `ADMIN_TOKEN`. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
-The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form.
+The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form. It also checks navigation after vote sorting, waits for an earlier pending +1, and reports partial success when +1 fails after an addendum is saved.
 
 ```bash
 cd worker && BASE=http://localhost:8788 node test/smoke.mjs
