@@ -10,6 +10,12 @@ const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
 // Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
 const BING_NEWS = "https://www.bing.com/news/search?q=" + encodeURIComponent("臺北") + "&format=rss&setlang=zh-TW&cc=TW";
 const PTT = "https://www.ptt.cc/bbs/Taipei/index.html";
+// Threads has no open search: a hand-picked list of 台北 posts (picked 2026-10-24, read only). Edit by hand to refresh.
+const THREADS = [
+  { title: "台北市的自來水真的不能直接燒水喝嗎", url: "https://www.threads.com/@rouninnmew__/post/De19teMmqwD", source: "Threads" },
+  { title: "桃園台北通勤，下雨天遲到被老闆問：你怎麼不搭機捷？", url: "https://www.threads.com/@vos_non_scitis/post/Dexyji9n5ay", source: "Threads" },
+  { title: "信義區深夜遇陌生男子搭訕、尾隨，提醒大家注意安全", url: "https://www.threads.com/@ariellhsu_/post/DesOwlGEv3X", source: "Threads" }
+];
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
@@ -159,14 +165,14 @@ export class Hub extends DurableObject {
   }
 
   async news() {
-    const hit = this.cacheGet("news2");
+    const hit = this.cacheGet("news3");
     if (hit) return hit;
     const [g, p] = await Promise.allSettled([bingNews(), pttNews()]);
-    const out = { items: [...(g.value || []), ...(p.value || [])] };
+    const out = { items: [...THREADS, ...(g.value || []), ...(p.value || [])] };
     if (!out.items.length) return { error: "upstream_error", status: 502 };
     // A source that failed or came back empty (bot page, changed markup) counts as down: retry in 1 min, not 10
     const up = r => r.status === "fulfilled" && r.value.length > 0;
-    this.cachePut("news2", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
+    this.cachePut("news3", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
     return out;
   }
 }
