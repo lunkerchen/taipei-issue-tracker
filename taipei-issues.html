@@ -393,6 +393,7 @@ Switched to branch 'taipei'
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
         <label class="btn" for="photoIn" id="photoLbl">加入照片</label>
         <span class="note">最多 3 張，會自動縮小並移除拍攝位置等資訊</span>
+        <span class="status" id="photoStatus" role="status"></span>
       </div>
       <div class="phprev" id="photoPrev"></div>
       <div class="dup" id="dupBox" hidden></div>
@@ -1242,10 +1243,15 @@ function drawShots() {
   $("photoPrev").innerHTML = shots.map((s, n) => `<figure><img src="${s.url}" alt="待上傳照片 ${n + 1}"><button type="button" data-rmshot="${n}" aria-label="移除照片 ${n + 1}">×</button></figure>`).join("");
   $("photoLbl").hidden = shots.length >= PHOTO_MAX;
 }
+function setPhotoFeedback(text) {
+  $("photoStatus").textContent = text;
+  // The picker can sit against the fixed bottom bars; bring the message fully into view when it changes.
+  if (text) $("photoStatus").scrollIntoView({ block:"center" });
+}
 function clearShots(only) {
   const gone = only || shots; gone.forEach(s => URL.revokeObjectURL(s.url));
   shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
-  $("photoIn").value = ""; drawShots();
+  $("photoIn").value = ""; $("photoStatus").textContent = ""; drawShots();
 }
 function reportInputStamp() {
   const aspect = document.querySelector("#aspects input:checked");
@@ -1274,8 +1280,9 @@ $("newForm").addEventListener("change", e => {
 });
 $("photoIn").addEventListener("change", () => {
   // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
-  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
+  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("photoStatus").textContent = "送出中，請稍候再加照片"; return; }
   invalidateReportPreview();
+  $("photoStatus").textContent = ""; // a new pick replaces the previous pick's feedback
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     const problems = [];
@@ -1285,7 +1292,7 @@ $("photoIn").addEventListener("change", () => {
       try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
       catch (err) { problems.push(err && err.message === "too_large" ? "有一張照片太大，請改用較小的圖片" : "有一張照片無法讀取，請改用 JPEG 或 PNG"); }
     }
-    if (gen === shotGen && problems.length) $("newStatus").textContent = problems.join("；");
+    if (gen === shotGen && problems.length) setPhotoFeedback(problems.join("；"));
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
