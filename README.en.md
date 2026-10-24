@@ -432,6 +432,12 @@ BASE=http://localhost:8788 node worker/test/pr-merge-feedback.mjs
 The repair order feedback test uses desktop and 390px phone viewports. It checks that a long title stops at 80 characters and that one click makes one repair order. It also checks that the field is empty after a repair order, and that merge or fixed shows a message and returns the page to the case list. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/reduced-motion-fly.mjs
+```
+
+The reduced-motion map flight test uses `prefers-reduced-motion: reduce` and `no-preference`. Under reduced motion, it checks that district selection switches view immediately without entering `.leaflet-zoom-anim` or taking prolonged flight animation time. Under `no-preference`, it checks that smooth flight animation is preserved. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
 BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 ```
 
