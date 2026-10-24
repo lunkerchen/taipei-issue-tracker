@@ -1212,6 +1212,8 @@ async function onListClick(e) {
   if (mapOpen) return openIssueOnMap(mapOpen.dataset.openmap);
   const o = e.target.closest("[data-open]");
   if (o) {
+    // The second click of a double click must not close the detail that the first click opened.
+    if (e.detail > 1) return;
     const id = o.dataset.open, closing = view.open.has(id);
     if (closing) {
       view.open.delete(id);
