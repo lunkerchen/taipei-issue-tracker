@@ -128,6 +128,19 @@ try {
     assert.equal(nav.docWidth, 390, `the page stays 390px wide after switching, got ${nav.docWidth}`);
     assert.equal(await page.locator("#q").getAttribute("placeholder"), "搜尋標題或內容", "the admin search hint has no is:issue");
 
+    // A live re-render keeps the active tab in the nav, but must not pull a scrolled page back to the top.
+    const jump = await page.evaluate(() => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      if (max < 200) return null;
+      window.scrollTo(0, Math.min(600, max));
+      const before = scrollY;
+      render();
+      return { before, after:scrollY };
+    });
+    assert.ok(jump === null || jump.after === jump.before,
+      `a re-render keeps the page scroll position, got ${jump?.before} to ${jump?.after}`);
+    console.log(`re-render scroll OK ${jump ? `${jump.before}->${jump.after}` : "page too short"}`);
+
     await openContact(page);
     let m = await measureContact(page, longEmail);
     assert.ok(m.right <= Math.min(m.adminRight, m.detailRight) + 1,

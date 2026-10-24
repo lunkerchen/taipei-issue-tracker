@@ -2366,7 +2366,11 @@ function replaceHash(hash) {
   syncedLocation = location.href;
 }
 function scrollActiveNav() {
-  document.querySelector('#nav [aria-current="page"]')?.scrollIntoView({ block:"nearest", inline:"nearest" });
+  const nav = $("nav"), tab = nav?.querySelector('[aria-current="page"]');
+  if (!nav || !tab) return;
+  const n = nav.getBoundingClientRect(), b = tab.getBoundingClientRect();
+  if (b.left < n.left) nav.scrollLeft -= n.left - b.left;
+  else if (b.right > n.right) nav.scrollLeft += b.right - n.right; // horizontal only: never pull the page back to the top
 }
 function show(v, replace, preserveHash = false, preserveNotice = false) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
