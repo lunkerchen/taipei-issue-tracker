@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const BASE = process.env.BASE || "http://localhost:8788";
+// Reading contacts needs the real admin key (worker/.dev.vars); the token-free ?admin demo gets 403.
+const ADMIN = process.env.ADMIN_TOKEN || /^ADMIN_TOKEN=(.*)$/m.exec(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8"))[1];
 const post = (path, headers, body) => fetch(BASE + path, {
   method:"POST", headers:{ "content-type":"application/json", ...headers },
   body:JSON.stringify(body), signal:AbortSignal.timeout(10000)
@@ -63,7 +66,7 @@ try {
   const [addendumId] = addenda;
 
   const contactResponse = await fetch(`${BASE}/api/contact?id=${encodeURIComponent(`${supplementer}:${addendumId}`)}`, {
-    headers:{ "x-admin":"1" }, signal:AbortSignal.timeout(10000)
+    headers:{ "x-admin":ADMIN }, signal:AbortSignal.timeout(10000)
   });
   assert.equal(contactResponse.status, 200);
   const saved = (await contactResponse.json()).contact;
@@ -73,7 +76,10 @@ try {
   assert.equal(saved.email, supplementerContact.email);
 
   const admin = await context.newPage();
-  await admin.goto(BASE + "/?admin#issues", { waitUntil:"domcontentloaded" });
+  // The page reads the key from #admin= and then clears the hash, so open the case list after that.
+  await admin.goto(BASE + "/#admin=" + encodeURIComponent(ADMIN), { waitUntil:"domcontentloaded" });
+  await admin.waitForFunction(() => !location.hash.includes("admin="));
+  await admin.evaluate(() => { location.hash = "#issues"; });
   await admin.waitForFunction(() => !document.querySelector("#navReport").hidden);
   await admin.locator(`.title`, { hasText:"重複補充聯絡測試" }).first().click();
   const contactButton = admin.locator(`[data-contact="${supplementer}:${addendumId}"]`);
