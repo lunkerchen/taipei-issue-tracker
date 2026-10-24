@@ -117,7 +117,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/history-releases.mjs` | 由歷史資料產生每月派工報告（`--write` 寫入線上資料庫） |
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
-| `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料 |
+| `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料。JPEG 超過 650 KB 時，腳本會降低品質重做。50 筆示範案件都有照片。 |
 
 ## 本機開發
 
