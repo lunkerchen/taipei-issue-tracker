@@ -16,7 +16,10 @@
   ],
   // Report photos (JPEG/WebP, already resized in the browser); keys are <visitor id>/<uuid>.jpg, admin/<uuid>.jpg or demo/<name>.jpg
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "taipei-issue-photos" }],
-  // Secrets: VISITOR_SECRET, ANTHROPIC_API_KEY (local: worker/.dev.vars)
+  // Progress notices (Cloudflare Email Sending). `wrangler dev` only simulates sends; real sends need Workers Paid,
+  // an onboarded sender domain and the NOTICE_FROM var. Without NOTICE_FROM no notice is sent.
+  "send_email": [{ "name": "EMAIL" }],
+  // Secrets: VISITOR_SECRET, ADMIN_TOKEN, ANTHROPIC_API_KEY (local: worker/.dev.vars)
   "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "Hub" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }],
   "observability": { "enabled": true }

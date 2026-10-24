@@ -20,6 +20,8 @@ async function visitorId(env, h) {
   return m && env.VISITOR_SECRET && await same(await sign(env.VISITOR_SECRET, m[1]), m[2]) ? m[1] : null;
 }
 const reply = r => r.error ? err(r.status, r.error) : Response.json(r);
+// The real admin: x-admin equals the ADMIN_TOKEN secret. Only it reads reporter contacts and makes triage writes send notices.
+const trustedAdmin = async (env, h) => { const v = h.get("x-admin"); return !!(v && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, v)); };
 
 // Demo admin has no token, so anyone can be admin: it gets ADMIN_LIMITER per IP; visitors get their own limiter per id.
 const limited = async (env, req, admin, visitorLimiter, id) =>
@@ -40,16 +42,16 @@ async function writeDb(req, env) {
   } else if (op === "append-addendum") {
     if (admin || path !== `addenda/${id}`) return err(403, "forbidden");
   } else if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
-  return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
+  return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || "", admin && await trustedAdmin(env, h)));
 }
 
-// Reporter contact (private): a signed visitor saves name/phone/email for one of its own reports; only the admin reads it back.
+// Reporter contact (private): a signed visitor saves name/phone/email for one of its own reports; only the token admin reads it back.
 const ITEM = /^[\w-]{1,64}$/, NAME_MAX = 30;
 async function contact(req, env, searchParams) {
   const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   if (req.method === "GET") {
     const k = searchParams.get("id") || "";
-    if (!admin) return err(403, "forbidden");
+    if (!(await trustedAdmin(env, h))) return err(403, "forbidden"); // the token-free demo admin cannot read contacts
     if (!/^[\w-]{1,80}:[\w-]{1,64}$/.test(k)) return err(400, "bad_request");
     return Response.json(await hub(env).contactGet(k), { headers: { "cache-control": "no-store" } });
   }

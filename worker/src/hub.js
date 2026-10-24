@@ -30,6 +30,19 @@ const THREADS = [
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Progress notices: an email to the reporter when the token admin changes a case's status or department, opens a 修繕單
+// or merges one. At most NOTICE_DAY per case per 24 h; changes over the cap go into the next allowed notice.
+const NOTICE_DAY = 5, SITE = "https://taipei-issue-tracker.labanchen.workers.dev";
+const STATUS_ZH = { open: "待處理", progress: "處理中", fixed: "已修復" };
+const escHtml = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// The send_email binding is RPC, so no AbortSignal: race a 10 s timer. One retry, only on errors where nothing was sent
+// (a timed-out send may still arrive, so it is not retried).
+async function mail(env, msg) {
+  for (let k = 0; ; k++) {
+    try { return await Promise.race([env.EMAIL.send(msg), sleep(10e3).then(() => { throw Object.assign(new Error("timeout"), { code: "E_TIMEOUT" }); })]); }
+    catch (e) { if (k || !["E_RATE_LIMIT_EXCEEDED", "E_INTERNAL_SERVER_ERROR"].includes(e.code)) throw e; await sleep(1000); }
+  }
+}
 // Same one-level-deep merge as the page's artifact runtime uses for update()
 const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = isObj(v) && isObj(o[k]) ? { ...o[k], ...v } : v; return o; };
 
@@ -89,6 +102,8 @@ export class Hub extends DurableObject {
       // Reporter name/phone/email: kept out of docs, so snapshot() and the socket never send them; only the admin route reads them
       this.sql.exec("CREATE TABLE IF NOT EXISTS quota (who TEXT NOT NULL, ip TEXT NOT NULL, t INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS contacts (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
+      // Per case: the state the last notice reported and its send times (no email address here)
+      this.sql.exec("CREATE TABLE IF NOT EXISTS notices (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS counter (k TEXT PRIMARY KEY, v INTEGER NOT NULL)");
       this.seq = this.sql.exec("SELECT v FROM counter WHERE k = 'seq'").toArray()[0]?.v || 0;
       // Councilor and 里辦公處 phone book (data/offices.json); not in docs, so snapshot() and the socket never send it.
@@ -125,7 +140,7 @@ export class Hub extends DurableObject {
   // (null for a removed doc) with one new seq. ponytail: citizen photos stay in R2 as orphans; sweep R2 if storage matters.
   resetSeed() {
     const old = this.sql.exec("SELECT path FROM docs").toArray().map(r => r.path);
-    this.sql.exec("DELETE FROM docs"); this.sql.exec("DELETE FROM contacts"); this.sql.exec("DELETE FROM quota");
+    this.sql.exec("DELETE FROM docs"); this.sql.exec("DELETE FROM contacts"); this.sql.exec("DELETE FROM quota"); this.sql.exec("DELETE FROM notices");
     const docs = Object.entries(seed).flatMap(([c, ds]) => Object.entries(ds).map(([id, d]) => [`${c}/${id}`, d]));
     for (const [path, d] of docs) this.sql.exec("INSERT INTO docs VALUES (?, ?)", path, JSON.stringify(d));
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
@@ -142,6 +157,38 @@ export class Hub extends DurableObject {
 
   contactPut(k, v) { this.sql.exec("INSERT OR REPLACE INTO contacts VALUES (?, ?)", k, JSON.stringify(v)); return { ok: true }; }
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
+
+  // After a token-admin triage write: email the reporter what changed since the last notice. Off until NOTICE_FROM is set.
+  // demo-seed cases have no contact, so they never send. ponytail: "重設到快照" re-sets triage docs through this path too,
+  // so a restore can send a "status went back" notice; skip triage writes from that button if it matters.
+  notify(target, triage) {
+    if (!this.env.EMAIL || !this.env.NOTICE_FROM || !isObj(triage)) return;
+    const contact = this.contactGet(target).contact, colon = target.indexOf(":");
+    if (!contact?.email || colon < 0) return;
+    const report = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${target.slice(0, colon)}`).toArray()[0];
+    const item = report && JSON.parse(report.data).items?.[target.slice(colon + 1)];
+    if (!isObj(item) || typeof item.title !== "string") return;
+    const evs = Array.isArray(triage.events) ? triage.events.filter(isObj) : [];
+    const now = { status: triage.status || "open", dept: triage.dept || item.dept || "",
+      prs: evs.filter(e => e.type === "pr" && Number.isFinite(e.n)).map(e => e.n), merged: evs.filter(e => e.type === "merged" && Number.isFinite(e.pr)).map(e => e.pr) };
+    const row = this.sql.exec("SELECT v FROM notices WHERE k = ?", target).toArray()[0];
+    const last = row ? JSON.parse(row.v) : { state: { status: "open", dept: item.dept || "", prs: [], merged: [] }, times: [] }, was = last.state;
+    const lines = [
+      ...now.prs.filter(n => !was.prs.includes(n)).map(n => `已開立修繕單 #${n}：${String(evs.find(e => e.type === "pr" && e.n === n).title || "").slice(0, 80)}`),
+      ...now.merged.filter(n => !was.merged.includes(n)).map(n => `修繕單 #${n} 已完成並合併`),
+      ...(now.status !== was.status ? [`狀態改為「${STATUS_ZH[now.status] || now.status}」`] : []),
+      ...(now.dept !== was.dept ? [`改由「${now.dept}」負責`] : [])];
+    const times = last.times.filter(t => t > Date.now() - 864e5);
+    if (!lines.length || times.length >= NOTICE_DAY) return; // nothing new (dedupe), or over the daily cap
+    this.sql.exec("INSERT OR REPLACE INTO notices VALUES (?, ?)", target, JSON.stringify({ state: now, times: [...times, Date.now()] }));
+    const title = item.title.replace(/\s+/g, " ").slice(0, 60);
+    const text = [`${contact.name} 您好：`, "", `你通報的「${title}」有新進度：`, ...lines.map(l => "・" + l), "",
+      `案件頁面：${SITE}/#issue/${encodeURIComponent(target)}`, "",
+      "這是示範專案的自動通知，不是臺北市政府或 1999 的官方通知，請勿直接回覆。有問題請寫信到 labanchen@gmail.com。"].join("\n");
+    // Errors log the case and the error code only, never the address or the message
+    this.ctx.waitUntil(mail(this.env, { to: contact.email, from: { email: this.env.NOTICE_FROM, name: "台北市民 1999 通報地圖（示範）" },
+      subject: `陳情進度更新：${title}`, text, html: escHtml(text).replace(/\n/g, "<br>") }).catch(e => console.error("notice_failed", target, e.code || "error")));
+  }
 
   publicCase(target) {
     if (typeof target !== "string" || target.length > 140 || !CASE_ID.test(target)) return false;
@@ -198,7 +245,8 @@ export class Hub extends DurableObject {
     return null;
   }
 
-  write(op, path, data, admin, ip = "") {
+  // trusted: the writer sent the real ADMIN_TOKEN, not just the demo x-admin; only its triage writes send notices
+  write(op, path, data, admin, ip = "", trusted = false) {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
     const creating = op === "create-report";
     let reportContact = null, contactKey = null;
@@ -214,7 +262,7 @@ export class Hub extends DurableObject {
         const email = typeof c?.email === "string" ? c.email.trim() : "";
         if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
           return { status: 400, error: "bad_contact" };
-        // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
+        // notify() reads `email` from here for progress notices; only the token admin's /api/contact reads the row back
         reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
         contactKey = `${path.slice(8)}:${data.key}`;
       }
@@ -293,6 +341,7 @@ export class Hub extends DurableObject {
         ws.send(JSON.stringify({ path, data, seq: this.seq }));
       } catch {}
     }
+    if (trusted && doc && path.startsWith("triage/")) this.notify(path.slice(7), doc);
     return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 

@@ -1,8 +1,10 @@
-// Run against a local Worker: BASE=http://localhost:8805 node worker/test/report-contact.mjs
+// Run against a local Worker: BASE=http://localhost:8805 node worker/test/report-contact.mjs (reads ADMIN_TOKEN from worker/.dev.vars)
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 
-const base = process.env.BASE || "http://localhost:8805", admin = "1"; // demo mode: any x-admin value is admin
+// Only the token admin reads contacts; the token-free demo admin gets 403
+const base = process.env.BASE || "http://localhost:8805", admin = process.env.ADMIN_TOKEN || /^ADMIN_TOKEN=(.*)$/m.exec(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8"))[1];
 const post = (path, headers, body) => fetch(base + path, {
   method: "POST", headers: { "content-type": "application/json", ...headers },
   body: JSON.stringify(body), signal: AbortSignal.timeout(8000)

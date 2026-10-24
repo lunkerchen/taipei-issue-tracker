@@ -11,7 +11,7 @@ This website shows Taipei City as a GitHub repository. A 1999 citizen report is 
 This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖」.
 
 - Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
-- Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>
+- Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>. The demo console cannot read contact data and does not send progress notices. For these functions, open `?admin=<ADMIN_TOKEN>`.
 - Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
 
 > The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
@@ -35,8 +35,9 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 **Citizens (mobile phone first)**
 
 - **Quick report**: Select a general area first: food, home, transport, education, leisure or health. This step is optional. Then write the problem. Each general area has 3 to 7 templates (33 templates in total). If you use a template and do not write text after each colon, the website stops the report. You can use voice input in Chinese. The voice button shows only if the browser supports it. You can attach a maximum of 3 photos.
-- **Contact data**: Your name, mobile number and email address are necessary. The email address is for case progress notices. The website does not send these notices yet. The Worker saves the case and its contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. But the demo admin console needs no verification, so anyone can read it. The form and the privacy notice tell citizens not to enter real personal data. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
+- **Contact data**: Your name, mobile number and email address are necessary. The email address is for case progress notices (refer to **Progress notices**). The Worker saves the case and its contact data together. A refused duplicate or a failed new case does not leave contact data for that attempt. A retry keeps the first saved contact data. The data uses the report author's identity, also when you send a report from an administrator tab. The citizen pages do not show it. Only an administrator with the `ADMIN_TOKEN` key can read it. The demo admin console (no key) gets a refusal. If the report is about a person or a business (for example, illegal parking, noise or an illegal building), you can select "real-name report".
 - **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, the form keeps the draft and announces the error to assistive technology. If the draft is unchanged and you have not moved focus, keyboard focus returns to "Preview report". A retry of the same report uses the same case ID.
+- **Progress notices**: The Worker sends an email to the reporter when an administrator with the key saves one of these changes: a new status, a different department, a new repair order (PR) or a merged repair order. One notice gives all the changes of one save. Each notice has a link to the case. The Worker does not send a notice if the case has no change since the last notice. It sends a maximum of 5 notices for each case in 24 hours. After that limit, the next notice gives the changes that did not have a notice. Changes from the demo admin console (no key), milestones and hide or show do not send a notice. Demo seed cases have no contact data, so they do not get notices. The email address does not go into `/api/db`, live updates, logs or the AI prompt. Each send has a time limit of 10 seconds. If a send fails, the Worker tries again one time for a rate limit or a service error, and records only the case ID and the error code. Now the website only simulates the notices: `wrangler dev` writes each email to `worker/.wrangler/tmp/email/` and does not send it. The live website sends no notice until `NOTICE_FROM` is set (refer to **Deployment**).
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
   - "Add to #N": The website adds your text and photos to that case and gives it +1. For a retry, the Worker uses the same addition ID and uploaded photo keys. It creates the addition once and keeps the other additions.
@@ -50,7 +51,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
-- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, but the demo admin console (no verification) shows them to anyone. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
+- **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, and only the administrator with the key can read them. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. **Report** shows only when this browser can send reports.
 - **District map**: The website opens on the map, on phones and on computers. The main map shows the 12 districts as flat colour areas, without streets or buildings. Neighbour districts have different colours. Move the pointer on a district to raise it. Click a district to zoom in. If a village page is open, clicking a district closes it and shows the village list of that district. **← 全市** goes back to the full city. If the boundary file cannot load (for example in the artifact), the map shows the street basemap.
 - **Villages (里)**: When you open a district, the map shows its villages and the side panel lists the villages that have unfinished reports (not fixed), most reports first. A report belongs to the village that contains its point. Click a village on the map or in the list to zoom to it. On a phone, inside a district the map becomes shorter and the village list or village page shows directly below it; the timeline, Live and Report buttons show only on the full city map.
@@ -67,10 +68,10 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
-**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
+**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use the case functions. Contact data and progress notices need the key: open `?admin=<ADMIN_TOKEN>`. The page removes the key from the address bar and keeps it only in this tab (sessionStorage).)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
-- **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
+- **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen (key only).
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
@@ -89,7 +90,8 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
   ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
-  ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
+  ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table; only the administrator with ADMIN_TOKEN can read it)
+  ├─ send_email ──────── Progress notices to the citizen (Cloudflare Email Sending; wrangler dev only simulates them)
   ├─ /api/reset ──────── Administrator only: puts the database back to worker/data.json
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
@@ -98,8 +100,8 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 
 **Security and limits**
 
-- A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. Demo mode: any request with an `x-admin` header is an administrator request. No token is checked.
-- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin`.
+- A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. Demo mode: any request with an `x-admin` header is an administrator request. No token is checked for case operations. Contact reads and progress notices need `x-admin` to be the same as the `ADMIN_TOKEN` secret.
+- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin` and does not send the key. The socket and the snapshot do not contain contact data.
 - Because the demo administrator needs no token, administrator writes, contact saves and photo uploads are limited to 120 per minute for each IP address, and an administrator document can be at most 256 KB.
 - Protection against a flood of reports. The server examines each new report:
   - Each request can add only one report.
@@ -224,7 +226,17 @@ BASE=http://localhost:8788 node worker/test/report-contact.mjs
 cd worker && node test/sync.mjs
 ```
 
-Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
+`worker/.dev.vars` must have `ADMIN_TOKEN`. The smoke test, the contact test and the progress notice test read the key from that file. The progress notice test needs a Worker that simulates email, started from `worker/` with `NOTICE_FROM`. Use an empty folder for the data, because the report limit for each IP address stops new reports after many test runs:
+
+```bash
+cd worker && npx wrangler dev --port 8806 --persist-to <empty folder> --var NOTICE_FROM:notice@example.com
+```
+
+```bash
+BASE=http://localhost:8806 node worker/test/progress-notice.mjs
+```
+
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`. Administrator with the key: `http://localhost:8788/?admin=<ADMIN_TOKEN in .dev.vars>`.
 
 ## Deployment
 
@@ -232,7 +244,13 @@ Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?
 cd worker && npx wrangler deploy
 ```
 
-The production environment must have two secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ANTHROPIC_API_KEY`. The Worker does not use `ADMIN_TOKEN`; you can delete it with `wrangler secret delete ADMIN_TOKEN`. You must also have the R2 bucket `taipei-issue-photos`.
+The production environment must have three secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ANTHROPIC_API_KEY`, `ADMIN_TOKEN`. `ADMIN_TOKEN` is the key for contact data and progress notices. Use a long random value. You must also have the R2 bucket `taipei-issue-photos`.
+
+To send real progress notices, do these steps. Without them, the Worker sends no notice:
+
+1. Change the Cloudflare account to the Workers Paid plan. Email Sending to any address is available only on this plan (US$5 for each month, with 3,000 emails for each month, then US$0.35 for each 1,000 emails).
+2. In the dashboard, go to **Compute & AI** > **Email Service** and onboard a sender domain. Cloudflare adds the SPF and DKIM records.
+3. Set the variable `NOTICE_FROM` to an address on that domain, for example `"vars": { "NOTICE_FROM": "notice@example.com" }` in `worker/wrangler.jsonc`. Then deploy again.
 
 CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access, or push **重設模擬資料** in the admin console. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
 
@@ -253,6 +271,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 ## Known limits
 
 - Administrator mode applies only to the browser tab that you opened with `?admin`.
+- **重設到快照** writes the case states again. If an administrator with the key uses it, a case that changes back can send a progress notice.
 - Browsers without Web Locks can create different visitor identities if you open two tabs for the first time at the same time. "My reports" is tied to the identity kept by this browser.
 - The Worker site makes report creation and note additions atomic. The claude.ai artifact keeps its existing database update method and does not have these server guarantees.
 - Case numbers can be the same if many persons send reports at the same time. If two administrators change one case at the same time, one change can replace the other change.

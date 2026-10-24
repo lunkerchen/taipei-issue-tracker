@@ -400,7 +400,7 @@ Switched to branch 'taipei'
         <span class="status" id="locStatus" role="status"></span>
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
-      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填。本示範站的局處後台不需驗證，任何人都看得到，請勿填寫真實姓名、手機與 Email）</legend>
+      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，不會公開，只有持管理者金鑰的人看得到。Email 用來通知處理進度，示範站目前不會真的寄出）</legend>
         <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（接收處理進度通知）" aria-label="Email" aria-required="true"></div>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。勾選與否都不影響誰看得到：本示範站的局處後台不需驗證，任何人（包含被檢舉人）都能看到姓名、手機與 Email。</label>
       </fieldset>
@@ -549,7 +549,8 @@ Switched to branch 'taipei'
   <h3>蒐集哪些資料、誰看得到</h3>
   <ul>
     <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
-    <li><b>後台可見</b>：姓名、手機、Email，以及是否實名檢舉。不會出現在市民畫面，但本示範站的局處後台不需驗證，任何人都能進入並看到。請不要填寫真實個資。</li>
+    <li><b>後台可見</b>：姓名、手機、Email，以及是否實名檢舉。不會出現在市民畫面，只有持管理者金鑰的人看得到；免驗證的示範後台看不到。</li>
+    <li><b>進度通知</b>：持管理者金鑰的人變更案件狀態或負責局處、開立或合併修繕單時，系統會寄 Email 通知你，每件案件每 24 小時最多 5 封。示範站目前只在開發環境模擬寄送，不會真的寄出。</li>
     <li><b>訪客 ID</b>：存在你的瀏覽器（localStorage），用來辨識「我的陳情」。清除瀏覽器資料後，就無法再補充原本的陳情。</li>
     <li><b>IP 位址</b>：用於限流與防洗版，約 24 小時後刪除。Cloudflare 的服務紀錄依 Cloudflare 的政策保存。</li>
     <li><b>瀏覽器暫存</b>：深色或淺色模式設定（localStorage）；本次填寫的姓名、手機與 Email（sessionStorage，關閉分頁後清除）。</li>
@@ -557,7 +558,7 @@ Switched to branch 'taipei'
   <h3>第三方處理與跨境傳輸</h3>
   <ul>
     <li>Anthropic（美國）：處理已遮蔽個資的陳情文字，做 AI 分類。照片、姓名、手機與 Email 不會送出。</li>
-    <li>Cloudflare：網站主機、資料庫與照片儲存，機房可能在臺灣以外。</li>
+    <li>Cloudflare：網站主機、資料庫、照片儲存，以及進度通知 Email 的寄送（啟用後才寄），機房可能在臺灣以外。</li>
     <li>OpenStreetMap Nominatim：由本站伺服器代查地址與座標。</li>
     <li>內政部國土測繪中心：地圖圖磚由你的瀏覽器直接下載，對方會收到你的 IP。</li>
   </ul>
@@ -1090,7 +1091,10 @@ async function onListClick(e) {
   if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
   const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide],[data-contact]");
   if (!btn || btn.disabled) return;
-  if (btn.dataset.contact) return run(btn, async () => { contactCache.set(btn.dataset.contact, await contactFn.get(btn.dataset.contact)); render(); });
+  if (btn.dataset.contact) return run(btn, async () => {
+    try { contactCache.set(btn.dataset.contact, await contactFn.get(btn.dataset.contact)); render(); }
+    catch (e) { if (e.status !== 403) throw e; toast("示範後台看不到聯絡資料，需要管理者金鑰"); } // the token-free demo admin gets 403
+  });
   const i = issues.find(x => x.id === (btn.dataset.id || btn.dataset.pr));
   if (btn.dataset.status) return run(btn, () => act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }));
   if (btn.dataset.merge) return run(btn, () => act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }));

@@ -1,7 +1,9 @@
-// Smoke test against `wrangler dev` (default http://localhost:8787). Run: node test/smoke.mjs
+// Smoke test against `wrangler dev` (default http://localhost:8787); reads ADMIN_TOKEN from worker/.dev.vars. Run: node test/smoke.mjs
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 const BASE = process.env.BASE || "http://localhost:8787";
 const admin = "1"; // demo mode: any x-admin value is admin
+const token = process.env.ADMIN_TOKEN || /^ADMIN_TOKEN=(.*)$/m.exec(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8"))[1]; // reads contacts
 const post = (path, headers, body) => fetch(BASE + path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: body && JSON.stringify(body), signal: AbortSignal.timeout(8000) });
 const write = (headers, op, path, data) => post("/api/db", headers, { op, path, data });
 const visitor = async () => { const { id } = await (await post("/api/visitor")).json(); return { token: id, id: id.split(".")[0] }; };
@@ -222,7 +224,7 @@ assert.equal((await up({ "x-visitor": A.token }, new Uint8Array(701 * 1024).fill
 assert.equal((await fetch(BASE + "/api/photo/../hub.js")).status, 404, "bad key");
 assert.equal((await fetch(BASE + "/api/photo/" + A.id + "/nope.jpg")).status, 404, "missing photo");
 
-// Reporter contact: visitor saves its own, only the admin reads it, and it never shows up in /api/db
+// Reporter contact: visitor saves its own, only the token admin reads it, and it never shows up in /api/db
 const CV = await visitor(), cbody = { item: "smoke-1", name: "測試員", phone: "0912-000-111", email: "smoke@example.com", realName: false };
 assert.equal((await post("/api/contact", {}, cbody)).status, 403, "anonymous contact");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, phone: "12345" })).status, 400, "bad phone");
@@ -232,8 +234,9 @@ assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, 
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, cbody)).status, 200, "save contact");
 const cget = h => fetch(`${BASE}/api/contact?id=${CV.id}:smoke-1`, { headers: h, signal: AbortSignal.timeout(8000) });
 assert.equal((await cget({ "x-visitor": CV.token })).status, 403, "visitor cannot read contacts");
-assert.deepEqual((await (await cget({ "x-admin": admin })).json()).contact.phone, "0912000111", "admin reads contact");
-assert.equal((await (await cget({ "x-admin": admin })).json()).contact.email, "smoke@example.com", "admin reads email");
+assert.equal((await cget({ "x-admin": admin })).status, 403, "demo admin cannot read contacts");
+assert.deepEqual((await (await cget({ "x-admin": token })).json()).contact.phone, "0912000111", "token admin reads contact");
+assert.equal((await (await cget({ "x-admin": token })).json()).contact.email, "smoke@example.com", "token admin reads email");
 assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("0912000111"), "contact not in public snapshot");
 assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("smoke@example.com"), "email not in public snapshot");
 
