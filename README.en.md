@@ -294,6 +294,12 @@ BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 
 The stable case number test uses two visitors and one administrator. It checks that a case keeps the same number in the staff view and the owner's citizen view. It releases and hides another case and checks for the same number. It also reloads the page and takes a new snapshot. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
 
+```bash
+BASE=http://localhost:8907 node worker/test/release-sort-tz.mjs
+```
+
+The release sorting test verifies that releases sort in newest-first order by parsed timestamp epoch rather than string comparison, so releases with different timezone offset representations (e.g. `+08:00` vs `Z`) maintain correct chronological order. It also verifies that history dispatch count numbers format with thousands separators.
+
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment

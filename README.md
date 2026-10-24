@@ -294,6 +294,12 @@ BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
 
 案件編號穩定測試使用兩位訪客與一位管理者。測試確認同一件案件在後台與擁有者的市民畫面顯示相同編號。測試會放行再隱藏另一件案件，並確認編號不變。測試也會重新載入頁面並取得新的快照。測試結束時會刪除自己建立的案件。請使用獨立的 Worker 持久化目錄。
 
+```bash
+BASE=http://localhost:8907 node worker/test/release-sort-tz.mjs
+```
+
+版本與歷史派工排序測試驗證 Releases 列表依解析後的 Unix epoch 時間戳記降冪排序，而非純字串比對，避免因時區表示法差異（如 `+08:00` 與 `Z`）導致發布時間錯序。同時驗證歷史時間軸上的派工件數皆正確套用千分位格式。
+
 本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。
 
 ## 部署

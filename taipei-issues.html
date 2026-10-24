@@ -2247,9 +2247,9 @@ function drawHist() {
     m.bindPopup(`<b>${esc(it[0])}</b><div class="meta">${esc(rd[0] + rd[1])} · ${dayLabel(key)} ${String(hm).padStart(4, "0").replace(/(..)$/, ":$1")}</div><div class="meta">${rd[4] ? "路段" : "行政區"}概略位置</div>`);
     histGroups[lay].addLayer(m); tally[lay] = (tally[lay] || 0) + 1;
   });
-  $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length} 件派工`;
-  $("histDay").setAttribute("aria-valuetext", `${dayLabel(key)}，${list.length} 件派工`);
-  layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length} 件`);
+  $("histDate").textContent = dayLabel(key); $("histCount").textContent = `${list.length.toLocaleString()} 件派工`;
+  $("histDay").setAttribute("aria-valuetext", `${dayLabel(key)}，${list.length.toLocaleString()} 件派工`);
+  layerPanel(tally, `${dayLabel(key)}：1999 派工 ${list.length.toLocaleString()} 件`);
 }
 function stopPlay() { clearInterval(histTimer); histTimer = null; $("histPlay").textContent = "播放"; $("histPlay").setAttribute("aria-pressed", "false"); }
 const stepDay = d => { const v = Math.max(0, Math.min(histDays.length - 1, +$("histDay").value + d)); $("histDay").value = v; drawHist(); return v; };
@@ -2267,7 +2267,7 @@ $("histPlay").onclick = () => {
 // ---- Live: today's newest reports (Asia/Taipei day), newest first. Tap one to fly the map to it. ----
 function renderLive() {
   if ($("liveBox").hidden) return;
-  const today = dayKey(Date.now()), byNew = [...issues].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const today = dayKey(Date.now()), byNew = [...issues].sort((a, b) => (+new Date(b.createdAt) || 0) - (+new Date(a.createdAt) || 0));
   const todays = byNew.filter(i => dayKey(i.createdAt) === today);
   // ponytail: an empty "today" falls back to the 5 newest so the panel is never blank on a quiet day
   const list = todays.length ? todays.slice(0, 30) : byNew.slice(0, 5);
@@ -2879,7 +2879,7 @@ document.addEventListener("keydown", e => {
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
   db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; loadErr = false; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
   db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.due || "").localeCompare(String(b.due || ""))); render(); });
-  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)); render(); });
+  db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => (+new Date(b.createdAt) || 0) - (+new Date(a.createdAt) || 0)); render(); });
   db.collection("categories").onSnapshot(s => {
     cats = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => isStr(c.name) && Array.isArray(c.subs)).sort((a, b) => a.id.localeCompare(b.id))
       .map(c => ({ id: c.id, name: c.name, subs: c.subs.filter(x => isObj(x) && isStr(x.id) && isStr(x.name)) }));
