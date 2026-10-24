@@ -2701,7 +2701,7 @@ document.addEventListener("keydown", e => {
     const out = {};
     for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:true, t:x.t, text:x.text.slice(0, 500),
+        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500),
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
   }, () => {});

@@ -46,7 +46,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
   After an addition or a +1 succeeds, the site opens the public case list and shows that case.
   While a +1 is saving, the site checks that the report preview is still current. If the visitor changes the draft, cancels the form, or opens a new report, the site keeps the current state and confirms that the +1 was saved.
 
-  The website keeps each addition in `addenda/<visitor ID>` and shows it as "addition from another citizen".
+  An addition to your own case shows as "citizen addition". Additions from other visitors show as "addition from another citizen". The website keeps each addition in `addenda/<visitor ID>`.
 - **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
