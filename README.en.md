@@ -11,6 +11,7 @@ This website shows Taipei City as a GitHub repository. A 1999 citizen report is 
 This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖」.
 
 - Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
+- Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>
 - Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
 
 > The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
@@ -73,6 +74,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
+- **Reset demo data** (重設模擬資料, Worker website only): Puts the full database back to the seed data in `worker/data.json`. It removes all citizen reports, additions, +1 votes, contact data and demo snapshots. Push the button two times in 10 seconds. All open pages show the change immediately. Uploaded photos stay in R2.
 
 ## Architecture
 
@@ -88,6 +90,7 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── Name and mobile number of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
+  ├─ /api/reset ──────── Administrator only: puts the database back to worker/data.json
   └─ /api/visitor ────── Gives a visitor ID (HMAC signature)
 ```
 
@@ -229,7 +232,7 @@ cd worker && npx wrangler deploy
 
 The production environment must have two secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ANTHROPIC_API_KEY`. The Worker does not use `ADMIN_TOKEN`; you can delete it with `wrangler secret delete ADMIN_TOKEN`. You must also have the R2 bucket `taipei-issue-photos`.
 
-CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
+CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access, or push **重設模擬資料** in the admin console. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
 
 ## Data sources
 

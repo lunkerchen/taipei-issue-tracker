@@ -529,6 +529,7 @@ Switched to branch 'taipei'
     <div class="new"><div class="row">
       <button class="btn" id="snapBtn" type="button">儲存展示快照</button>
       <button class="btn" id="resetBtn" type="button">重設到快照</button>
+      <button class="btn" id="seedBtn" type="button" hidden>重設模擬資料</button>
       <span class="status" id="snapStatus" role="status"></span>
     </div></div>
   </section>
@@ -2593,6 +2594,21 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
   view.open.clear(); view.closed = false;
   $("snapStatus").textContent = "已重設到快照";
 });
+// 重設模擬資料: the whole database back to the seed data (worker/data.json). Worker host only; two clicks like 重設到快照.
+let seedFn = null, seedArmed = 0;
+$("seedBtn").onclick = () => run($("seedBtn"), async () => {
+  if (!seedFn) return;
+  if (Date.now() - seedArmed > 10000) {
+    seedArmed = Date.now(); $("seedBtn").textContent = "確定重設（10 秒內再按一次）";
+    $("snapStatus").textContent = "會刪掉所有市民陳情、補充、+1、聯絡資料與展示快照，回到最初的模擬資料。所有訪客都會看到。";
+    setTimeout(() => { if (Date.now() - seedArmed >= 10000) $("seedBtn").textContent = "重設模擬資料"; }, 10000);
+    return;
+  }
+  seedArmed = 0; $("seedBtn").textContent = "重設模擬資料"; $("snapStatus").textContent = "重設中…";
+  const r = await seedFn();
+  view.open.clear(); view.closed = false; render();
+  $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+});
 
 // Issue templates fill the textarea with the fields 1999 needs.
 $("aspects").insertAdjacentHTML("beforeend", ["不確定", ...Object.keys(ASPECTS)].map((k, i) => `<input type="radio" name="aspect" id="asp${i}" value="${i ? k : ""}"${i ? "" : " checked"}><label for="asp${i}">${k}</label>`).join(""));
@@ -2641,6 +2657,7 @@ document.addEventListener("keydown", e => {
   if (typeof revgeo !== "function") revgeo = null;
   contactFn = await opt("contact"); if (contactFn && typeof contactFn.save === "function") { $("contactBox").hidden = false;
     try { const c = JSON.parse(sessionStorage.getItem("contact") || "null"); if (c) { $("cName").value = c.name || ""; $("cPhone").value = c.phone || ""; } } catch {} } else contactFn = null;
+  seedFn = await opt("seedReset"); $("seedBtn").hidden = typeof seedFn !== "function"; if ($("seedBtn").hidden) seedFn = null;
   photoFn = await opt("photo"); if (typeof photoFn === "function") $("photoRow").hidden = false; else photoFn = null;
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;

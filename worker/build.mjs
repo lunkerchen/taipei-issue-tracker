@@ -171,7 +171,13 @@ const contact = {
   save: (item, c) => contactReq("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ item, ...c }) }, true),
   get: async id => (await contactReq("/api/contact?id=" + encodeURIComponent(id))).contact
 };
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact })[n] ?? null };
+// Admin only: put the database back to the seed data, then reload this page's copy at once
+const seedReset = async () => {
+  const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
+  const out = await r.json(); ready = load(); await ready; fire(); return out;
+};
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();
 </script>`;
 

@@ -11,6 +11,7 @@
 這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。網站標題是「台北市，你給我聽好了｜市民 1999 通報地圖」。
 
 - 線上網站：<https://taipei-issue-tracker.labanchen.workers.dev>
+- 局處後台（示範，免驗證）：<https://taipei-issue-tracker.labanchen.workers.dev/?admin>
 - 黑客松題目：[puma.taipei/hackathon](https://puma.taipei/hackathon)「你看見的市政 bug」
 
 > 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料。請參閱〈資料來源〉。
@@ -73,6 +74,7 @@
 - **Releases**：AI 草擬每週結案摘要。版本號採 v<年>.<週>（例如 v2026.43）。另有 2026 年 1 月到 9 月的 1999 派工月報。
 - **Insights**：網站顯示各局處的 SLA（平均修復天數）。重新開啟的案件不算已修復；再次修復的案件從最近一次修復起算。局處超過門檻時，網站顯示「failing」。
 - **展示工具**：儲存與重設展示快照。彩排後按一下就能還原資料。
+- **重設模擬資料**（只在 Worker 網站）：把整個資料庫還原成 `worker/data.json` 的種子資料，會刪掉所有市民陳情、補充、+1、聯絡資料與展示快照。10 秒內按兩次才會執行。所有開著的頁面會立即更新。已上傳的照片仍留在 R2。
 
 ## 架構
 
@@ -88,6 +90,7 @@ Cloudflare Worker（worker/src/index.js）
   ├─ /api/news ───────── Bing News RSS、PTT Taipei 板（快取 10 分鐘）
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── 市民姓名與手機（DO 私有資料表，後台可讀，示範站後台免驗證）
+  ├─ /api/reset ──────── 僅管理者：把資料庫還原成 worker/data.json
   └─ /api/visitor ────── 簽發訪客 ID（HMAC 簽章）
 ```
 
@@ -229,7 +232,7 @@ cd worker && npx wrangler deploy
 
 正式環境需要兩個 secret。用 `wrangler secret put <名稱>` 設定每一個：`VISITOR_SECRET`、`ANTHROPIC_API_KEY`。Worker 不再使用 `ADMIN_TOKEN`，可用 `wrangler secret delete ADMIN_TOKEN` 刪除。另外也需要 R2 bucket `taipei-issue-photos`。
 
-注意：線上資料庫只在第一次啟動時載入 `worker/data.json`。之後如果修改種子資料，要用管理者權限寫入。請使用腳本的 `--write` 選項，或 `ADMIN` 與 `BASE` 環境變數。
+注意：線上資料庫只在第一次啟動時載入 `worker/data.json`。之後如果修改種子資料，要用管理者權限寫入，或在局處後台按 **重設模擬資料**。請使用腳本的 `--write` 選項，或 `ADMIN` 與 `BASE` 環境變數。
 
 ## 資料來源
 
