@@ -13,6 +13,20 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 
 > The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
 
+## Screenshots
+
+These screenshots show the live website on 2026-10-24 (light mode, simulated data).
+
+| | |
+|---|---|
+| ![District map](docs/screens/map.png)<br>**Map**: the 12 districts and the 1999 category layers | ![District and villages](docs/screens/district.png)<br>**District**: the villages and the villages with unfinished reports |
+| ![Village page](docs/screens/village.png)<br>**Village page**: the village chief, the councillors and the reports | ![Report form](docs/screens/report.png)<br>**Quick report**: general areas, templates, voice, photos and location |
+| ![Issue list](docs/screens/issues.png)<br>**Issues**: the contribution graph, filters and +1 votes | ![Issue details](docs/screens/issue-detail.png)<br>**Case details**: photos, location and a small map |
+| ![Pull requests](docs/screens/pulls.png)<br>**Pull requests**: repair orders from departments | ![Milestones](docs/screens/milestones.png)<br>**Milestones**: city plans and budgets |
+| ![Insights](docs/screens/insights.png)<br>**Insights**: the SLA for each department | ![Releases](docs/screens/releases.png)<br>**Releases**: the weekly summaries of closed cases |
+
+<img src="docs/screens/mobile-map.png" alt="Map on a mobile phone" width="260"><br>**Mobile phone**: the map and the bottom navigation bar
+
 ## Functions
 
 **Citizens (mobile phone first)**
@@ -100,6 +114,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/offices.json` | Taipei city councillors (council office phone, fax, address, email) and the 456 village offices (phone, village chief mobile, address). The Hub loads it into the `offices` table at start. It is not sent to the page. |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
+| `docs/screens/` | Screenshots of the website for this README |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
 | `PLAN.md` | Tasks and acceptance records for each phase |
 
