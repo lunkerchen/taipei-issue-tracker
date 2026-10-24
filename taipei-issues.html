@@ -57,6 +57,9 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .repo h1{color:var(--link)}
 .vote:disabled{cursor:default}
 .detail{grid-column:2/4;display:flex;flex-direction:column;gap:10px;padding:6px 0 4px}
+.share-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.share-url{flex:1 1 260px;min-width:0}
+.share-notice{padding:10px 14px;text-align:left;color:var(--fg);border-bottom:1px solid var(--line)}
 .detail .body{white-space:pre-wrap;max-width:68ch}
 .photos{display:flex;flex-wrap:wrap;gap:8px}
 .photos a{flex:0 1 180px;min-width:0}
@@ -282,6 +285,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
     <button type="button" data-view="releases">Releases</button>
     <button type="button" data-view="admin" id="navAdmin" hidden>後台</button>
   </nav>
+  <div class="empty share-notice" id="shareNotice" role="status" hidden></div>
 
   <div class="view" id="v-issues">
 
@@ -749,6 +753,7 @@ function build(checkMine) {
   issues = all.filter(i => admin || !hiddenFor(i));
   if (checkMine && mine && !all.some(i => i.id === mine)) toast("送出失敗：案件內容格式不符，沒有出現在清單裡");
   if (checkMine) mine = null;
+  if (pendingShareId !== null) resolveShareRoute();
   render();
 }
 
@@ -828,6 +833,8 @@ function render() {
   const q = $("q").value.trim().toLowerCase();
   const dept = $("deptFilter").value;
   const openN = issues.filter(i => i.status !== "fixed").length;
+  $("shareNotice").textContent = shareNotice;
+  $("shareNotice").hidden = !shareNotice;
   $("tabOpen").innerHTML = ICON.open + `${openN} ${admin ? "Open" : "未完成"}`;
   $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
@@ -862,9 +869,13 @@ function render() {
   const typed = {}, active = document.activeElement;
   const focused = active && $("list").contains(active) ? {
     id: active.id, open: active.dataset.open, vote: active.dataset.vote,
+    share: active.dataset.share, shareUrl: active.dataset.shareUrl,
     start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection
   } : null;
   document.querySelectorAll("#list input[id^=pr-],#list textarea[id^=note-]").forEach(x => typed[x.id] = x.value);
+  const shareFields = new Map([...document.querySelectorAll("#list [data-share-url]")].map(x => [x.dataset.shareUrl, {
+    value:x.value, hidden:x.hidden, status:x.closest(".detail")?.querySelector("[data-share-status]")?.textContent || ""
+  }]));
   $("list").innerHTML = rows.map(i => {
     const st = STATUS[i.status] || STATUS.open;
     const mine = !!myVotes[i.id];
@@ -883,6 +894,9 @@ function render() {
       </div>
       <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
+        <div class="share-row"><button class="btn" type="button" data-share="${esc(i.id)}">複製案件連結</button>
+          <input class="share-url" type="text" readonly hidden data-share-url="${esc(i.id)}" aria-label="案件分享連結">
+          <span class="status" role="status" data-share-status></span></div>
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
@@ -916,9 +930,17 @@ function render() {
     </div>`;
   }).join("");
   for (const id in typed) if ($(id)) $(id).value = typed[id];
+  document.querySelectorAll("#list [data-share-url]").forEach(x => {
+    const saved = shareFields.get(x.dataset.shareUrl);
+    if (saved) {
+      x.value = saved.value; x.hidden = saved.hidden;
+      x.closest(".detail").querySelector("[data-share-status]").textContent = saved.status;
+    }
+  });
   if (focused) {
     const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
-      focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : null;
+      focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : focused.share ? document.querySelector(`[data-share="${CSS.escape(focused.share)}"]`) :
+      focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) : null;
     if (target) {
       target.focus({ preventScroll: true });
       if (typeof target.setSelectionRange === "function" && Number.isInteger(focused.start))
@@ -933,7 +955,18 @@ function render() {
 
 async function onListClick(e) {
   const o = e.target.closest("[data-open]");
-  if (o) { const id = o.dataset.open; view.open.has(id) ? view.open.delete(id) : view.open.add(id); return render(); }
+  if (o) {
+    const id = o.dataset.open, closing = view.open.has(id);
+    if (closing) {
+      view.open.delete(id);
+      if (issueIdFromHash() === id) { activeShareId = null; replaceHash("#issues"); }
+    } else {
+      view.open.add(id); activeShareId = id; replaceHash(issueHash(id));
+    }
+    return render();
+  }
+  const share = e.target.closest("[data-share]");
+  if (share) return copyIssueLink(share);
   const v = e.target.closest("[data-vote]");
   if (v && canWrite) return setVote(v.dataset.vote, !myVotes[v.dataset.vote]);
   const btn = e.target.closest("[data-status],[data-pr],[data-merge],[data-hide],[data-contact]");
@@ -1482,7 +1515,7 @@ function goIssue(e) {
   const i = issues.find(x => x.id === b.dataset.go); if (!i) return;
   view.open.add(i.id); view.closed = i.status === "fixed";
   $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
-  show("issues"); render();
+  show("issues"); activeShareId = i.id; replaceHash(issueHash(i.id)); render();
   const t = document.querySelector(`[data-open="${CSS.escape(i.id)}"]`); if (t) t.scrollIntoView({ block:"center" });
 }
 
@@ -1651,9 +1684,24 @@ async function loadNews() {
 // ---- Repo views: Code, Pull requests, Milestones, Insights, Releases ----
 // Each view is a history entry (#map, #issues…), so the phone's back button returns to the previous view instead of leaving
 const wantAdmin = location.hash === "#admin";
-function show(v, replace) {
+const issueHash = id => `#issue/${encodeURIComponent(id)}`;
+let syncedLocation = null;
+function issueIdFromHash(hash = location.hash) {
+  if (!hash.startsWith("#issue/")) return null;
+  try { return decodeURIComponent(hash.slice(7)); } catch { return ""; }
+}
+let pendingShareId = issueIdFromHash(), activeShareId = null, shareNotice = "";
+if (pendingShareId !== null) shareNotice = "正在載入分享案件…";
+function replaceHash(hash) {
+  try { window.history.replaceState(null, "", location.pathname + location.search + hash); } catch {}
+  syncedLocation = location.href;
+}
+function show(v, replace, preserveHash = false, preserveNotice = false) {
   if (v === "admin" && !admin) v = "issues"; // admin is known only after load; applyRole reopens it
-  if (location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
+  if (!preserveHash && location.hash.slice(1) !== v) try { window.history[replace ? "replaceState" : "pushState"](null, "", "#" + v); } catch {}
+  syncedLocation = location.href;
+  if (!preserveHash) pendingShareId = null;
+  if (!preserveNotice) shareNotice = "";
   const wasMine = view.mine; curView = v; view.mine = v === "mine"; const page = view.mine ? "issues" : v;
   if (v !== "map") stopPlay();
   $("wrap").classList.toggle("wide", v === "map");
@@ -1661,6 +1709,50 @@ function show(v, replace) {
   $("v-issues").classList.toggle("mine", view.mine); if (wasMine !== view.mine && db) render();
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (v === "map") openMap();
+}
+function resolveShareRoute() {
+  if (pendingShareId === null || !gotReports || !gotTriage) return false;
+  const id = pendingShareId, issue = issues.find(x => x.id === id);
+  pendingShareId = null;
+  $("q").value = ""; $("deptFilter").value = ""; $("msFilter").value = "";
+  view.mine = false; view.open.clear();
+  if (!issue) {
+    activeShareId = null; view.closed = false;
+    show("issues", true, false, true);
+    shareNotice = "找不到這個公開案件；連結可能已失效或案件目前無法公開。你可以從下方列表重新搜尋。";
+    return true;
+  }
+  view.closed = issue.status === "fixed"; view.open.add(id); activeShareId = id; scrollTo = id;
+  show("issues", true, true, true);
+  shareNotice = "";
+  return true;
+}
+function currentShareDetail(id) {
+  if ($("v-issues").hidden || !view.open.has(id)) return null;
+  const issue = issues.find(x => x.id === id);
+  if (!issue || hiddenFor(issue)) return null;
+  const button = [...$("list").querySelectorAll("[data-share]")].find(x => x.dataset.share === id);
+  return button?.closest(".detail") || null;
+}
+async function copyIssueLink(button) {
+  const id = button.dataset.share, detail = currentShareDetail(id);
+  if (!detail) return;
+  const url = `${location.origin}${location.pathname}${issueHash(id)}`;
+  detail.querySelector("[data-share-status]").textContent = "";
+  try {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") throw new Error("clipboard_unavailable");
+    await navigator.clipboard.writeText(url);
+    const currentDetail = currentShareDetail(id);
+    if (!currentDetail) return;
+    currentDetail.querySelector("[data-share-status]").textContent = "已複製案件連結";
+    toast("已複製案件連結");
+  } catch {
+    const currentDetail = currentShareDetail(id);
+    if (!currentDetail) return;
+    const input = currentDetail.querySelector("[data-share-url]");
+    input.value = url; input.hidden = false; input.focus(); input.select();
+    currentDetail.querySelector("[data-share-status]").textContent = "無法自動複製，請選取上方連結後手動複製。";
+  }
 }
 // Lightbox: any photo link opens in a native <dialog> (Esc closes it); arrows step through that case's photos.
 let lbList = [], lbAt = 0;
@@ -1746,9 +1838,27 @@ $("themeBtn").onclick = () => { const t = darkNow() ? "light" : "dark"; document
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeLabel);
 themeLabel();
 // Phones land on the map (Live / 回報 sit right under it); desktops keep the Issues list.
-const homeView = () => VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
-show(homeView(), true);
-addEventListener("popstate", () => show(homeView(), true));
+const homeView = () => issueIdFromHash() !== null ? "issues" : VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : matchMedia("(max-width:760px)").matches ? "map" : "issues";
+function syncLocation() {
+  if (syncedLocation === location.href) return;
+  syncedLocation = location.href;
+  const id = issueIdFromHash();
+  if (id !== null) {
+    if (activeShareId && activeShareId !== id) view.open.delete(activeShareId);
+    activeShareId = null; pendingShareId = id; shareNotice = "正在載入分享案件…";
+    show("issues", true, true, true); resolveShareRoute(); render();
+    return;
+  }
+  if (activeShareId) view.open.delete(activeShareId);
+  activeShareId = null; pendingShareId = null;
+  const hash = location.hash.slice(1), unknown = !!hash && !VIEWS.includes(hash);
+  show(homeView(), true, false, true);
+  shareNotice = unknown ? "無法辨識這個連結，已回到首頁。你可以從分頁重新瀏覽案件。" : "";
+  render();
+}
+syncLocation();
+addEventListener("popstate", syncLocation);
+addEventListener("hashchange", syncLocation);
 
 const coLines = ["# .github/CODEOWNERS", "# 每類陳情的負責局處。taipei-bot 依這份規則分派，跨類時選最主要的。", "",
   ...TAGS.map(t => `/${t}/`.padEnd(10, "\u3000") + " @" + CODEOWNERS[t]), "", "# 判斷不出來的，先交給 1999 人工分派", "*".padEnd(10, "\u3000") + " @1999-待分派"];
