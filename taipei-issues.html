@@ -689,6 +689,8 @@ const ICON = {
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
+// Vote counts arrive after reports/triage and can re-sort a shared case far up the list; scroll again when they land.
+let votesLoaded = false, scrollAfterVotes = null;
 const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -1069,7 +1071,11 @@ function render() {
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
-  if (own) { scrollTo = null; const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */ setTimeout(() => card.classList.remove("hl"), 4000); }
+  if (own) {
+    if (!(scrollTo === scrollAfterVotes && !votesLoaded)) scrollTo = null;
+    const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */
+    setTimeout(() => card.classList.remove("hl"), 4000);
+  }
 }
 
 async function onListClick(e) {
@@ -2293,6 +2299,11 @@ function resolveShareRoute() {
     return true;
   }
   view.closed = issue.status === "fixed"; view.open.add(id); activeShareId = id; scrollTo = id;
+  if (!votesLoaded) {
+    scrollAfterVotes = id;
+    // Stop holding the target if vote counts never arrive.
+    setTimeout(() => { if (scrollAfterVotes === id && !votesLoaded) { scrollAfterVotes = null; if (scrollTo === id) scrollTo = null; } }, 5000);
+  }
   show("issues", true, true, true);
   shareNotice = "";
   return true;
@@ -2709,6 +2720,8 @@ document.addEventListener("keydown", e => {
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
     myVotes = { ...(mine && isObj(mine.data().issues) ? mine.data().issues : {}) };
+    votesLoaded = true;
+    if (scrollAfterVotes) { if (activeShareId === scrollAfterVotes) scrollTo = scrollAfterVotes; scrollAfterVotes = null; }
     render();
   });
 })();
