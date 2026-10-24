@@ -81,6 +81,7 @@ try {
 
   // A visitor cannot choose a number through the generic update path, and an existing case keeps its stored number.
   const planted = 424242;
+  assert.equal((await post("/api/contact", { "x-visitor": tokenA }, { item: keys.aLate, ...contact })).status, 200, "save contact before the generic update");
   const generic = await post("/api/db", { "x-visitor": tokenA }, { op: "update", path: `reports/${ownerA}`,
     data: { items: { [keys.aLate]: { ...item(ownerA, titles.aLate), n: planted } } } });
   assert.equal(generic.status, 200, `generic update accepted: ${generic.body.error || "ok"}`);
