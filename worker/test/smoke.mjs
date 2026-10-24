@@ -93,6 +93,50 @@ assert.equal((await rep(G, "copy", `路燈不亮${tag}第1件！`)).status, 409,
 assert.equal((await rep(G, "own", `人行道破損 ${tag}`)).status, 200, "G's own report");
 assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${G.id}`, { items: { s1: { target: "x", t: now(), text: "補充", photos: [] } } })).status, 200, "own addenda");
 assert.equal((await write({ "x-visitor": G.token }, "update", `addenda/${F.id}`, { items: {} })).status, 403, "someone else's addenda");
+const target = `${F.id}:r1`;
+assert.equal((await write({ "x-visitor": F.token }, "update", `reports/${F.id}`, { items: { r1: {
+  author:F.id, title:"可公開目標案件", body:`公開目標 ${tag}`, createdAt:now()
+} } })).status, 200, "target report has its owner's identity and public fields");
+const appendAddendum = (headers, data) => write(headers, "append-addendum", `addenda/${G.id}`, data);
+const addendum = { id:"00000000-0000-4000-8000-000000000021", target, text:"相同案件的新現場照片", photos:[`${G.id}/smoke.jpg`] };
+assert.equal((await appendAddendum({}, addendum)).status, 403, "anonymous addendum refused");
+assert.equal((await write({ "x-admin": admin }, "append-addendum", `addenda/${G.id}`, addendum)).status, 403, "admin cannot use citizen addendum operation");
+assert.equal((await write({ "x-visitor": G.token }, "append-addendum", `addenda/${F.id}`, addendum)).status, 403, "another visitor cannot append to this addenda document");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, id:"bad-id" })).status, 400, "bad addendum id");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, target:"missing-report" })).status, 404, "missing target report refused");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, target:"demo-seed:bad-key" })).status, 404, "malformed target report refused");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, text:"x".repeat(501) })).status, 400, "addendum text limit");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, photos:Array(4).fill(`${G.id}/smoke.jpg`) })).status, 400, "addendum photo count limit");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, photos:[`${F.id}/foreign.jpg`] })).status, 400, "foreign addendum photo refused");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, text:"  ", photos:[] })).status, 400, "empty addendum refused");
+assert.equal((await write({ "x-admin": admin }, "set", `triage/${target}`, { hidden:true })).status, 200, "hide the target for the visibility check");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, id:"00000000-0000-4000-8000-000000000022" })).status, 404, "hidden target refused");
+assert.equal((await write({ "x-admin": admin }, "delete", `triage/${target}`)).status, 200, "restore public target");
+const firstAddendumResponse = await appendAddendum({ "x-visitor": G.token }, addendum);
+assert.equal(firstAddendumResponse.status, 200, "addendum created");
+const firstAddendum = await firstAddendumResponse.json();
+assert.equal(firstAddendum.created, true);
+const retryAddendumResponse = await appendAddendum({ "x-visitor": G.token }, addendum);
+assert.equal(retryAddendumResponse.status, 200, "same addendum retry succeeds");
+const retryAddendum = await retryAddendumResponse.json();
+assert.equal(retryAddendum.created, false, "same-id retry does not create another addendum");
+assert.equal(retryAddendum.seq, firstAddendum.seq, "same-id retry does not consume another sequence");
+assert.equal(retryAddendum.data.items.s1.target, "x", "existing addendum target remains unchanged");
+assert.equal(retryAddendum.data.items.s1.text, "補充", "existing addendum text remains unchanged");
+assert.deepEqual(retryAddendum.data.items[addendum.id], firstAddendum.data.items[addendum.id], "retry returns the original addendum");
+const concurrentAddendum = { ...addendum, id:"00000000-0000-4000-8000-000000000023", text:"同 ID 同時送出只能建立一次", photos:[] };
+const concurrentAddenda = await Promise.all([
+  appendAddendum({ "x-visitor": G.token }, concurrentAddendum),
+  appendAddendum({ "x-visitor": G.token }, concurrentAddendum)
+]);
+assert.deepEqual(concurrentAddenda.map(x => x.status), [200, 200], "same-id concurrent retries both succeed");
+const concurrentResults = await Promise.all(concurrentAddenda.map(x => x.json()));
+assert.deepEqual(concurrentResults.map(x => x.created).sort(), [false, true], "concurrent retries create one addendum");
+assert.equal(concurrentResults[0].seq, concurrentResults[1].seq, "the idempotent concurrent retry does not consume another sequence");
+assert.equal((await appendAddendum({ "x-visitor": G.token }, { ...addendum, text:"同 ID 不可覆寫" })).status, 409, "changed content under a used id is refused");
+const savedAddenda = (await (await fetch(BASE + "/api/db")).json()).addenda[G.id].items;
+assert.equal(Object.keys(savedAddenda).filter(k => k === addendum.id).length, 1, "one addendum id is stored");
+assert.equal(savedAddenda[addendum.id].text, addendum.text, "idempotency conflict keeps the first text");
 const N = await visitor(), Nkey = "note-case", Nitem = { title: "原案件", body: `補充回歸測試 ${tag}`, createdAt: now(), author: N.id, department: "測試局處" };
 assert.equal((await write({ "x-visitor": N.token }, "update", `reports/${N.id}`, { items: { [Nkey]: Nitem } })).status, 200, "note test report");
 const appendNote = (headers, note) => write(headers, "append-note", `reports/${N.id}`, { key: Nkey, ...note });

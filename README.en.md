@@ -22,7 +22,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Preview before you send**: After AI sorts the report, the website shows the title, the department, the 1999 category, the district, the location and the reason. If you select a location, the preview shows its coordinates, with or without an address. The website makes the case only after you push "Confirm and send". If you change the form, you must make a new preview. If a send fails, a retry of the same report uses the same case ID.
 - **Privacy notice, terms and not-official statement**: The report form and the page footer tell you that this website is not a Taipei City Government website. The website does not send reports to 1999 or to city departments. For an emergency, call 110 or 119. Before you send a report, you must agree to the privacy notice and the terms of use. The privacy notice tells you who collects the data, the purpose, which data is public, the third parties (Anthropic, Cloudflare, OpenStreetMap Nominatim, NLSC), the retention period and your rights under Article 3 of the Personal Data Protection Act. The two documents are `<dialog>` elements in `taipei-issues.html` (`#privacy`, `#terms`). If the operator or the contact email changes, change them there.
 - **Same or similar reports**: AI can find a possible duplicate. The server can also find a report with the same text in the last 30 minutes. In these conditions, the website gives you three choices:
-  - "Add to #N": The website adds your text and photos to that case and gives it +1.
+  - "Add to #N": The website adds your text and photos to that case and gives it +1. For a retry, the Worker uses the same addition ID and uploaded photo keys. It creates the addition once and keeps the other additions.
   - "Only +1 for #N".
   - Send a new case. If the text is exactly the same, this choice changes to "Change the text".
 
@@ -152,6 +152,7 @@ Browser regression tests need Playwright and a running local Worker. Install Pla
 ```bash
 node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
+node worker/test/addendum-flow.mjs
 node worker/test/note-photos.cjs
 ```
 

@@ -6,6 +6,7 @@ import seed from "../data.json";
 
 const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
@@ -104,6 +105,19 @@ export class Hub extends DurableObject {
   contactPut(k, v) { this.sql.exec("INSERT OR REPLACE INTO contacts VALUES (?, ?)", k, JSON.stringify(v)); return { ok: true }; }
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
+  publicCase(target) {
+    if (typeof target !== "string" || target.length > 140 || !CASE_ID.test(target)) return false;
+    const colon = target.indexOf(":"), owner = colon < 0 ? "demo-seed" : target.slice(0, colon), key = colon < 0 ? target : target.slice(colon + 1);
+    if (colon >= 0 && !VISITOR_ID.test(owner)) return false;
+    const report = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${owner}`).toArray()[0];
+    const item = report && JSON.parse(report.data).items?.[key];
+    if (!isObj(item) || !REPORT_ITEM.test(key) || typeof item.title !== "string" || typeof item.body !== "string" || !Number.isFinite(Date.parse(item.createdAt))) return false;
+    if (owner !== "demo-seed" && item.author !== owner) return false;
+    const triage = this.sql.exec("SELECT data FROM docs WHERE path = ?", `triage/${target}`).toArray()[0];
+    const status = triage ? JSON.parse(triage.data) : {};
+    return status.hidden !== true && !(item.flagged === true && status.hidden !== false);
+  }
+
   // The Worker has already checked who may write where; this checks the data and applies it.
   // New report items in a visitor write: at most one per write, fresh createdAt, not a copy of a recent report, within quota.
   floodCheck(path, oldDoc, doc, ip) {
@@ -165,6 +179,27 @@ export class Hub extends DurableObject {
       doc = { ...current, items: { ...current.items, [data.key]: { ...item, notes: [...notes, { id: data.id, t: new Date().toISOString(), text, photos }] } } };
       if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
       this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
+    } else if (op === "append-addendum") {
+      if (admin || !path.startsWith("addenda/") || path !== `addenda/${path.slice(8)}` || !VISITOR_ID.test(path.slice(8)) ||
+          !isObj(data) || !NOTE_ID.test(data.id || "")) return { status: 400, error: "bad_request" };
+      const owner = path.slice(8), current = row ? JSON.parse(row.data) : {}, items = isObj(current.items) ? current.items : {};
+      const text = typeof data.text === "string" ? data.text : "", photos = data.photos;
+      if (typeof data.target !== "string" || data.target.length > 140 || typeof data.text !== "string" || text.length > 500 ||
+          !Array.isArray(photos) || photos.length > 3 ||
+          photos.some(k => typeof k !== "string" || !PHOTO_KEY.test(k) || !k.startsWith(owner + "/")) || (!text.trim() && !photos.length))
+        return { status: 400, error: "bad_addendum" };
+      const old = items[data.id];
+      if (old !== undefined) {
+        const same = isObj(old) && old.target === data.target && old.text === text && Array.isArray(old.photos) &&
+          old.photos.length === photos.length && old.photos.every((k, i) => k === photos[i]);
+        return same ? { status: 200, data: current, seq: this.seq, created: false } : { status: 409, error: "idempotency_conflict" };
+      }
+      if (!this.publicCase(data.target)) return { status: 404, error: "not_found" };
+      if (Object.keys(items).length >= ITEMS_MAX) return { status: 400, error: "too_many_items" };
+      const addendum = { target:data.target, t:new Date().toISOString(), text, photos:[...photos] };
+      doc = { ...current, items:{ ...items, [data.id]:addendum } };
+      if (new TextEncoder().encode(JSON.stringify(doc)).length > DOC_MAX) return { status: 413, error: "too_large" };
+      this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
     } else if (op !== "delete") {
       if (!isObj(data)) return { status: 400, error: "bad_data" };
       doc = op === "update" ? merge(row ? JSON.parse(row.data) : {}, data) : data;
@@ -184,7 +219,7 @@ export class Hub extends DurableObject {
     this.seq++; this.sql.exec("INSERT OR REPLACE INTO counter VALUES ('seq', ?)", this.seq);
     const msg = JSON.stringify({ path, data: doc, seq: this.seq });
     for (const ws of this.ctx.getWebSockets()) try { ws.send(msg); } catch {}
-    return { status: 200, data: doc, seq: this.seq, ...(creating ? { created: true } : {}) };
+    return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 
   fetch(req) {

@@ -114,6 +114,7 @@ const ref = (c, id) => ({
 const db = {
   updateCreates: true, // the Hub's update() creates a missing doc
   appendNote: (path, key, note) => write("append-note", path, { key, ...clone(note) }, true),
+  appendAddendum: (path, addendum) => write("append-addendum", path, clone(addendum), true),
   createReport: (path, key, item, contact) => write("create-report", path, { key, item: clone(item), ...(contact ? { contact: clone(contact) } : {}) }, true),
   doc: p => { const [c, id] = p.split("/"); return ref(c, id); },
   collection: c => ({ doc: id => ref(c, id), get: async () => { await ready; return colSnap(c); }, onSnapshot(cb, err) { subs.push({ run: () => cb(colSnap(c)) }); ready.then(fire, () => err && err(new Error("db unavailable"))); } }),
