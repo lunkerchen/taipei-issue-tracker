@@ -205,6 +205,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .pop b{display:block;margin-bottom:2px}
 .pop .btn{margin-top:8px}
+.pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
 .pin-wrap{background:none;border:0}
@@ -743,7 +744,8 @@ function render() {
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}</div>` : ""}
+        ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
+        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
@@ -766,6 +768,7 @@ function render() {
   for (const id in typed) if ($(id)) $(id).value = typed[id];
   if (focused && focused.startsWith("pr-") && $(focused)) $(focused).focus();
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
+  drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
   if (own) { scrollTo = null; const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */ setTimeout(() => card.classList.remove("hl"), 4000); }
 }
@@ -998,6 +1001,15 @@ function loadLeaflet() {
 const addBase = m => L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
   { maxZoom:19, attribution:'© <a href="https://maps.nlsc.gov.tw/" target="_blank" rel="noopener">內政部國土測繪中心</a>' }).addTo(m);
 
+// Expanded cases get a small static map. ponytail: rebuilt on every list render (a live update redraws it); keep per-id maps if that flicker matters.
+function drawMinis() {
+  const els = [...document.querySelectorAll("#list [data-mini]")]; if (!els.length) return;
+  loadLeaflet().then(() => els.forEach(el => { if (!el.isConnected || el._m) return;
+    const [lat, lng] = el.dataset.mini.split(",").map(Number);
+    const m = el._m = L.map(el, { zoomControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, touchZoom:false, boxZoom:false, keyboard:false }).setView([lat, lng], 17);
+    addBase(m); L.circleMarker([lat, lng], { radius:8, color:"#fff", weight:2, fillColor:"#cf222e", fillOpacity:1 }).addTo(m);
+  })).catch(() => els.forEach(el => el.hidden = true));
+}
 let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "", histOn = false;
 const markers = new Map(), seen = new Set(), fresh = new Map();
 let seenInit = false, noteTimer;
