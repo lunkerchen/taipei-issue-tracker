@@ -422,7 +422,8 @@ Switched to branch 'taipei'
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
       <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填。本示範站的局處後台不需驗證，任何人都看得到，請勿填寫真實姓名、手機與 Email）</legend>
-        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（接收處理進度通知）" aria-label="Email" aria-required="true"></div>
+        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"><input id="cEmail" type="text" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="Email（本站不寄通知）" aria-label="Email" aria-required="true"></div>
+        <p class="note">本站目前不會寄送 Email 通知；處理進度請回「我的陳情」查看。</p>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。勾選與否都不影響誰看得到：本示範站的局處後台不需驗證，任何人（包含被檢舉人）都能看到姓名、手機與 Email。</label>
       </fieldset>
       <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
@@ -570,7 +571,7 @@ Switched to branch 'taipei'
   <h3>誰蒐集你的資料</h3>
   <p>本站由 Laban Chen 個人開發與營運，不是臺北市政府。聯絡信箱：<a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
   <h3>目的</h3>
-  <p>受理與顯示市民通報的市政問題、聯繫通報人查證、通知你案件處理進度，以及防止濫用。</p>
+  <p>受理與顯示市民通報的市政問題、聯繫通報人查證，以及防止濫用。本站目前不會寄送 Email 或簡訊通知處理進度。</p>
   <h3>蒐集哪些資料、誰看得到</h3>
   <ul>
     <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
@@ -763,7 +764,17 @@ function applyRole() {
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
 async function run(btn, fn) { btn.disabled = true; try { await fn(); } catch (e) { fail(e); } finally { btn.disabled = false; } }
 
+// Same domain rule as the Worker: one @, a dot, and no empty or hyphen-edged domain label.
+function validEmail(s) {
+  if (s.length > 254) return false;
+  const at = s.indexOf("@");
+  if (at < 1 || at !== s.lastIndexOf("@") || /\s/.test(s)) return false;
+  const domain = s.slice(at + 1);
+  return domain.includes(".") && domain.split(".").every(label => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+}
+
 // Mask personal data before it is stored or sent to Claude. Street addresses stay: locating the problem needs them.
+const MASKED_MARK = "［已遮蔽］";
 function maskPII(s) {
   // Match on an NFKC copy (full-width digits, @ and so on) but cut the original text, so other characters stay as typed.
   let norm = "", at = [], end = [];
@@ -786,8 +797,17 @@ function maskPII(s) {
     if (!hits.some(h => a < h[1] && b > h[0])) hits.push([a, b]);
   }
   let out = "", pos = 0;
-  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + "［已遮蔽］"; pos = b; }
+  for (const [a, b] of hits.sort((x, y) => x[0] - y[0])) { out += s.slice(pos, a) + MASKED_MARK; pos = b; }
   return { text: out + s.slice(pos), count: hits.length };
+}
+// Cut by code point so an emoji is not split, and never end inside the mask marker.
+function titleFromText(text, max = 40) {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  let cut = chars.slice(0, max).join("");
+  for (let n = MASKED_MARK.length - 1; n > 0; n--)
+    if (cut.endsWith(MASKED_MARK.slice(0, n))) { cut = cut.slice(0, -n); break; }
+  return cut.trim();
 }
 
 // Every sample call gets a timeout; only a transient upstream error is retried, once. A timeout aborts as "cancelled" and is not retried.
@@ -1074,14 +1094,20 @@ function render() {
           <span class="status" role="status" data-share-status></span></div>
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
-        ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
-          ${(() => { const s = noteStates.get(i.id) || {}; const busy = s.uploading || s.sending; const pics = notePics.get(i.id) || [];
-            return `<textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${s.sending ? "disabled" : ""}></textarea>
+        ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}${admin && x.contact && contactFn ? (contactCache.has(x.contact) ? `<span class="note">${contactText(contactCache.get(x.contact))}</span>` : `<button class="btn" data-contact="${esc(x.contact)}">補充者聯絡資料</button>`) : ""}</div>`).join("")}
+        ${canWrite && me && i.author === me ? (() => {
+          const ownN = i.notes.filter(x => !x.other).length, full = ownN >= 10 || noteLimits.has(i.id);
+          const s = noteStates.get(i.id) || {}, busy = s.uploading || s.sending, pics = notePics.get(i.id) || [];
+          const draft = full ? (document.getElementById(`note-${i.id}`)?.value || "") : "";
+          if (full && !draft && !pics.length) return `<div class="note" data-notefull="${esc(i.id)}">此案件已達 10 則補充上限。</div>`;
+          return `<form class="addnote" data-note="${esc(i.id)}">
+            <div class="note">${full ? "此案件已達 10 則補充上限。草稿已保留，請自行複製。" : `每件案件最多 10 則補充，目前已 ${ownN} 則。`}</div>
+            <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${full ? "readonly" : s.sending ? "disabled" : ""}></textarea>
           <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
-          <div class="row">${photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
-            <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
-        </form>` : ""}
+          <div class="row">${!full && photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
+            <button class="btn" type="submit" ${full || busy ? "disabled" : ""}>${full ? "已達上限" : "新增補充"}</button><span class="status" role="status">${esc(full ? "" : s.status || "")}</span></div>
+        </form>`;
+        })() : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
         ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
@@ -1242,7 +1268,7 @@ $("cancelBtn").onclick = () => {
 };
 
 async function triage(text, district, aspect) {
-  const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
+  const fallback = { title: titleFromText(text), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
   if (!sample) return fallback;
   // ponytail: only the 60 newest open issues go into the prompt; switch to a search step if the list grows past that
   const open = issues.filter(i => i.status !== "fixed").sort((a, b) => b.n - a.n).slice(0, 60);
@@ -1293,6 +1319,7 @@ const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|�
 const notePics = new Map();
 const noteStates = new Map();
 const noteAttempts = new Map();
+const noteLimits = new Set();
 const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
@@ -1395,7 +1422,7 @@ $("newForm").addEventListener("submit", async e => {
       if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { fieldError($("cPhone"), "請填寫手機號碼（09 開頭共 10 碼）"); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { fieldError($("cEmail"), "請填寫 Email（用來通知處理進度）"); return; }
+      if (!validEmail(mail)) { fieldError($("cEmail"), "請填寫有效的 Email（本站不會寄送通知）"); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
@@ -1451,7 +1478,7 @@ $("newForm").addEventListener("submit", async e => {
 function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   pending = { t, text, photos, signature };
   $("dupBox").innerHTML = `<div id="dupNotice">${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
-    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
+    <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。「補充到」會保存你的聯絡資料；「只按 +1」不會。</div>
     <div class="row"><button class="btn primary" type="button" data-dup="add" aria-describedby="dupNotice">補充到 #${esc(t.dup.n)}</button>
     <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
     ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
@@ -1510,6 +1537,14 @@ async function supplement(t, text, photos, signature) {
     if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
     if (attempt.photos.length > PHOTO_MAX || attempt.photos.some(k => !PHOTO_RE.test(k) || !k.startsWith(me + "/"))) {
       $("newStatus").textContent = "照片無法安全附加，請重新選擇照片"; return;
+    }
+    if (contactFn && !attempt.contactSaved) {
+      const contact = { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), email:$("cEmail").value.trim(), realName:!$("cRealRow").hidden && $("cReal").checked };
+      try { await contactFn.save(attempt.id, contact); attempt.contactSaved = true; }
+      catch (e) {
+        $("newStatus").textContent = e && e.status === 429 ? "操作太頻繁，請 1 分鐘後再試" : "聯絡資料儲存失敗，請稍後再試";
+        return;
+      }
     }
     supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
     const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
@@ -2518,7 +2553,7 @@ $("list").addEventListener("submit", async e => {
       const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
       if (!raw) throw new Error("not_found");
       const notes = Array.isArray(raw.notes) ? raw.notes : [];
-      if (notes.length >= 10) throw new Error("note_limit");
+      if (notes.length >= 10) throw Object.assign(new Error("note_limit"), { error:"note_limit" });
       await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
     }
     // a live re-render may already have replaced this form: clear the current one by id
@@ -2526,6 +2561,11 @@ $("list").addEventListener("submit", async e => {
     const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
   } catch (err) {
     state.sending = false;
+    if (err && err.error === "note_limit") {
+      noteLimits.add(id);
+      state.status = "此案件已達 10 則補充上限，草稿已保留，請自行複製。";
+      render(); toast("此案件已達 10 則補充上限"); return;
+    }
     state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
     render(); fail(err);
   }
@@ -2868,9 +2908,9 @@ document.addEventListener("keydown", e => {
   // Supplements from other citizens: target must be a case id, photos only from the writer's own folder
   db.collection("addenda").onSnapshot(s => {
     const out = {};
-    for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
+    for (const d of s.docs) for (const [aid, x] of Object.entries(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500),
+        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500), contact:`${d.id}:${aid}`,
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
   }, () => {});
