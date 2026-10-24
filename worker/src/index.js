@@ -1,4 +1,5 @@
 // Serves the demo page (static assets), proxies its two AI prompts to the Claude API, and fronts the shared Hub database.
+import { validEmail } from "./hub.js";
 export { Hub } from "./hub.js";
 const MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5" };
 // ponytail: the page builds the prompt, so this is a capped proxy: prefix check, length/token caps and a per-IP rate limit bound abuse.
@@ -40,7 +41,7 @@ async function writeDb(req, env) {
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 
-// Reporter contact (private): a signed visitor saves name/phone for one of its own reports; only the admin reads it back.
+// Reporter contact (private): a signed visitor saves name/phone/email for one of its own reports; only the admin reads it back.
 const ITEM = /^[\w-]{1,64}$/, NAME_MAX = 30;
 async function contact(req, env, searchParams) {
   const h = req.headers, adminHdr = h.get("x-admin");
@@ -58,8 +59,9 @@ async function contact(req, env, searchParams) {
   let b;
   try { const t = await req.text(); if (t.length > 1000) return err(413, "too_large"); b = JSON.parse(t); } catch { return err(400, "bad_json"); }
   const name = typeof b?.name === "string" ? b.name.trim() : "", phone = typeof b?.phone === "string" ? b.phone.replace(/[\s-]/g, "") : "";
-  if (!ITEM.test(b?.item || "") || !name || name.length > NAME_MAX || !/^09\d{8}$/.test(phone) || typeof b.realName !== "boolean") return err(400, "bad_request");
-  return reply(await hub(env).contactPut(`${id}:${b.item}`, { name, phone, realName: b.realName, t: new Date().toISOString() }));
+  const email = typeof b?.email === "string" ? b.email.trim() : "";
+  if (!ITEM.test(b?.item || "") || !name || name.length > NAME_MAX || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof b.realName !== "boolean") return err(400, "bad_request");
+  return reply(await hub(env).contactPut(`${id}:${b.item}`, { name, phone, email, realName: b.realName, t: new Date().toISOString() }));
 }
 
 // Photos: upload by a signed visitor or the admin, read by anyone. JPEG only; the browser already resized and re-encoded it,

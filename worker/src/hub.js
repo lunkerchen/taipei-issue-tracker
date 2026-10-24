@@ -9,6 +9,7 @@ const DOC_MAX = 32 * 1024, ITEMS_MAX = 20;
 const REPORT_ITEM = /^[\w-]{1,64}$/, NOTE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VISITOR_ID = /^[\da-f]{16}$/, CASE_ID = /^(?:[\da-f]{16}:[\w-]{1,64}|[\w-]{1,64})$/;
 const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
+export const validEmail = e => e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); // shared with index.js; the page uses the same rule
 // Anti-flood for new reports (visitors only). Visitor ids are cheap to mint, so the per-IP cap is the real wall;
 // ponytail: a venue shares one IP, so IP_10MIN is generous. Add Turnstile if a real flood gets past it.
 const MIN = 60e3, PER_VISITOR_10MIN = 3, PER_VISITOR_DAY = 10, PER_IP_10MIN = 60, SKEW = 10 * MIN, DUP_WINDOW = 30 * MIN;
@@ -84,7 +85,7 @@ export class Hub extends DurableObject {
       this.sql.exec("CREATE TABLE IF NOT EXISTS docs (path TEXT PRIMARY KEY, data TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT NOT NULL, exp INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY)");
-      // Reporter name/phone: kept out of docs, so snapshot() and the socket never send them; only the admin route reads them
+      // Reporter name/phone/email: kept out of docs, so snapshot() and the socket never send them; only the admin route reads them
       this.sql.exec("CREATE TABLE IF NOT EXISTS quota (who TEXT NOT NULL, ip TEXT NOT NULL, t INTEGER NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS contacts (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
       this.sql.exec("CREATE TABLE IF NOT EXISTS counter (k TEXT PRIMARY KEY, v INTEGER NOT NULL)");
@@ -167,9 +168,11 @@ export class Hub extends DurableObject {
         const c = data.contact;
         const name = typeof c?.name === "string" ? c.name.trim() : "";
         const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
-        if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || typeof c.realName !== "boolean")
+        const email = typeof c?.email === "string" ? c.email.trim() : "";
+        if (!isObj(c) || !name || name.length > 30 || !/^09\d{8}$/.test(phone) || !validEmail(email) || typeof c.realName !== "boolean")
           return { status: 400, error: "bad_contact" };
-        reportContact = { name, phone, realName: c.realName, t: new Date().toISOString() };
+        // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
+        reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
         contactKey = `${path.slice(8)}:${data.key}`;
       }
       data = { items: { [data.key]: data.item } }; op = "update";

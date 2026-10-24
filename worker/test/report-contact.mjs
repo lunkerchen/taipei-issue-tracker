@@ -15,7 +15,7 @@ const mint = async () => {
   return { token, id: token.split(".")[0] };
 };
 const person = await mint(), tag = randomUUID();
-const contact = { name: "合成聯絡人", phone: "0900000000", realName: false };
+const contact = { name: "合成聯絡人", phone: "0900000000", email: "citizen@example.com", realName: false };
 const makeItem = (body, extra = {}) => ({ title: "合成路燈通報", body, author: person.id, createdAt: new Date().toISOString(), ...extra });
 const create = (key, item, details = contact) => post("/api/db", { "x-visitor": person.token }, {
   op: "create-report", path: `reports/${person.id}`, data: { key, item, contact: details }
@@ -32,6 +32,12 @@ const snapshot = async () => (await (await fetch(base + "/api/db")).json());
 assert.equal((await create("bad-contact", makeItem("invalid contact " + tag), { ...contact, phone: "123" })).status, 400);
 assert.equal(await readContact("bad-contact"), null);
 assert.equal((await snapshot()).reports[person.id], undefined, "invalid contact does not create a public case");
+const { email: _omitted, ...withoutEmail } = contact;
+for (const [key, details] of [["no-email", withoutEmail], ["bad-email", { ...contact, email: "not-an-email" }], ["long-email", { ...contact, email: "a".repeat(250) + "@x.co" }], ["blank-email", { ...contact, email: "  " }]]) {
+  assert.equal((await create(key, makeItem(key + " " + tag), details)).status, 400, key + " is refused");
+  assert.equal(await readContact(key), null, key + " leaves no private contact");
+  assert.equal((await snapshot()).reports[person.id], undefined, key + " does not create a public case");
+}
 
 const first = makeItem("unique contact test " + tag);
 const accepted = await create("accepted", first);
@@ -40,6 +46,7 @@ assert.equal((await accepted.json()).created, true);
 const saved = await readContact("accepted");
 assert.equal(saved.name, contact.name);
 assert.equal(saved.phone, contact.phone);
+assert.equal(saved.email, contact.email);
 const retry = await create("accepted", first, { ...contact, name: "不應覆寫" });
 assert.equal(retry.status, 200);
 assert.equal((await retry.json()).created, false);
@@ -58,4 +65,5 @@ const stranger = await mint();
 const denied = await fetch(`${base}/api/contact?id=${person.id}:accepted`, { headers: { "x-visitor": stranger.token } });
 assert.equal(denied.status, 403);
 assert.ok(!JSON.stringify(await snapshot()).includes(contact.phone), "private contact stays out of the public snapshot");
+assert.ok(!JSON.stringify(await snapshot()).includes(contact.email), "private email stays out of the public snapshot");
 console.log("OK: accepted report and contact save together; duplicate, quota, validation and size refusals leave no contact; retries keep the first contact private.");

@@ -223,15 +223,19 @@ assert.equal((await fetch(BASE + "/api/photo/../hub.js")).status, 404, "bad key"
 assert.equal((await fetch(BASE + "/api/photo/" + A.id + "/nope.jpg")).status, 404, "missing photo");
 
 // Reporter contact: visitor saves its own, only the admin reads it, and it never shows up in /api/db
-const CV = await visitor(), cbody = { item: "smoke-1", name: "測試員", phone: "0912-000-111", realName: false };
+const CV = await visitor(), cbody = { item: "smoke-1", name: "測試員", phone: "0912-000-111", email: "smoke@example.com", realName: false };
 assert.equal((await post("/api/contact", {}, cbody)).status, 403, "anonymous contact");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, phone: "12345" })).status, 400, "bad phone");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, name: "" })).status, 400, "empty name");
+assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, email: "not-an-email" })).status, 400, "bad email");
+assert.equal((await post("/api/contact", { "x-visitor": CV.token }, { ...cbody, email: undefined })).status, 400, "missing email");
 assert.equal((await post("/api/contact", { "x-visitor": CV.token }, cbody)).status, 200, "save contact");
 const cget = h => fetch(`${BASE}/api/contact?id=${CV.id}:smoke-1`, { headers: h, signal: AbortSignal.timeout(8000) });
 assert.equal((await cget({ "x-visitor": CV.token })).status, 403, "visitor cannot read contacts");
 assert.deepEqual((await (await cget({ "x-admin": admin })).json()).contact.phone, "0912000111", "admin reads contact");
+assert.equal((await (await cget({ "x-admin": admin })).json()).contact.email, "smoke@example.com", "admin reads email");
 assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("0912000111"), "contact not in public snapshot");
+assert.ok(!(await (await fetch(BASE + "/api/db")).text()).includes("smoke@example.com"), "email not in public snapshot");
 
 wa.ws.close(); wb.ws.close();
 console.log("OK");

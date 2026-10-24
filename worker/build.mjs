@@ -151,7 +151,7 @@ const photo = async (blob, visitorOnly = false) => {
   throw last;
 };
 photo.url = key => "/api/photo/" + key;
-// Reporter contact: save(item, {name, phone, realName}) for your own report; get(id) works for the admin only
+// Reporter contact: save(item, {name, phone, email, realName}) for your own report; get(id) works for the admin only
 const contactReq = async (url, init = {}, visitorOnly = false) => {
   const h = { ...(init.headers || {}) };
   if (adminToken && !visitorOnly) h["x-admin"] = adminToken;
