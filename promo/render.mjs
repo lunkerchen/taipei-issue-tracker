@@ -1,7 +1,7 @@
 // Render a composition in promo/ to an MP4 in promo/out/. Uses the global Playwright install and ffmpeg.
 // The soundtrack is synthesized by ffmpeg (aevalsrc).
 //   node promo/render.mjs [promo|intro]              full video (default: promo)
-//   node promo/render.mjs [promo|intro] 1.5 4 9.2    only these seconds, as JPEG files in promo/out/<name>/sample/
+//   node promo/render.mjs [promo|intro] 1.5 4 9.2    only these seconds of the video, as JPEG files in promo/out/<name>/sample/
 //   node promo/render.mjs [promo|intro] --encode     only encode the frames already in promo/out/<name>/frames/
 import { createRequire } from "node:module";
 import { execSync, execFileSync } from "node:child_process";
@@ -15,9 +15,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FPS = 30;
 const data = f => readFileSync(join(here, "..", "data", f), "utf8");
 
-// Score parameters, in seconds. drop: groove starts. end: kick stops. gaps: groove off. half: kick on every
-// other beat and no hats. alt: second chord loop. typing: [t0, t1, period, decay, gain]. risers: [a, b, noise, f0, f1,
-// sweep, power]. hits: [T, gain]. cracks: T. blips: [T, Hz].
+// A composition is authored on a source timeline of dur seconds. retime: [source second, speed] pairs; from that
+// source second on, the video plays at that speed, so speeds above 1 make the video shorter. beats: pins source
+// seconds to beats of a bpm grid ([source second, beat], beat 0 = first pin's grid origin) and stretches the video
+// between pins, so cuts and hits land on the beat.
+// Score parameters, in source seconds. drop: groove starts. end: kick stops. gaps: groove off. half: kick on every
+// other beat and no hats. alt: second chord loop. sections: the chord loop restarts; the first one is beat 0.
+// clap: backbeat on. rel: release rate that takes bass and pad to zero before each beat and bar line.
+// typing: [t0, t1, period, decay, gain]. risers: [a, b, noise, f0, f1, sweep, power]. hits: [T, gain]. cracks: T.
+// blips: [T, Hz].
 const COMPS = {
   promo: {
     html: "compose.html", w: 1080, h: 1920, dur: 29.5, mp4: "taipei-promo.mp4",
@@ -32,8 +38,18 @@ const COMPS = {
   },
   intro: {
     html: "intro.html", w: 1920, h: 1080, dur: 90, mp4: "taipei-intro.mp4",
+    // Actions keep near 1x for reading, holds and transitions run fast; beats then moves every cut and hit onto the
+    // 128 BPM grid. Section gates sit on bar lines. 90 source seconds play in 59.15 s.
+    retime: [[0, 1.32], [2.9, 1.1], [5.5, 1.5], [6, 1.8], [13.4, 1.3], [16, 1.4], [17.4, 1.25], [20.9, 2.2], [23.6, 1.2], [24.8, 1.5],
+      [26.6, 1.3], [29.2, 2.4], [33, 1.5], [36.8, 1.2], [38.6, 1.4], [41.9, 2.6], [45, 1.6], [47.3, 1.25], [49.7, 1.15], [52, 1.6],
+      [53, 1.5], [57.2, 1.6], [62, 2], [69, 1.6], [75, 1.2], [77.9, 1.35], [81, 2.2], [85.5, 1.2], [87.6, 1]],
+    beats: {
+      bpm: 128, at: [[2.9, -.5], [3.25, 0], [6, 5], [17.6, 21], [18.5, 22.5], [19.4, 24], [23.6, 30], [24.8, 32], [33, 44],
+        [45, 60], [53, 72], [62, 84], [69, 92], [74, 97.5], [75.95, 100], [81, 108], [85.5, 112], [86, 113], [89, 119], [90, 121]],
+    },
     score: {
-      drop: 3.5, end: 89, gaps: [[23.6, 24.8]], half: [[53, 69]], alt: [[33, 53], [69, 81]],
+      drop: 3.25, end: 89, gaps: [[23.6, 24.8]], half: [[53, 69]], alt: [[33, 53], [69, 81]], rel: 40,
+      sections: [3.25, 24.8, 33, 53, 69, 81, 85.5], clap: [[6, 23.6], [24.8, 53], [69, 85.5]],
       typing: [[0.3, 1.5, 0.06, 250, 0.35], [1.75, 2.25, 0.018, 400, 0.15], [34.4, 35.85, 0.042, 300, 0.1], [45.4, 46.8, 0.07, 250, 0.1]],
       risers: [[2.1, 2.9, 0.45, 200, 900, 0.25, 3], [23.6, 24.8, 0.35, 100, 700, 0.3, 2], [84.5, 85.5, 0.3, 150, 800, 0.2, 3]],
       hits: [[2.9, 1], [3.25, 1], [6, .7], [17.6, .6], [18.5, .6], [19.4, .6], [24.8, 1], [33, .5], [45, .5], [53, .5], [62, .6], [69, .5], [74, .5], [75.95, .7], [81, .5], [85.5, .7], [86, 1]],
@@ -49,12 +65,31 @@ const COMPS = {
   },
 };
 
-// 120 BPM: kick on beats, hats off-beat, bass and pad on a 4-chord loop (Am-F-C-G, or F-G-Em-Am in alt).
-function score(s, dur) {
+const lin = (pts, x) => { // piecewise-linear through [x, y] points
+  let i = 1; while (i < pts.length - 1 && x > pts[i][0]) i++;
+  const [[a, y], [c, z]] = [pts[i - 1], pts[i]]; return y + (x - a) * (z - y) / (c - a);
+};
+// Move every cue to video seconds. Typing clicks keep their count, so their period scales with the window.
+function retimeScore(s, f) {
+  const win = w => w.map(([a, b]) => [f(a), f(b)]);
+  return {
+    drop: f(s.drop), end: f(s.end), gaps: win(s.gaps), half: win(s.half), alt: win(s.alt), rel: s.rel,
+    sections: (s.sections ?? []).map(f), clap: win(s.clap ?? []),
+    typing: s.typing.map(([a, b, p, k, g]) => { const q = (f(b) - f(a)) / (b - a); return [f(a), f(b), p * q, k / q, g]; }),
+    risers: s.risers.map(([a, b, ...r]) => [f(a), f(b), ...r]),
+    hits: s.hits.map(([T, g]) => [f(T), g]), cracks: s.cracks.map(f), blips: s.blips.map(([T, hz]) => [f(T), hz]),
+  };
+}
+
+// Beat b seconds: kick on beats, hats off-beat, bass and pad on a 4-chord loop of bars (Am-F-C-G, or F-G-Em-Am in alt).
+function score(s, b) {
   const any = w => w.map(([a, b]) => `between(t,${a},${b})`).join("+") || "0";
-  const beat = "mod(t,0.5)", run = `gte(t,${s.drop})${s.gaps.map(([a, b]) => `*not(between(t,${a},${b}))`).join("")}`;
+  const [o = 0, ...more] = s.sections, T = o ? `(t-${o})` : "t", B = 4 * b, beat = `mod(${T},${b})`;
+  const L = more.length ? `(t-${o}${more.map((x, i) => `-gte(t,${x})*${+(x - s.sections[i]).toFixed(3)}`).join("")})` : T;
+  const run = `gte(t,${s.drop})${s.gaps.map(([a, b]) => `*not(between(t,${a},${b}))`).join("")}`;
   const half = `(${any(s.half)})`, alt = `(${any(s.alt)})`;
-  const loop = (a, b, c, d) => `if(lt(mod(t,8),2),${a},if(lt(mod(t,8),4),${b},if(lt(mod(t,8),6),${c},${d})))`;
+  const ramp = len => s.rel ? `*min(1,(${len}-mod(${T},${len}))*${s.rel})` : ""; // zero before the line: no step there
+  const loop = (a, b, c, d) => `if(lt(mod(${L},${4 * B}),${B}),${a},if(lt(mod(${L},${4 * B}),${2 * B}),${b},if(lt(mod(${L},${4 * B}),${3 * B}),${c},${d})))`;
   const R = (one, two) => `if(${alt},${loop(...two)},${loop(...one)})`;
   const voice = f => `sin(2*PI*${f}*t)+0.6*sin(2*PI*(${f}+0.7)*t)`;
   const bass = R([55, 43.65, 65.41, 49], [43.65, 49, 41.2, 55]);
@@ -65,16 +100,36 @@ function score(s, dur) {
   const typing = ([a, b, p, k, g], i) => `between(t,${a},${b})*(random(${1 + i % 2})*2-1)*exp(-${k}*mod(t-${a},${p}))*${g}`;
   const riser = ([a, b, n, f0, f1, sw, pw], i) => `between(t,${a},${b})*((random(${3 + i % 2})*2-1)*${n}+sin(2*PI*(${f0}*(t-${a})+${f1}*pow(t-${a},2)))*${sw})*pow((t-${a})/(${b}-${a}),${pw})`;
   return [
-    `${run}*lt(t,${s.end})*(1-${half}*gte(mod(t,1),0.5))*sin(2*PI*(45*${beat}+6*(1-exp(-25*${beat}))))*exp(-7*${beat})*0.9`,
-    `${run}*(1-${half})*(random(0)*2-1)*(0.2*exp(-70*mod(t+0.25,0.5))+0.05*exp(-140*mod(t,0.125)))`,
-    `${run}*(sin(2*PI*${bass}*t)+0.35*sin(4*PI*${bass}*t))*(1-exp(-30*${beat}))*(1-0.7*exp(-9*${beat}))*0.3`,
-    `(${voice(R([220, 174.61, 261.63, 196], [174.61, 196, 164.81, 220]))}+${voice(R([261.63, 220, 329.63, 246.94], [220, 246.94, 196, 261.63]))}+${voice(R([329.63, 261.63, 392, 293.66], [261.63, 293.66, 246.94, 329.63]))})*(1-exp(-5*mod(t,2)))*exp(-0.35*mod(t,2))*(0.025+0.02*gte(t,${s.drop}))`,
+    `${run}*lt(t,${s.end})*(1-${half}*gte(mod(${T},${2 * b}),${b}))*sin(2*PI*(45*${beat}+6*(1-exp(-25*${beat}))))*exp(-7*${beat})*0.9`,
+    `${run}*(1-${half})*(random(0)*2-1)*(0.2*exp(-70*mod(${T}+${b / 2},${b}))+0.05*exp(-140*mod(${T},${b / 4})))`,
+    ...(s.clap.length ? [`${run}*(${any(s.clap)})*gte(mod(${T},${2 * b}),${b})*(random(6)*2-1)*exp(-24*${beat})*0.22`] : []),
+    `${run}*(sin(2*PI*${bass}*t)+0.35*sin(4*PI*${bass}*t))*(1-exp(-30*${beat}))*(1-0.7*exp(-9*${beat}))${ramp(b)}*0.3`,
+    `(${voice(R([220, 174.61, 261.63, 196], [174.61, 196, 164.81, 220]))}+${voice(R([261.63, 220, 329.63, 246.94], [220, 246.94, 196, 261.63]))}+${voice(R([329.63, 261.63, 392, 293.66], [261.63, 293.66, 246.94, 329.63]))})*(1-exp(-5*mod(${T},${B})))*exp(-0.35*mod(${T},${B}))${ramp(B)}*(0.025+0.02*gte(t,${s.drop}))`,
     ...s.typing.map(typing), ...s.risers.map(riser), ...s.hits.map(hit), ...s.cracks.map(crack), ...s.blips.map(blip),
   ].join("+");
 }
 
 const args = process.argv.slice(2), name = COMPS[args[0]] ? args.shift() : "promo", C = COMPS[name];
-const out = join(here, "out"), dir = join(out, name, "frames"), total = Math.round(C.dur * FPS);
+let map = [], o = 0; // [source second, video second]
+(C.retime ?? [[0, 1]]).forEach(([a, r], i, R) => { map.push([a, o]); o += ((R[i + 1]?.[0] ?? C.dur) - a) / r; });
+map.push([C.dur, o]);
+const bt = 60 / (C.beats?.bpm ?? 120), pins = C.beats?.at ?? [];
+if (pins.length) {
+  const t0 = lin(map, pins[0][0]) - pins[0][1] * bt, pin = pins.map(([s, k]) => [s, t0 + k * bt]);
+  const warp = [[0, 0], ...pin.map(([s, v]) => [lin(map, s), v])];
+  map = [...map.map(([s, u]) => [s, lin(warp, u)]), ...pin].sort((p, q) => p[0] - q[0]).filter((p, i, m) => !i || p[0] > m[i - 1][0]);
+}
+const inv = map.map(([s, v]) => [v, s]), toOut = s => lin(map, s), toSrc = t => lin(inv, t);
+const sc = retimeScore(C.score, x => +toOut(x).toFixed(3)), D = +toOut(C.dur).toFixed(3);
+if (pins.length) { // gates on bar lines, gates of single beats on beats, hits on half beats: no cut mid-note
+  const off = (x, q) => { const k = (x - sc.sections[0]) / q; return Math.abs(k - Math.round(k)) * q > 1e-3; };
+  const bad = [...[sc.drop, ...sc.sections, ...sc.half.flat(), ...sc.alt.flat(), ...sc.gaps.map(g => g[1])].filter(x => off(x, 4 * bt)),
+    ...[sc.end, ...sc.gaps.map(g => g[0]), ...sc.clap.flat()].filter(x => off(x, bt)),
+    ...[...sc.hits.map(h => h[0]), ...sc.cracks].filter(x => off(x, bt / 2))];
+  for (let s = 0; s <= C.dur; s += .25) if (Math.abs(toSrc(toOut(s)) - s) > 1e-6) bad.push(`map ${s}`);
+  if (bad.length) throw new Error(`Off the beat grid: ${bad.join(", ")}`);
+}
+const out = join(here, "out"), dir = join(out, name, "frames"), total = Math.round(D * FPS);
 const encodeOnly = args[0] === "--encode", at = encodeOnly ? [] : args.map(Number);
 
 async function openPage() {
@@ -92,7 +147,7 @@ async function openPage() {
   if (!fonts.length) throw new Error("No Traditional Chinese font. Install Source Han Sans TC (or Noto Sans CJK TC).");
   return page;
 }
-const frame = (page, t, path) => page.evaluate(t => render(t), t).then(() => page.screenshot({ path, type: "jpeg", quality: 93 }));
+const frame = (page, t, path) => page.evaluate(t => render(t), toSrc(t)).then(() => page.screenshot({ path, type: "jpeg", quality: 93 }));
 
 if (!encodeOnly) {
   const page = await openPage();
@@ -110,9 +165,9 @@ if (!encodeOnly) {
   await page.context().browser().close();
 }
 
-const mp4 = join(out, C.mp4), D = C.dur;
+const mp4 = join(out, C.mp4);
 execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", join(dir, "%04d.jpg"),
-  "-filter_complex", `aevalsrc='${score(C.score, D)}':s=48000:d=${D},volume=0.7,highpass=f=25,alimiter=limit=0.9:level=disabled,afade=t=out:st=${D - 0.7}:d=0.7,aformat=channel_layouts=stereo[a]`,
+  "-filter_complex", `aevalsrc='${score(sc, bt)}':s=48000:d=${D},volume=0.7,highpass=f=25,alimiter=limit=0.9:level=disabled,afade=t=out:st=${D - 0.7}:d=0.7,aformat=channel_layouts=stereo[a]`,
   "-map", "0:v", "-map", "[a]", "-vf", "scale=in_range=pc:out_range=tv,format=yuv420p", "-color_range", "tv",
   "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-maxrate", "8M", "-bufsize", "16M",
   "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", String(D), mp4], { stdio: "inherit" });
