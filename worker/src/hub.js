@@ -159,30 +159,31 @@ export class Hub extends DurableObject {
   contactGet(k) { const r = this.sql.exec("SELECT v FROM contacts WHERE k = ?", k).toArray()[0]; return { contact: r ? JSON.parse(r.v) : null }; }
 
   // After a token-admin triage write: email the reporter what token-admin writes changed since the last notice. Off until
-  // NOTICE_FROM is set; demo-seed cases have no contact, so they never send. Only this write's own changes (old doc -> new doc)
-  // count, so status, department or 修繕單 text that the token-free demo admin put in the doc never reaches an email.
+  // NOTICE_FROM is set; demo-seed cases have no contact, so they never send. Only this write's own changes count: status and
+  // department from old doc -> new doc, 修繕單 events from `added`. So text that the token-free demo admin put in the doc never
+  // reaches an email, also when a stale tab sends back events that a demo admin has since changed.
   // notices row: told = what the reporter was last told, set = the state token-admin writes made, times = send times.
   // ponytail: "重設到快照" re-sets triage docs through this path too, so a restore can send a "status went back" notice.
-  notify(target, oldDoc, triage) {
+  notify(target, oldDoc, triage, added) {
     if (!this.env.EMAIL || !this.env.NOTICE_FROM || !isObj(triage)) return;
     const contact = this.contactGet(target).contact, colon = target.indexOf(":");
     if (!contact?.email || colon < 0) return;
     const report = this.sql.exec("SELECT data FROM docs WHERE path = ?", `reports/${target.slice(0, colon)}`).toArray()[0];
     const item = report && JSON.parse(report.data).items?.[target.slice(colon + 1)];
     if (!isObj(item) || typeof item.title !== "string") return;
-    const evs = d => isObj(d) && Array.isArray(d.events) ? d.events.filter(isObj) : [], key = e => `${e.type}:${e.n ?? e.pr}@${e.t}`;
-    const before = new Set(evs(oldDoc).map(key)), one = (v, n) => String(v || "").replace(/\s+/g, " ").slice(0, n);
+    const key = e => `${e.type}:${e.n ?? e.pr}@${e.t}`, one = (v, n) => String(v || "").replace(/\s+/g, " ").slice(0, n);
     const row = this.sql.exec("SELECT v FROM notices WHERE k = ?", target).toArray()[0];
     const base = { status: "open", dept: one(item.dept, 30), prs: [], merged: [] };
     const last = row ? JSON.parse(row.v) : { told: base, set: base, times: [] }, told = last.told;
     const set = { ...last.set, prs: [...last.set.prs], merged: [...last.set.merged] };
     if (triage.status !== oldDoc?.status && STATUS_ZH[triage.status]) set.status = triage.status;
     if (typeof triage.dept === "string" && triage.dept !== oldDoc?.dept) set.dept = one(triage.dept, 30);
-    for (const e of evs(triage)) if (!before.has(key(e))) {
-      if (e.type === "pr" && Number.isFinite(e.n)) set.prs.push({ k: key(e), n: e.n, title: one(e.title, 80) });
-      if (e.type === "merged" && Number.isFinite(e.pr)) set.merged.push({ k: key(e), n: e.pr });
+    const has = (a, k) => a.some(x => x.k === k);
+    for (const e of added.filter(isObj).slice(0, 10)) { // has(): a retried write must not list a 修繕單 twice
+      if (e.type === "pr" && Number.isFinite(e.n) && !has(set.prs, key(e))) set.prs.push({ k: key(e), n: e.n, title: one(e.title, 80) });
+      if (e.type === "merged" && Number.isFinite(e.pr) && !has(set.merged, key(e))) set.merged.push({ k: key(e), n: e.pr });
     }
-    const has = (a, k) => a.some(x => x.k === k), lines = [
+    const lines = [
       ...set.prs.filter(p => !has(told.prs, p.k)).map(p => `已開立修繕單 #${p.n}：${p.title}`),
       ...set.merged.filter(p => !has(told.merged, p.k)).map(p => `修繕單 #${p.n} 已完成並合併`),
       ...(set.status !== told.status ? [`狀態改為「${STATUS_ZH[set.status]}」`] : []),
@@ -202,7 +203,13 @@ export class Hub extends DurableObject {
       subject: `陳情進度更新：${title}`, text, html: escHtml(text).replace(/\n/g, "<br>") }).catch(e => {
       console.error("notice_failed", target, e.code || "error");
       const cur = JSON.parse(this.sql.exec("SELECT v FROM notices WHERE k = ?", target).toArray()[0]?.v || "null");
-      if (e.code !== "E_TIMEOUT" && cur && JSON.stringify(cur.told) === JSON.stringify(set)) save({ ...cur, told, times: cur.times.filter(t => t !== stamp) });
+      if (e.code === "E_TIMEOUT" || !cur) return;
+      // Undo only what this notice told; a notice that was sent meanwhile keeps what it told
+      const t = cur.told, i = cur.times.indexOf(stamp);
+      if (i >= 0) cur.times.splice(i, 1);
+      for (const f of ["status", "dept"]) if (set[f] !== told[f] && t[f] === set[f]) t[f] = told[f];
+      for (const f of ["prs", "merged"]) t[f] = t[f].filter(p => has(told[f], p.k) || !has(set[f], p.k));
+      save(cur);
     }));
   }
 
@@ -264,6 +271,9 @@ export class Hub extends DurableObject {
   // trusted: the writer sent the real ADMIN_TOKEN, not just the demo x-admin; only its triage writes send notices
   write(op, path, data, admin, ip = "", trusted = false) {
     const row = this.sql.exec("SELECT data FROM docs WHERE path = ?", path).toArray()[0];
+    // A triage write lists the events it appends in `added` (never stored). Notices trust that list, not the events array.
+    let added = [];
+    if (path.startsWith("triage/") && isObj(data) && Object.hasOwn(data, "added")) ({ added, ...data } = data);
     const creating = op === "create-report";
     let reportContact = null, contactKey = null;
     if (creating) {
@@ -357,7 +367,7 @@ export class Hub extends DurableObject {
         ws.send(JSON.stringify({ path, data, seq: this.seq }));
       } catch {}
     }
-    if (trusted && doc && path.startsWith("triage/")) this.notify(path.slice(7), row && JSON.parse(row.data), doc);
+    if (trusted && doc && path.startsWith("triage/")) this.notify(path.slice(7), row && JSON.parse(row.data), doc, Array.isArray(added) ? added : []);
     return { status: 200, data: doc, seq: this.seq, ...(creating || op === "append-addendum" ? { created: true } : {}) };
   }
 

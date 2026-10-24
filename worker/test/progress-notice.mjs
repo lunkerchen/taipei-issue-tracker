@@ -36,11 +36,12 @@ const ws = new WebSocket(base.replace(/^http/, "ws") + "/api/ws?admin"), heard =
 ws.onmessage = e => heard.push(String(e.data));
 await new Promise((ok, no) => { ws.onopen = ok; ws.onerror = no; });
 
-// Each save sends the case's full event list, as act() in the page does
+// Each save sends the case's full event list plus the events it adds (`added`), as act() in the page does
 let t = 0; const events = [];
 const save = (admin, patch, ...add) => {
-  events.push(...add.map(e => ({ t: new Date(Date.now() + ++t).toISOString(), by: "工務局", ...e })));
-  return post("/api/db", { "x-admin": admin }, { op: "update", path: `triage/${target}`, data: { ...patch, events } });
+  const added = add.map(e => ({ t: new Date(Date.now() + ++t).toISOString(), by: "工務局", ...e }));
+  events.push(...added);
+  return post("/api/db", { "x-admin": admin }, { op: "update", path: `triage/${target}`, data: { ...patch, events, added } });
 };
 const step = async (admin, n, patch, ...add) => { assert.equal((await save(admin, patch, ...add)).status, 200); return settle(n); };
 
@@ -50,11 +51,18 @@ assert.equal((await step("1", 1, { status: "fixed", dept: "PLANTED-" + "x".repea
   { type: "merged", pr: 666 }, { type: "status", to: "fixed" })).length, 0, "a demo-admin change sends no notice");
 assert.equal((await step(token, 1, { milestone: "m1" }, { type: "milestone", title: "M1" })).length, 0, "a token milestone save sends no notice");
 assert.equal((await step(token, 1, { hidden: false })).length, 0, "a token hide/show save sends no notice");
+// A stale token tab sends back a demo 修繕單 that the server no longer has; only `added` counts, so nothing is sent
+const stale = [...events, { t: new Date().toISOString(), type: "pr", n: 667, title: "請至 http://evil2.example 驗證" }];
+assert.equal((await post("/api/db", { "x-admin": token }, { op: "update", path: `triage/${target}`, data: { milestone: "m2", events: stale, added: [] } })).status, 200);
+assert.equal((await settle(1)).length, 0, "a stale tab's events array sends no notice");
+assert.equal((await step(token, 1, { milestone: "m3" }, { type: "milestone", title: "M3" })).length, 0, "the stale write left nothing to notify");
+const stored = await (await fetch(base + "/api/db", { headers: { "x-admin": token } })).json();
+assert.equal(stored.triage[target].added, undefined, "`added` is not stored");
 
 let got = await step(token, 1, { status: "progress" }, { type: "status", to: "progress" });
 assert.equal(got.length, 1, "a token status change sends one notice");
 assert.match(got[0], /狀態改為「處理中」/);
-assert.ok(!/evil|PLANTED|#666|負責/.test(got[0]), "text the demo admin planted stays out of the notice");
+assert.ok(!/evil|PLANTED|#66[67]|負責/.test(got[0]), "text the demo admin planted stays out of the notice");
 assert.equal((await step(token, 2, { status: "progress" })).length, 1, "the same state again sends nothing");
 
 got = await step(token, 2, {}, { type: "pr", n: 901, title: "更換燈泡" });

@@ -874,8 +874,9 @@ async function act(i, list, patch = {}) {
     if (!lock.acquired) { toast("別人正在處理這件，請稍後再試"); return false; }
     const snap = await ref.get(), cur = snap.exists ? snap.data() : {}, t = new Date().toISOString();
     const add = typeof list === "function" ? list(cur) : list, p = typeof patch === "function" ? patch(cur) : patch;
-    const events = [...(cur.events || evs(i)), ...add.map(ev => ({ t, by:i.dept, ...ev }))];
-    await (snap.exists ? ref.update({ ...p, events }) : ref.set({ status:"open", ...p, events }));
+    const added = add.map(ev => ({ t, by:i.dept, ...ev })), events = [...(cur.events || evs(i)), ...added];
+    // added: the events this save appends. The Worker's progress notices trust only this list and do not store it.
+    await (snap.exists ? ref.update({ ...p, events, added }) : ref.set({ status:"open", ...p, events, added }));
     return true;
   } finally { acting = false; }
 }
