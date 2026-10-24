@@ -161,6 +161,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .bars .n{text-align:right;font-variant-numeric:tabular-nums}
 .adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 16px}
 .q .row-item select{max-width:100%}
+.q .queue-more{padding:10px 14px;border-top:1px solid var(--line)}
 .pulse{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:14px}
 .pulse .big{font-size:13px;color:var(--muted)}
 .pulse .big b{font-size:22px;color:var(--fg);font-variant-numeric:tabular-nums;margin-right:4px}
@@ -2625,6 +2626,7 @@ ${publicIssues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}
 
 // ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
 const PENDING = "1999 待分派";
+const queueShown = { review:20, unassigned:20, overdue:20 };
 function renderAdmin(c) {
   const loading = !gotReports || !gotTriage;
   $("admLoad").hidden = !(loadErr || loading);
@@ -2646,12 +2648,15 @@ function renderAdmin(c) {
       <div class="admin" style="padding:0;border:0">${extra}</div></div>`;
   const deptSel = i => `<select data-dept="${esc(i.id)}" aria-label="改派局處">${Object.keys(DEPTS).map(d => `<option ${d === i.dept ? "selected" : ""}>${esc(d)}</option>`).join("")}</select>`;
   const st = i => i.status === "open" ? `<button class="btn" data-status="progress" data-id="${esc(i.id)}">標記處理中</button>` : `<button class="btn" data-status="fixed" data-id="${esc(i.id)}">標記已修復</button>`;
-  const q = (title, note, list, extra) => `<section class="box"><div class="boxhead"><b>${title}</b> <span class="cnt">${list.length}</span><span class="spacer"></span><span class="note">${note}</span></div>
-    ${list.length ? list.slice(0, 20).map(i => row(i, extra(i))).join("") : `<div class="empty" style="padding:16px">沒有案件</div>`}</section>`;
-  $("admQueues").innerHTML = q("待審核", "AI 判為垃圾訊息，審核前一般訪客看不到", review,
+  const q = (key, title, note, list, extra) => {
+    const shown = list.slice(0, queueShown[key]), rest = list.length - shown.length;
+    return `<section class="box"><div class="boxhead"><b>${title}</b> <span class="cnt">${list.length}</span><span class="spacer"></span><span class="note">${note}</span></div>
+    ${list.length ? shown.map(i => row(i, extra(i))).join("") + (rest ? `<div class="queue-more"><button class="btn" type="button" data-more="${key}">顯示更多（還有 ${rest} 筆）</button></div>` : "") : `<div class="empty" style="padding:16px">沒有案件</div>`}</section>`;
+  };
+  $("admQueues").innerHTML = q("review", "待審核", "AI 判為垃圾訊息，審核前一般訪客看不到", review,
       i => `<button class="btn" data-hide="false" data-id="${esc(i.id)}">放行</button><button class="btn" data-hide="true" data-id="${esc(i.id)}">隱藏</button>`)
-    + q("待分派", "taipei-bot 判斷不出局處", unassigned, deptSel)
-    + q(`逾期未結`, `開立超過 ${STALE_DAYS} 天，最久的在前`, overdue, i => st(i) + deptSel(i));
+    + q("unassigned", "待分派", "taipei-bot 判斷不出局處", unassigned, deptSel)
+    + q("overdue", `逾期未結`, `開立超過 ${STALE_DAYS} 天，最久的在前`, overdue, i => st(i) + deptSel(i));
   const bars = (pairs, color) => { const max = Math.max(1, ...pairs.map(p => p[1]));
     return pairs.length ? pairs.map(([n, v, col]) => `<div><span>${esc(n)}</span><i style="width:${v / max * 100}%;background:${col || color}"></i><span class="n">${v}</span></div>`).join("") : `<div class="empty" style="padding:12px">沒有資料</div>`; };
   const byDept = {}; open.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
@@ -2659,7 +2664,24 @@ function renderAdmin(c) {
   const byCat = {}; issues.forEach(i => { const m = (SUBS[i.category] || {}).main || "未分類"; byCat[m] = (byCat[m] || 0) + 1; });
   $("admCat").innerHTML = bars(Object.entries(byCat).sort((a, b) => b[1] - a[1]), "var(--accent)");
 }
-$("v-admin").addEventListener("click", e => e.target.closest("[data-go]") ? goIssue(e) : onListClick(e));
+let adminQueueGuard = 0;
+$("v-admin").addEventListener("click", e => {
+  const more = e.target.closest("#admQueues [data-more]");
+  if (more) {
+    const key = more.dataset.more;
+    if (!Object.hasOwn(queueShown, key)) return;
+    queueShown[key] += 20; render();
+    document.querySelector(`#admQueues [data-more="${key}"]`)?.focus();
+    return;
+  }
+  if (e.target.closest("[data-go]")) return goIssue(e);
+  // After an action the row leaves the queue and the next row moves under the pointer; ignore a quick second click.
+  if (e.target.closest("#admQueues [data-status],#admQueues [data-hide]")) {
+    if (performance.now() < adminQueueGuard) return;
+    adminQueueGuard = performance.now() + 800;
+  }
+  onListClick(e);
+});
 $("v-admin").addEventListener("change", onListChange);
 
 // ---- Demo tools: snapshot the pre-demo state, put it back after a rehearsal ----
