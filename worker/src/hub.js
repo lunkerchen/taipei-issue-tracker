@@ -158,6 +158,7 @@ export class Hub extends DurableObject {
 
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
+    if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
     if (path.startsWith("reports/")) {
       if (!isObj(doc) || !isObj(doc.items)) return {};
       const owner = path.slice(8), items = {};

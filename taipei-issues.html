@@ -2506,8 +2506,8 @@ function isoWeek(d) {
 }
 
 $("relBtn").onclick = async () => {
-  const since = Date.now() - 7 * DAY;
-  const done = issues.filter(i => closedAt(i) >= since);
+  const since = Date.now() - 7 * DAY, publicIssues = issues.filter(i => !hiddenFor(i));
+  const done = publicIssues.filter(i => closedAt(i) >= since);
   if (!done.length) { $("relStatus").textContent = "過去 7 天沒有修好的案件，沒有內容可以發布。"; return; }
   $("relBtn").disabled = true; $("relStatus").textContent = sample ? "Claude 正在撰寫更新紀錄…" : "產生中…";
   const [y, w] = isoWeek(new Date()), base = `v${y}.${w}`;
@@ -2520,7 +2520,7 @@ $("relBtn").onclick = async () => {
 本週修好的案件：
 ${items.join("\n")}
 仍在處理中：
-${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false }, 60000);
+${publicIssues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false }, 60000);
     if (a && a.title && a.body) { const ti = String(a.title); r = { title: (ti.includes(tag) ? ti : `台北市 ${tag}：${ti}`).slice(0, 80), body: String(a.body).slice(0, 4000) }; }
   } catch {}
   try {
