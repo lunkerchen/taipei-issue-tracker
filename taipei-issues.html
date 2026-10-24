@@ -64,6 +64,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .contact{border:0;padding:0;margin:0 0 10px;display:grid;gap:6px}.contact[hidden]{display:none}.contact .row input{flex:1 1 140px;min-width:0}
 .addl{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.addnote{display:grid;gap:6px;margin:0 0 12px}.addnote textarea{width:100%;box-sizing:border-box;min-height:56px;font:inherit}
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
+.doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
+.doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
 .lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
 .lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
 .lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
@@ -313,10 +315,12 @@ Switched to branch 'taipei'
         <span class="status" id="locStatus" role="status"></span>
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
-      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有負責局處看得到，不會公開）</legend>
+      <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有管理者看得到，不會公開）</legend>
         <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼"></div>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。不勾選時，身分只用於聯繫查證，不會告知被檢舉人。</label>
       </fieldset>
+      <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
+      <label class="note"><input type="checkbox" id="agree" required> 我已閱讀<a href="#privacy" data-doc="privacy">隱私權告知</a>與<a href="#terms" data-doc="terms">使用條款</a>，同意本站依告知內容蒐集、處理及利用我填寫的資料。</label>
       <div class="row">
         <select id="newDistrict" aria-label="行政區"></select>
         <button class="btn primary" id="submitBtn" type="submit">Submit new issue</button>
@@ -430,11 +434,68 @@ Switched to branch 'taipei'
     </div></div>
   </section>
 
-  <p class="note">示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。<span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
+  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
+<dialog class="doc" id="privacy" aria-labelledby="privacyH">
+  <h2 id="privacyH">隱私權告知</h2>
+  <p class="note">依個人資料保護法第 8 條告知。最後更新：2026-10-24。</p>
+  <h3>誰蒐集你的資料</h3>
+  <p>本站由 Laban Chen 個人開發與營運，不是臺北市政府。聯絡信箱：<a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
+  <h3>目的</h3>
+  <p>受理與顯示市民通報的市政問題、聯繫通報人查證，以及防止濫用。</p>
+  <h3>蒐集哪些資料、誰看得到</h3>
+  <ul>
+    <li><b>公開</b>：陳情描述、照片、位置（座標、地址、行政區）、補充內容與 +1。送出前，網站會自動遮蔽電話、Email 與身分證字號，並移除照片的 EXIF 與拍攝位置。自動遮蔽可能遺漏，請不要在描述或照片中放入可辨識他人的資訊。</li>
+    <li><b>不公開</b>：姓名、手機，以及是否實名檢舉。只有本站管理者看得到。</li>
+    <li><b>訪客 ID</b>：存在你的瀏覽器（localStorage），用來辨識「我的陳情」。清除瀏覽器資料後，就無法再補充原本的陳情。</li>
+    <li><b>IP 位址</b>：用於限流與防洗版，約 24 小時後刪除。Cloudflare 的服務紀錄依 Cloudflare 的政策保存。</li>
+    <li><b>瀏覽器暫存</b>：深色或淺色模式設定（localStorage）；本次填寫的姓名與手機（sessionStorage，關閉分頁後清除）。</li>
+  </ul>
+  <h3>第三方處理與跨境傳輸</h3>
+  <ul>
+    <li>Anthropic（美國）：處理已遮蔽個資的陳情文字，做 AI 分類。照片、姓名與手機不會送出。</li>
+    <li>Cloudflare：網站主機、資料庫與照片儲存，機房可能在臺灣以外。</li>
+    <li>OpenStreetMap Nominatim：由本站伺服器代查地址與座標。</li>
+    <li>內政部國土測繪中心：地圖圖磚由你的瀏覽器直接下載，對方會收到你的 IP。</li>
+  </ul>
+  <h3>保存期間</h3>
+  <p>保存到本服務停止營運為止。上傳後沒有送出的照片目前不會自動刪除。你可以隨時來信要求刪除。</p>
+  <h3>你的權利</h3>
+  <p>你可以依個資法第 3 條，請求查詢、閱覽、複製、補充或更正、停止蒐集處理利用，以及刪除你的資料。請寄信到上面的信箱，並附上陳情編號。</p>
+  <h3>不提供資料的影響</h3>
+  <p>姓名與手機是必填。不提供時，無法送出陳情。</p>
+  <form method="dialog"><button class="btn">關閉</button></form>
+</dialog>
+<dialog class="doc" id="terms" aria-labelledby="termsH">
+  <h2 id="termsH">使用條款</h2>
+  <p class="note">最後更新：2026-10-24。</p>
+  <h3>非官方服務</h3>
+  <p>本站是個人開發的示範專案，不是臺北市政府或 1999 市民當家熱線的網站，也沒有受市府委託。陳情不會轉給市府或任何局處。網站上的局處、案件狀態、修繕單與 SLA 都是模擬，不代表市府的實際處理。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
+  <h3>你張貼的內容</h3>
+  <ul>
+    <li>你要為自己送出的內容負責。只寫你親眼看到的事實。</li>
+    <li>不要張貼不實指控、他人個資、可辨識的人臉或車牌、廣告，或違法內容。</li>
+    <li>涉及特定店家或個人時，只描述事實，不要加上評論或推測。</li>
+  </ul>
+  <h3>管理</h3>
+  <p>管理者可以不經通知隱藏、改派或刪除內容。對處理方式有意見，請寄信到 <a href="mailto:labanchen@gmail.com">labanchen@gmail.com</a>。</p>
+  <h3>AI 分類</h3>
+  <p>分類、負責局處與重複判斷由 Claude 自動產生，可能出錯。</p>
+  <h3>服務與責任</h3>
+  <p>本站依現狀提供，可能隨時中斷、修改或停止，不保證資料完整或持續保存。</p>
+  <h3>資料來源與授權</h3>
+  <ul>
+    <li>歷史 1999 派工：<a href="https://data.taipei/" target="_blank" rel="noopener">臺北市政府資料開放平台</a>，依政府資料開放授權條款第 1 版使用。</li>
+    <li>底圖：內政部國土測繪中心臺灣通用電子地圖。</li>
+    <li>地址與座標：© OpenStreetMap contributors，ODbL 授權。</li>
+    <li>跑馬燈：Bing News、PTT Taipei 板，版權屬原作者。</li>
+    <li>示範照片由 AI 生成，不是真實現場。</li>
+  </ul>
+  <form method="dialog"><button class="btn">關閉</button></form>
+</dialog>
 <dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
@@ -1712,8 +1773,10 @@ $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl
   const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""]; $("newText").value = g[b.dataset.tpl]; $("newText").dispatchEvent(new Event("input")); $("newText").focus(); });
 
 // GitHub-style keyboard shortcuts.
+// Privacy notice and terms: any [data-doc] link opens that <dialog>
+document.addEventListener("click", e => { const a = e.target.closest("[data-doc]"); if (a) { e.preventDefault(); $(a.dataset.doc).showModal(); } });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !$("newBox").hidden) return $("cancelBtn").click();
+  if (e.key === "Escape" && !$("newBox").hidden && !document.querySelector("dialog[open]")) return $("cancelBtn").click();
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
   if (e.key === "/") { e.preventDefault(); show("issues"); $("q").focus(); }
   else if (e.key === "c" && !$("newBtn").hidden) { e.preventDefault(); $("newBtn").click(); }
