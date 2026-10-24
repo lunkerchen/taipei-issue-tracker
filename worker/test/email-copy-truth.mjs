@@ -28,7 +28,7 @@ try {
   await page.locator("#newText").fill("A 路口號誌故障，行人無法安全通過");
   await page.locator("#agree").check();
   await page.locator("#submitBtn").click();
-  const status = await page.locator("#newStatus").innerText();
+  const status = await page.locator("#formErr").innerText();
   assert.equal(status, "請填寫有效的 Email（本站不會寄送通知）");
   assert.ok(!status.includes("通知處理進度"), "the email error does not promise progress notices");
 
