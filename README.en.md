@@ -36,6 +36,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
 - **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases.
+- **Case links**: Each case has a stable link from its data ID, not its changing number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. If the browser cannot keep it, you can read cases but cannot send reports. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
@@ -154,6 +155,7 @@ node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
 node worker/test/addendum-flow.mjs
 node worker/test/note-photos.cjs
+node worker/test/share-links.mjs
 ```
 
 ```bash
