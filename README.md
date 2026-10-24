@@ -236,6 +236,12 @@ cd worker && npx wrangler dev --port 8806 --persist-to <空資料夾> --var NOTI
 BASE=http://localhost:8806 node worker/test/progress-notice.mjs
 ```
 
+通知回滾測試不需要 Worker：它用 Node SQLite 與可控制的寄信 stub 執行 `worker/src/hub.js`，檢查寄送失敗與多封通知交錯的情況：
+
+```bash
+node worker/test/notice-undo.mjs
+```
+
 本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。持金鑰的管理者：`http://localhost:8788/?admin=<.dev.vars 裡的 ADMIN_TOKEN>`。
 
 ## 部署

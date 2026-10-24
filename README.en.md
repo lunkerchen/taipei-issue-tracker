@@ -236,6 +236,12 @@ cd worker && npx wrangler dev --port 8806 --persist-to <empty folder> --var NOTI
 BASE=http://localhost:8806 node worker/test/progress-notice.mjs
 ```
 
+The notice undo test needs no Worker. It runs `worker/src/hub.js` with Node SQLite and a controlled send stub. It checks failed and overlapping sends:
+
+```bash
+node worker/test/notice-undo.mjs
+```
+
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`. Administrator with the key: `http://localhost:8788/?admin=<ADMIN_TOKEN in .dev.vars>`.
 
 ## Deployment

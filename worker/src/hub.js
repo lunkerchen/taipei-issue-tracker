@@ -179,7 +179,7 @@ export class Hub extends DurableObject {
     if (triage.status !== oldDoc?.status && STATUS_ZH[triage.status]) set.status = triage.status;
     if (typeof triage.dept === "string" && triage.dept !== oldDoc?.dept) set.dept = one(triage.dept, 30);
     const has = (a, k) => a.some(x => x.k === k);
-    for (const e of added.filter(isObj).slice(0, 10)) { // has(): a retried write must not list a 修繕單 twice
+    for (const e of added.filter(isObj)) { // has(): a retried write must not list a 修繕單 twice
       if (e.type === "pr" && Number.isFinite(e.n) && !has(set.prs, key(e))) set.prs.push({ k: key(e), n: e.n, title: one(e.title, 80) });
       if (e.type === "merged" && Number.isFinite(e.pr) && !has(set.merged, key(e))) set.merged.push({ k: key(e), n: e.pr });
     }
@@ -192,7 +192,10 @@ export class Hub extends DurableObject {
     const stamp = Date.now(), times = last.times.filter(t => t > stamp - 864e5);
     // Nothing new since the last notice (dedupe), or over the daily cap: keep `set`, so the next notice includes it
     if (!lines.length || times.length >= NOTICE_DAY) return save({ ...last, set, times });
-    save({ told: set, set, times: [...times, stamp] });
+    // told.by: which notice told each field, so a failed notice undoes only the fields that it told itself
+    const id = crypto.randomUUID(), by = { ...told.by };
+    for (const f of ["status", "dept"]) if (set[f] !== told[f]) by[f] = id;
+    save({ told: { ...set, by }, set, times: [...times, stamp] });
     const title = one(item.title, 60);
     const text = [`${contact.name} 您好：`, "", `你通報的「${title}」有新進度：`, ...lines.map(l => "・" + l), "",
       `案件頁面：${SITE}/#issue/${encodeURIComponent(target)}`, "",
@@ -207,7 +210,7 @@ export class Hub extends DurableObject {
       // Undo only what this notice told; a notice that was sent meanwhile keeps what it told
       const t = cur.told, i = cur.times.indexOf(stamp);
       if (i >= 0) cur.times.splice(i, 1);
-      for (const f of ["status", "dept"]) if (set[f] !== told[f] && t[f] === set[f]) t[f] = told[f];
+      for (const f of ["status", "dept"]) if (t.by?.[f] === id) { t[f] = told[f]; t.by[f] = told.by?.[f]; }
       for (const f of ["prs", "merged"]) t[f] = t[f].filter(p => has(told[f], p.k) || !has(set[f], p.k));
       save(cur);
     }));
