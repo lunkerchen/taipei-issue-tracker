@@ -503,7 +503,7 @@ function fail(e) {
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
-  $("newBtn").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("newBtn").hidden = $("navReport").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
   if (!canWrite) $("newBox").hidden = true;
 }
 // Disable a button while its write runs; always bring it back, and say so when the write fails.
@@ -690,7 +690,7 @@ function render() {
   const q = $("q").value.trim().toLowerCase();
   const dept = $("deptFilter").value;
   const openN = issues.filter(i => i.status !== "fixed").length;
-  $("tabOpen").innerHTML = ICON.open + `${openN} ${admin ? "Open" : "處理中"}`;
+  $("tabOpen").innerHTML = ICON.open + `${openN} ${admin ? "Open" : "未完成"}`;
   $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
   $("tabClosed").setAttribute("aria-pressed", view.closed);
@@ -708,9 +708,9 @@ function render() {
   trackNew(); syncMap(); renderLive();
 
   let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
-    .filter(i => !dept || i.dept === dept)
-    .filter(i => !ms || i.milestone === ms)
-    .filter(i => !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q));
+    .filter(i => view.mine || !dept || i.dept === dept)
+    .filter(i => view.mine || !ms || i.milestone === ms)
+    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q));
   const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
     votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
   rows.sort(sorts[$("sort").value]);
@@ -718,7 +718,7 @@ function render() {
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
-  if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
+  if (!rows.length) { $("list").innerHTML = `<div class="empty">${view.mine ? "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。" : issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。"}</div>`; return; }
 
   // Snapshots from other viewers re-render the list; keep what an admin is typing.
   const typed = {}, focused = document.activeElement && document.activeElement.id;
