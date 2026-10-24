@@ -143,7 +143,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
 | `scripts/demo-photos.mjs` | Changes the generated demo photos to JPEG, uploads them to R2, and adds them to the demo data. If a JPEG is larger than 650 KB, the script uses a lower quality. All 50 demo cases have a photo. |
-| `promo/render.mjs` | Makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, and ffmpeg with libx264. Give seconds (for example `node promo/render.mjs 4.5 18`) to make only those frames in `promo/out/sample/`. Use `--encode` to encode the frames again without a new capture. |
+| `promo/render.mjs` | Makes `promo/out/taipei-promo.mp4` (1080×1920, 30 fps, 29.5 s). ffmpeg also makes the soundtrack. Needs a global Playwright install with Chromium, ffmpeg with libx264, and a Traditional Chinese font (Source Han Sans TC or Noto Sans CJK TC). If there is no such font, the script stops with an error. Give seconds (for example `node promo/render.mjs 4.5 18`) to make only those frames in `promo/out/sample/`. Use `--encode` to encode the frames again without a new capture. |
 
 ## Local development
 

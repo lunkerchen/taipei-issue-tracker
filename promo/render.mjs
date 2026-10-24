@@ -22,6 +22,12 @@ async function openPage() {
   await page.addInitScript(`window.DATA={districts:${data("districts.geojson")},history:${data("history-2026.json")}};`);
   await page.goto(pathToFileURL(join(here, "compose.html")).href);
   await page.waitForFunction(() => window.ready === true, null, { timeout: 60000 });
+  // Without a Traditional Chinese font, Chromium falls back to a font that can have no CJK glyphs (boxes).
+  const fonts = await page.evaluate(() => {
+    const g = document.createElement("canvas").getContext("2d"), w = f => (g.font = `40px ${f}`, g.measureText("Hamburgefonstiv").width);
+    return ["'Source Han Sans TC'", "'Noto Sans CJK TC'", "'PingFang TC'"].filter(f => w(`${f},monospace`) !== w("monospace"));
+  });
+  if (!fonts.length) throw new Error("No Traditional Chinese font. Install Source Han Sans TC (or Noto Sans CJK TC).");
   return page;
 }
 const frame = (page, t, path) => page.evaluate(t => render(t), t).then(() => page.screenshot({ path, type: "jpeg", quality: 93 }));
@@ -63,7 +69,7 @@ const expr = [
   `between(t,11,12)*((random(4)*2-1)*0.35+sin(2*PI*(100*(t-11)+700*pow(t-11,2)))*0.3)*pow(t-11,2)`,
   ...[[3, 1], [8.7, .6], [9.35, .6], [10, .6], [12, 1], [14.5, .5], [20, .5], [21.95, .7], [24.5, .6], [27, .7], [27.45, 1]].map(([T, a]) => hit(T, a)),
   ...[3, 8.7, 9.35, 10, 12, 27.45].map(crack),
-  ...[[15, 1500], [16.9, 1200], [17.85, 1400], [17.95, 1600], [18.05, 1800], [18.9, 1300], [19.35, 1200], [19.5, 1700], [21.85, 1000], [22.65, 1400], [22.8, 1600], [22.95, 1800], [28, 1500]].map(([T, f]) => blip(T, f)),
+  ...[[15, 1500], [16.9, 1200], [17.35, 1300], [18.3, 1400], [18.4, 1600], [18.5, 1800], [19.35, 1200], [19.5, 1700], [21.85, 1000], [22.65, 1400], [22.8, 1600], [22.95, 1800], [28, 1500]].map(([T, f]) => blip(T, f)),
 ].join("+");
 
 const mp4 = join(out, "taipei-promo.mp4");

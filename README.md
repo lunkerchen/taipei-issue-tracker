@@ -143,7 +143,7 @@ Cloudflare Worker（worker/src/index.js）
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
 | `scripts/demo-photos.mjs` | 把生成的示範照片轉成 JPEG、上傳到 R2，並加進示範資料。JPEG 超過 650 KB 時，腳本會降低品質重做。50 筆示範案件都有照片。 |
-| `promo/render.mjs` | 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）與支援 libx264 的 ffmpeg。給秒數（例如 `node promo/render.mjs 4.5 18`）時只輸出那幾格到 `promo/out/sample/`。加 `--encode` 會直接用現有畫格重新編碼，不重新擷取。 |
+| `promo/render.mjs` | 產生 `promo/out/taipei-promo.mp4`（1080×1920、30 fps、29.5 秒），配樂也由 ffmpeg 合成。需要全域安裝的 Playwright（含 Chromium）、支援 libx264 的 ffmpeg，以及繁體中文字型（Source Han Sans TC 或 Noto Sans CJK TC）；找不到字型時，腳本會報錯停止。給秒數（例如 `node promo/render.mjs 4.5 18`）時只輸出那幾格到 `promo/out/sample/`。加 `--encode` 會直接用現有畫格重新編碼，不重新擷取。 |
 
 ## 本機開發
 
