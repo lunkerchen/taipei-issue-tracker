@@ -48,7 +48,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
-- **Releases**: AI writes a draft of the weekly summary of closed cases. There are also monthly 1999 dispatch reports for January to September 2026.
+- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
 
