@@ -153,3 +153,10 @@
 - [x] P4-2｜Opus｜worker/build.mjs｜歷史資料以靜態檔提供，shim 加 claude.use("history")；artifact 環境為 null 時頁面隱藏時間軸｜已完成
 - [x] P4-3｜Opus｜taipei-issues.html｜地圖「歷史」模式：日期滑桿（1/1–9/30）、前一天／後一天、播放；當天案件以 canvas 畫在路段位置（加抖動），沿用九大類圖層勾選與計數；彈窗只顯示派工項目、行政區、路名、時間；註明資料來源；手機 375px 無水平捲動｜已完成
 - [ ] P4-4｜reviewer → gpt-6.1-sol｜唯讀｜依上列驗收｜待辦
+
+## PLAN 5：陳情照片上傳（2026-10-24）
+
+- [ ] P5-1｜Opus 主控｜worker/**｜R2 bucket `taipei-issue-photos`；`POST /api/photo` 只收簽章訪客或管理者、每訪客每分鐘 10 張、≤ 700KB、只收 JPEG／WebP（檢查檔頭）；`GET /api/photo/<key>` 只接受合法 key，回固定 content-type、nosniff、長快取｜
+- [ ] P5-2｜Opus 主控｜taipei-issues.html｜表單可加最多 3 張照片並預覽、可移除；瀏覽器端縮到長邊 1600、轉 JPEG（去除 EXIF 與 GPS）；送出時先上傳再建立案件，上傳失敗不建立案件、表單保留；cleanItem 只接受自己目錄或 demo/ 的 key；詳情與地圖彈窗顯示照片；artifact 環境不顯示上傳｜
+- [ ] P5-3｜Opus 主控｜scripts/、worker/data.json｜40 件示範案件各一張 GPT Image 生成的 4:3 現場照（無文字、無可辨識人臉與車牌），上傳 R2 `demo/`，種子資料與線上資料庫加上 photos｜
+- [ ] P5-4｜reviewer + gpt-6.1-sol｜唯讀｜依以上條件驗收；`node check.mjs`、worker smoke test 通過｜

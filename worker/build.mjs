@@ -117,7 +117,25 @@ const revgeo = async (lat, lng) => { try { const j = await (await req("/api/geoc
 // 1999 dispatch history (Jan–Sep 2026), a static file of about 1.8 MB: loaded once, on first use
 let histP = null;
 const hist = () => histP ||= (async () => { for (let i = 0; i < 2; i++) try { const r = await fetch("/history-2026.json", { signal: AbortSignal.timeout(30000) }); if (r.ok) return await r.json(); } catch {} histP = null; return null; })();
-window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist })[n] ?? null };
+// Report photos: one JPEG/WebP blob in, its R2 key out (20 s timeout, one retry on network error / 5xx)
+const photo = async blob => {
+  const h = { "content-type": blob.type || "image/jpeg" };
+  if (adminToken) h["x-admin"] = adminToken;
+  const v = await visitor; if (v) h["x-visitor"] = v;
+  let last;
+  for (let k = 0; k < 2; k++) {
+    try {
+      const r = await fetch("/api/photo", { method: "POST", headers: h, body: blob, signal: AbortSignal.timeout(20000) });
+      if (r.ok) return (await r.json()).key;
+      last = Object.assign(new Error("photo " + r.status), { status: r.status });
+      if (r.status < 500) break;
+    } catch (e) { last = e; }
+    await new Promise(r => setTimeout(r, 800));
+  }
+  throw last;
+};
+photo.url = key => "/api/photo/" + key;
+window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo })[n] ?? null };
 })();
 </script>`;
 

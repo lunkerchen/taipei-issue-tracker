@@ -61,5 +61,22 @@ assert.equal((await write({ "x-visitor": A.token }, "set", `votes/${A.id}`, { is
 assert.equal((await write({ "x-admin": admin }, "delete", `votes/${B.id}`)).status, 200, "admin not limited");
 await write({ "x-admin": admin }, "delete", `votes/${A.id}`);
 
+// photos: visitor uploads a JPEG into its own folder, anyone reads it; wrong type / no identity / bad key refused
+const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+const up = (headers, body) => fetch(BASE + "/api/photo", { method: "POST", headers: { "content-type": "image/jpeg", ...headers }, body, signal: AbortSignal.timeout(8000) });
+const pr = await up({ "x-visitor": A.token }, jpg);
+assert.equal(pr.status, 200, "photo upload");
+const { key } = await pr.json();
+assert.match(key, new RegExp(`^${A.id}/[\\w-]+\\.jpg$`), "photo key in own folder");
+const got = await fetch(BASE + "/api/photo/" + key);
+assert.equal(got.status, 200); assert.equal(got.headers.get("content-type"), "image/jpeg"); assert.equal(got.headers.get("x-content-type-options"), "nosniff");
+assert.deepEqual(new Uint8Array(await got.arrayBuffer()), jpg, "photo bytes round-trip");
+assert.equal((await up({ "x-visitor": A.token }, new TextEncoder().encode("<svg onload=alert(1)>"))).status, 415, "non-image refused");
+assert.equal((await up({}, jpg)).status, 403, "anonymous upload refused");
+assert.equal((await up({ "x-visitor": forged }, jpg)).status, 403, "forged visitor refused");
+assert.equal((await up({ "x-visitor": A.token }, new Uint8Array(701 * 1024).fill(0xff))).status, 413, "oversize refused");
+assert.equal((await fetch(BASE + "/api/photo/../hub.js")).status, 404, "bad key");
+assert.equal((await fetch(BASE + "/api/photo/" + A.id + "/nope.jpg")).status, 404, "missing photo");
+
 wa.ws.close(); wb.ws.close();
 console.log("OK");

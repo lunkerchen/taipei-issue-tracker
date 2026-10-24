@@ -35,6 +35,35 @@ async function writeDb(req, env) {
   return reply(await hub(env).write(op, path, data, admin));
 }
 
+// Photos: upload by a signed visitor or the admin, read by anyone. The browser already resized and re-encoded them (EXIF gone).
+const PHOTO_KEY = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.(jpg|webp)$/, PHOTO_MAX = 700 * 1024, PHOTO_TYPES = { jpg: "image/jpeg", webp: "image/webp" };
+async function photo(req, env, key) {
+  if (req.method === "GET" || req.method === "HEAD") {
+    const m = PHOTO_KEY.exec(key);
+    if (!m) return err(404, "not_found");
+    const o = await env.PHOTOS.get(key);
+    if (!o) return err(404, "not_found");
+    return new Response(req.method === "HEAD" ? null : o.body, { headers: { "content-type": PHOTO_TYPES[m[1]], "cache-control": "public, max-age=31536000, immutable",
+      "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'", etag: o.httpEtag } });
+  }
+  if (req.method !== "POST" || key) return err(405, "method_not_allowed");
+  const h = req.headers, adminHdr = h.get("x-admin");
+  const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+  const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
+  if (!id) return err(403, "forbidden");
+  if (!admin && !(await env.PHOTO_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
+  if (+(h.get("content-length") || 0) > PHOTO_MAX) return err(413, "too_large");
+  const b = new Uint8Array(await req.arrayBuffer());
+  if (b.length > PHOTO_MAX) return err(413, "too_large");
+  // Trust the bytes, not the declared type
+  const ext = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff ? "jpg"
+    : String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP" ? "webp" : null;
+  if (!ext) return err(415, "unsupported_type");
+  const k = `${id}/${crypto.randomUUID()}.${ext}`;
+  await env.PHOTOS.put(k, b, { httpMetadata: { contentType: PHOTO_TYPES[ext] } });
+  return Response.json({ key: k });
+}
+
 async function claude(env, model, prompt) {
   for (let k = 0; ; k++) {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -76,6 +105,7 @@ export default {
       return reply(await hub(env).geocode(q));
     }
     if (pathname === "/api/news") return reply(await hub(env).news());
+    if (pathname === "/api/photo" || pathname.startsWith("/api/photo/")) return photo(req, env, pathname.slice(11));
     if (pathname !== "/api/sample") return err(404, "not_found");
     if (req.method !== "POST") return err(405, "method_not_allowed");
     if (!env.ANTHROPIC_API_KEY) return err(503, "no_key");

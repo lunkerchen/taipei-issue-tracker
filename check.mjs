@@ -8,7 +8,7 @@ const grab = name => { const m = html.match(new RegExp(`^function ${name}\\b[\\s
 // const declarations run to the first line that ends in ";"
 const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\\s\\S]*?;[ \\t]*$`, "m")); assert(m, `${name} not found`); return m[0]; };
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
-const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
+const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
 
 const M = "［已遮蔽］";
 for (const [src, want] of [
@@ -79,4 +79,9 @@ assert.equal(withoutTemplate("地點：  \n狀況（不亮、閃爍、白天也�
 assert.notEqual(withoutTemplate("地點：民生東路三段\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）："), "");
 assert.equal(withoutTemplate("地點:\n狀況（不亮、閃爍、白天也亮）:\n從什麼時候開始:"), "");
 assert.notEqual(withoutTemplate("敦化南路紅綠燈一直閃黃燈"), "");
+// Photos: own folder (or demo/ for the seed) only, at most 3
+const pbase = { title:"t", body:"b", createdAt:"2026-10-01T00:00:00Z" }, me16 = "0123456789abcdef";
+assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:[`${me16}/a.jpg`, "fedcba9876543210/b.jpg", "demo/c.jpg", "../x.jpg", `${me16}/d.webp`, `${me16}/e.jpg`, `${me16}/f.jpg`] }, me16).photos, [`${me16}/a.jpg`, `${me16}/d.webp`, `${me16}/e.jpg`]);
+assert.deepEqual(cleanItem("x", { ...pbase, n:1, photos:["demo/demo-01.jpg", "javascript:alert(1)"] }, "demo-seed").photos, ["demo/demo-01.jpg"]);
+assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:"demo/a.jpg" }, me16).photos, []);
 console.log("OK");

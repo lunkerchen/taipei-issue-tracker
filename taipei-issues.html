@@ -57,6 +57,15 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .vote:disabled{cursor:default}
 .detail{grid-column:2/4;display:flex;flex-direction:column;gap:10px;padding:6px 0 4px}
 .detail .body{white-space:pre-wrap;max-width:68ch}
+.photos{display:flex;flex-wrap:wrap;gap:8px}
+.photos a{flex:0 1 180px;min-width:0}
+.photos img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--hover)}
+.pop img{display:block;width:220px;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;margin:6px 0}
+.phprev{display:flex;flex-wrap:wrap;gap:8px}
+.phprev figure{position:relative;margin:0}
+.phprev img{display:block;width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.phprev button{position:absolute;top:2px;right:2px;min-width:28px;min-height:28px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
 .bot .h{font-size:13px;background:var(--hover);padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
 .bot .b{padding:8px 10px;font-size:14px}
@@ -262,6 +271,12 @@ Switched to branch 'taipei'
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <div class="row" id="photoRow" hidden>
+        <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
+        <label class="btn" for="photoIn" id="photoLbl">加入照片</label>
+        <span class="note">最多 3 張，會自動縮小並移除拍攝位置等資訊</span>
+      </div>
+      <div class="phprev" id="photoPrev"></div>
       <div class="dup" id="dupBox" hidden></div>
       <div class="row">
         <button class="btn" type="button" id="gpsBtn">使用我的位置</button>
@@ -545,10 +560,13 @@ function cleanItem(key, it, docId) {
   const t = isObj(it.triage) ? it.triage : {};
   // Location fields are optional; a bad one is dropped alone. lat and lng only make sense together, so they stand or fall as a pair.
   const geo = inTaipei(it.lat, it.lng) ? { lat:it.lat, lng:it.lng } : {};
+  // Photos: only keys in the writer's own folder (seed: demo/), at most 3; anything else is dropped
+  const own = seed ? "demo/" : docId + "/";
+  const photos = Array.isArray(it.photos) ? it.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && (k.startsWith(own) || k.startsWith("admin/"))).slice(0, 3) : [];
   return { ...geo, ...(LOC_KINDS.includes(it.loc) ? { loc:it.loc } : {}), ...(isStr(it.address) && it.address && it.address.length <= 100 ? { address:it.address } : {}),
     seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
     tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), category:isStr(it.category) && /^TYPEA-AC\d{4}$/.test(it.category) ? it.category : "", flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
-    createdAt:it.createdAt, author:isStr(it.author) ? it.author : "" };
+    createdAt:it.createdAt, author:isStr(it.author) ? it.author : "", photos };
 }
 const defined = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
 function cleanTri(t) {
@@ -705,6 +723,7 @@ function render() {
       <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
+        ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}</div>` : ""}
         <div class="bot"><div class="h">taipei-bot 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
@@ -769,7 +788,7 @@ $("newBtn").onclick = () => {
   if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
   show("issues"); $("newBox").hidden = false; $("newText").focus();
 };
-$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); if (formFrom === "map") show("map"); };
+$("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); clearShots(); if (formFrom === "map") show("map"); };
 
 async function triage(text, district, aspect) {
   const fallback = { title: text.slice(0, 40), dept: "1999 待分派", tags: [], district, flagged: false, triage: { by: "fallback" } };
@@ -812,6 +831,32 @@ ${text}${picked && picked.address ? `\n市民在地圖上標記的位置：${pic
 }
 
 let maskedN = 0;
+// ---- Photos: resized and re-encoded in the browser (long edge 1600, JPEG), which also drops EXIF such as GPS ----
+let photoFn = null, shots = [];
+const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.(?:jpg|webp)$/;
+const photoUrl = k => photoFn ? photoFn.url(k) : "";
+async function shrink(file) {
+  const bmp = await createImageBitmap(file, { imageOrientation:"from-image" });
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+  for (const q of [.82, .7, .55]) { const b = await new Promise(r => c.toBlob(r, "image/jpeg", q)); if (b && b.size <= 650 * 1024) return b; }
+  throw new Error("too_large");
+}
+function drawShots() {
+  $("photoPrev").innerHTML = shots.map((s, n) => `<figure><img src="${s.url}" alt="待上傳照片 ${n + 1}"><button type="button" data-rmshot="${n}" aria-label="移除照片 ${n + 1}">×</button></figure>`).join("");
+  $("photoLbl").hidden = shots.length >= PHOTO_MAX;
+}
+function clearShots() { shots.forEach(s => URL.revokeObjectURL(s.url)); shots = []; $("photoIn").value = ""; drawShots(); }
+$("photoIn").addEventListener("change", async () => {
+  const files = [...$("photoIn").files].slice(0, PHOTO_MAX - shots.length); $("photoIn").value = "";
+  for (const f of files) {
+    try { const blob = await shrink(f); shots.push({ blob, url:URL.createObjectURL(blob) }); }
+    catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
+  }
+  drawShots();
+});
+$("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); });
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled) return;
@@ -879,9 +924,12 @@ async function locate(address, district) {
 async function create(t, text) {
   const { dup, address, outside, vague, ...fields } = t;
   const addr = (picked && picked.address) || address; // a map-picked spot's own address beats the one Claude read from the text
+  let photos = [];
+  try { photos = await Promise.all(shots.map(s => photoFn(s.blob))); } // ponytail: a failed submit can leave orphan photos in R2; sweep by age if it matters
+  catch (e) { $("newStatus").textContent = e && e.status === 429 ? "照片上傳太頻繁，請 1 分鐘後再試" : "照片上傳失敗，請稍後再試"; $("submitBtn").disabled = false; return; }
   const where = await locate(address, fields.district);
   // n is ignored on read (build() numbers citizen items), kept only as a hint
-  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), body:text, createdAt:new Date().toISOString(), author:me };
+  const id = crypto.randomUUID(), item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
   const full = `${me}:${id}`;
   const ref = db.doc("reports/" + me);
   try {
@@ -891,7 +939,7 @@ async function create(t, text) {
     // Arm the check only after the write lands, so snapshots from others' writes mid-submit don't false-alarm
     if (!all.some(i => i.id === full)) mine = full;
     view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
-    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick();
+    $("newText").value = ""; $("asp0").checked = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
     render();
     if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
     else if (maskedN) toast(`已送出，${maskedN} 項個資已遮蔽`);
@@ -1005,7 +1053,7 @@ function markerStyle(i, votes, key) {
 function popupHtml(id) {
   const r = markers.get(id); if (!r) return "";
   const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
-  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}
+  return `<div class="pop"><b>${esc(i.title)}</b>${lbl(st[0], st[1])}${photoFn && i.photos.length ? `<img src="${esc(photoUrl(i.photos[0]))}" alt="陳情照片：${esc(i.title)}" width="220" height="165">` : ""}
     <div class="meta">${esc(i.dept)}${sub ? ` · 1999：${esc(sub.name)}` : ""} · +1：${r.votes}</div>
     <button class="btn" type="button" data-go="${esc(i.id)}">看詳情</button></div>`;
 }
@@ -1454,6 +1502,7 @@ document.addEventListener("keydown", e => {
   const opt = n => Promise.resolve().then(() => claude.use(n)).catch(() => null); // geocode/news exist only on the Worker host
   [db, sample, geocode, revgeo, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("revgeo"), opt("news")]);
   if (typeof revgeo !== "function") revgeo = null;
+  photoFn = await opt("photo"); if (typeof photoFn === "function") $("photoRow").hidden = false; else photoFn = null;
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;
   if (typeof newsFn === "function") { loadNews(); setInterval(loadNews, 10 * 60 * 1000); } else newsFn = null;
