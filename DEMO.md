@@ -1,6 +1,6 @@
 # 台北市 Issue Tracker 上台展示腳本
 
-頁面：https://claude.ai/artifact/Lr8CsAAA2ExTWQsm3ELakD
+頁面：https://taipei-issue-tracker.labanchen.workers.dev（管理者加 `?admin=<token>`）；舊版 artifact：https://claude.ai/artifact/Lr8CsAAA2ExTWQsm3ELakD
 長度：主線約 4 分鐘；時間不夠就跳過標「可省略」的段落。
 
 ## 上台前準備
