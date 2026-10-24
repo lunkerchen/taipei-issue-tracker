@@ -183,6 +183,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:8px;padding:8px 12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+#dataNote{left:12px;right:auto}
+#dataNote[hidden]{display:none}
+#dataNote button{margin-left:8px}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
 .mapcol{display:flex;flex-direction:column;gap:10px;min-height:0}
 .issue.hl{outline:2px solid var(--link);outline-offset:2px;border-radius:6px}
@@ -445,6 +448,7 @@ Switched to branch 'taipei'
         <div id="map" role="application" aria-label="陳情地圖"></div>
         <div class="mapmsg" id="mapMsg" role="status" aria-live="polite"></div>
         <div class="mapnote" id="mapNote" role="status" hidden></div>
+        <div class="mapnote" id="dataNote" role="status" hidden><span id="dataNoteText"></span><button class="btn sm" type="button" id="dataNoteRetry">重新整理</button></div>
         <button class="btn distback" type="button" id="distBack" hidden></button>
         <button class="locbtn" type="button" id="locBtn" aria-label="定位到我的位置" title="定位到我的位置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
       </div>
@@ -516,6 +520,7 @@ Switched to branch 'taipei'
   </div>
 
   <div class="view" id="v-admin" hidden>
+    <div class="empty" id="admLoad" role="status" hidden></div>
     <div class="kpi" id="admKpi"></div>
     <div class="q" id="admQueues"></div>
     <div class="adm-grid">
@@ -690,6 +695,8 @@ const ICON = {
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
 let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
+// Vote counts arrive after reports/triage and can re-sort a shared case far up the list; scroll again when they land.
+let votesLoaded = false, scrollAfterVotes = null;
 const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
@@ -699,8 +706,8 @@ const PR_ICON = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const lbl = (text, color) => `<span class="lbl" style="color:color-mix(in srgb, ${color} 60%, var(--fg));border-color:color-mix(in srgb, ${color} 45%, transparent);background:color-mix(in srgb, ${color} 12%, transparent)">${esc(text)}</span>`;
-const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
-  return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
+const ago = iso => { const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.floor(m/60)} 小時前` : `${Math.floor(m/1440)} 天前`; };
 
 let toastTimer;
 function toast(msg, hideFromAT = false) {
@@ -948,6 +955,13 @@ function timeline(i) {
   }).join("")}${isStale(i) ? `<div class="ev"><b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度 · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
 }
 
+function syncDataNote() {
+  const loading = !gotReports || !gotTriage;
+  $("dataNoteText").textContent = loading ? "連線中斷，無法載入陳情資料。請重新整理頁面。" : "連線中斷，陳情資料可能不是最新。";
+  $("dataNoteRetry").hidden = !loading;
+  $("dataNote").hidden = !loadErr;
+}
+$("dataNoteRetry").onclick = () => location.reload();
 function render() {
   heatmap();
   const c = counts();
@@ -970,7 +984,7 @@ function render() {
   const ms = $("msFilter").value;
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
-  renderViews(c); if (admin) renderAdmin(c);
+  renderViews(c); if (admin) renderAdmin(c); syncDataNote();
   trackNew(); syncMap(); renderLive();
 
   let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
@@ -1071,7 +1085,11 @@ function render() {
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
-  if (own) { scrollTo = null; const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */ setTimeout(() => card.classList.remove("hl"), 4000); }
+  if (own) {
+    if (!(scrollTo === scrollAfterVotes && !votesLoaded)) scrollTo = null;
+    const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */
+    setTimeout(() => card.classList.remove("hl"), 4000);
+  }
 }
 
 async function onListClick(e) {
@@ -1263,11 +1281,14 @@ $("photoIn").addEventListener("change", () => {
   invalidateReportPreview();
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
+    const problems = [];
     for (const f of files) {
-      if (shots.length >= PHOTO_MAX || gen !== shotGen) break;
+      if (gen !== shotGen) break;
+      if (shots.length >= PHOTO_MAX) { problems.push("最多 3 張照片，其餘未加入"); break; }
       try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
-      catch { $("newStatus").textContent = "有一張照片無法讀取，請改用 JPEG 或 PNG"; }
+      catch (err) { problems.push(err && err.message === "too_large" ? "有一張照片太大，請改用較小的圖片" : "有一張照片無法讀取，請改用 JPEG 或 PNG"); }
     }
+    if (gen === shotGen && problems.length) $("newStatus").textContent = problems.join("；");
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
@@ -1438,6 +1459,7 @@ $("dupBox").addEventListener("click", async e => {
   if (b.dataset.dup === "new") {
     const revision = reportRevision;
     reportCreating = true; $("submitBtn").disabled = true; $("cancelBtn").disabled = true;
+    $("newStatus").textContent = "送出中…";
     return shrinking.then(() => {
       if (revision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
       return create({ ...t, dup:null }, text, signature, maskedN, restoreOnFailure);
@@ -1501,6 +1523,7 @@ function completeCreatedReport(attempt) {
 }
 async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
+  $("newStatus").textContent = "送出中…";
   let attempt = reportAttempt && reportAttempt.signature === signature ? reportAttempt : null;
   if (!attempt) {
     const { dup, address, outside, vague, ...fields } = t;
@@ -1514,6 +1537,7 @@ async function create(t, text, signature = reportInputStamp(), maskedCount = mas
     }
     const where = await locate(address, fields.district);
     if (startRevision !== reportRevision || signature !== reportInputStamp()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    $("newStatus").textContent = "送出中…";
     const id = crypto.randomUUID();
     const item = { n:nextN(), ...fields, ...where, ...(addr ? { address:addr } : {}), ...(photos.length ? { photos } : {}), body:text, createdAt:new Date().toISOString(), author:me };
     const contact = contactFn ? { name:$("cName").value.trim(), phone:$("cPhone").value.replace(/[\s-]/g, ""), email:$("cEmail").value.trim(), realName:!$("cRealRow").hidden && $("cReal").checked } : null;
@@ -1833,7 +1857,15 @@ function joinIssue(id) {
   const i = issues.find(x => x.id === id); if (!i || !canWrite) return;
   $("newBtn").click(); invalidateReportPreview(); setJoin({ id:i.id, n:i.n, title:i.title });
 }
-$("joinVote").onclick = () => { const t = joinTarget; if (!t) return; if (!myVotes[t.id]) setVote(t.id, true); toast(`已幫 #${t.n} +1`); $("cancelBtn").click(); };
+$("joinVote").onclick = async () => {
+  const t = joinTarget, btn = $("joinVote"); if (!t || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    // Keep the join form and its draft when the write fails; setVote already shows the error.
+    if (!myVotes[t.id] && !await setVote(t.id, true)) return;
+    toast(`已幫 #${t.n} +1`); $("cancelBtn").click();
+  } finally { btn.disabled = false; }
+};
 $("joinOff").onclick = () => { setJoin(null); invalidateReportPreview(); $("newText").focus(); };
 
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
@@ -2290,6 +2322,11 @@ function resolveShareRoute() {
     return true;
   }
   view.closed = issue.status === "fixed"; view.open.add(id); activeShareId = id; scrollTo = id;
+  if (!votesLoaded) {
+    scrollAfterVotes = id;
+    // Stop holding the target if vote counts never arrive.
+    setTimeout(() => { if (scrollAfterVotes === id && !votesLoaded) { scrollAfterVotes = null; if (scrollTo === id) scrollTo = null; } }, 5000);
+  }
   show("issues", true, true, true);
   shareNotice = "";
   return true;
@@ -2511,8 +2548,8 @@ function isoWeek(d) {
 }
 
 $("relBtn").onclick = async () => {
-  const since = Date.now() - 7 * DAY;
-  const done = issues.filter(i => closedAt(i) >= since);
+  const since = Date.now() - 7 * DAY, publicIssues = issues.filter(i => !hiddenFor(i));
+  const done = publicIssues.filter(i => closedAt(i) >= since);
   if (!done.length) { $("relStatus").textContent = "過去 7 天沒有修好的案件，沒有內容可以發布。"; return; }
   $("relBtn").disabled = true; $("relStatus").textContent = sample ? "Claude 正在撰寫更新紀錄…" : "產生中…";
   const [y, w] = isoWeek(new Date()), base = `v${y}.${w}`;
@@ -2525,7 +2562,7 @@ $("relBtn").onclick = async () => {
 本週修好的案件：
 ${items.join("\n")}
 仍在處理中：
-${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false }, 60000);
+${publicIssues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).join("\n") || "（無）"}`, { modelTier: "default", cache: false }, 60000);
     if (a && a.title && a.body) { const ti = String(a.title); r = { title: (ti.includes(tag) ? ti : `台北市 ${tag}：${ti}`).slice(0, 80), body: String(a.body).slice(0, 4000) }; }
   } catch {}
   try {
@@ -2538,6 +2575,12 @@ ${issues.filter(i => i.status === "progress").map(i => `#${i.n} ${i.title}`).joi
 // ---- Admin console (#admin): KPIs, three work queues, backlog and category charts. Queue buttons reuse the Issues handlers. ----
 const PENDING = "1999 待分派";
 function renderAdmin(c) {
+  const loading = !gotReports || !gotTriage;
+  $("admLoad").hidden = !(loadErr || loading);
+  $("admLoad").textContent = loadErr
+    ? (loading ? "連線中斷，無法載入後台資料。請重新整理頁面。" : "連線中斷，以下數字可能不是最新。")
+    : "正在載入後台資料…";
+  if (loading) { $("admKpi").innerHTML = $("admQueues").innerHTML = $("admDept").innerHTML = $("admCat").innerHTML = ""; return; }
   const open = issues.filter(i => i.status !== "fixed" && !hiddenFor(i)), today = dayKey(Date.now());
   const fixed = issues.filter(closedAt), avg = fixed.length ? fixed.reduce((s, i) => s + closedAt(i) - +new Date(i.createdAt), 0) / fixed.length / DAY : null;
   const age = i => (Date.now() - +new Date(i.createdAt)) / DAY;
@@ -2594,13 +2637,18 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
   }
   resetArmed = 0; $("resetBtn").textContent = "重設到快照"; $("snapStatus").textContent = "重設中…";
   // ponytail: one write at a time; a failure midway leaves a partial reset, and pressing reset again finishes it
-  const cur = Object.fromEntries(t.map(d => [d.id, JSON.stringify(d.data())]));
-  for (const [id, data] of Object.entries(snap.triage)) if (cur[id] !== JSON.stringify(data)) await db.doc("triage/" + id).set(data);
-  for (const [c, docs] of extra) for (const d of docs) await db.doc(`${c}/${d.id}`).delete();
-  const mv = (snap.votes || {})[me];
-  await (mv ? db.doc("votes/" + me).set(mv) : db.doc("votes/" + me).delete());
-  view.open.clear(); view.closed = false;
-  $("snapStatus").textContent = "已重設到快照";
+  try {
+    const cur = Object.fromEntries(t.map(d => [d.id, JSON.stringify(d.data())]));
+    for (const [id, data] of Object.entries(snap.triage)) if (cur[id] !== JSON.stringify(data)) await db.doc("triage/" + id).set(data);
+    for (const [c, docs] of extra) for (const d of docs) await db.doc(`${c}/${d.id}`).delete();
+    const mv = (snap.votes || {})[me];
+    await (mv ? db.doc("votes/" + me).set(mv) : db.doc("votes/" + me).delete());
+    view.open.clear(); view.closed = false;
+    $("snapStatus").textContent = "已重設到快照";
+  } catch (e) {
+    $("snapStatus").textContent = "重設沒有完成，再按一次「重設到快照」即可繼續。";
+    throw e;
+  }
 });
 // 重設模擬資料: the whole database back to the seed data (worker/data.json). Worker host only; two clicks like 重設到快照.
 let seedFn = null, seedArmed = 0;
@@ -2613,9 +2661,14 @@ $("seedBtn").onclick = () => run($("seedBtn"), async () => {
     return;
   }
   seedArmed = 0; $("seedBtn").textContent = "重設模擬資料"; $("snapStatus").textContent = "重設中…";
-  const r = await seedFn();
-  view.open.clear(); view.closed = false; render();
-  $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+  try {
+    const r = await seedFn();
+    view.open.clear(); view.closed = false; render();
+    $("snapStatus").textContent = `已重設模擬資料：${r.docs} 份文件，移除 ${r.removed} 份`;
+  } catch (e) {
+    $("snapStatus").textContent = "重設沒有完成，請再按一次「重設模擬資料」。";
+    throw e;
+  }
 });
 
 // Issue templates fill the textarea with the fields 1999 needs.
@@ -2698,7 +2751,7 @@ document.addEventListener("keydown", e => {
     const out = {};
     for (const d of s.docs) for (const x of Object.values(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:true, t:x.t, text:x.text.slice(0, 500),
+        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500),
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
   }, () => {});
@@ -2706,6 +2759,8 @@ document.addEventListener("keydown", e => {
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
     myVotes = { ...(mine && isObj(mine.data().issues) ? mine.data().issues : {}) };
+    votesLoaded = true;
+    if (scrollAfterVotes) { if (activeShareId === scrollAfterVotes) scrollTo = scrollAfterVotes; scrollAfterVotes = null; }
     render();
   });
 })();

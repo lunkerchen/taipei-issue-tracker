@@ -41,18 +41,20 @@ const adminToken = (() => {
 let visitorStorageBlocked = false;
 const visitorToken = /^[\\da-f]{16}\\.[\\da-f]{64}$/;
 const getVisitor = async () => {
-  let t = store.get("tit-visitor");
-  if (!visitorToken.test(t || "")) {
-    try {
-      const response = await req("/api/visitor", { method: "POST" });
-      if (!response.ok) return null;
-      t = (await response.json()).id;
-      if (!visitorToken.test(t || "")) return null;
-      store.set("tit-visitor", t);
-      if (store.get("tit-visitor") !== t) { visitorStorageBlocked = true; t = null; }
-    } catch { t = null; }
-  }
-  return t;
+  const t = store.get("tit-visitor"), valid = visitorToken.test(t || "");
+  // Confirm the stored token with the Worker: an unsigned or forged token looks valid but every write returns 403.
+  // If the Worker cannot answer, keep a well-formed stored token so an offline reload stays usable.
+  try {
+    const response = await req("/api/visitor", { method: "POST", headers: valid ? { "x-visitor": t } : {} });
+    if (!response.ok) return valid ? t : null;
+    const next = (await response.json()).id;
+    if (!visitorToken.test(next || "")) return valid ? t : null;
+    if (next !== t) {
+      store.set("tit-visitor", next);
+      if (store.get("tit-visitor") !== next) { visitorStorageBlocked = true; return null; }
+    }
+    return next;
+  } catch { return valid ? t : null; }
 };
 // Serialize first use across tabs, then re-read storage under the lock so all tabs keep the same identity.
 const visitor = navigator.locks?.request ? navigator.locks.request("tit-visitor", getVisitor) : getVisitor();
@@ -86,8 +88,11 @@ const offline = on => {
   }, 3000);
 };
 addEventListener("offline", () => offline(true));
+// A short network drop can leave the socket open; clear the banner when the network returns.
+let live = null;
+addEventListener("online", () => { if (live && live.readyState === WebSocket.OPEN) offline(false); });
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin" : "")); // the socket's admin view holds no contacts, so the token stays out of the URL
+  const ws = live = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin" : "")); // the socket's admin view holds no contacts, so the token stays out of the URL
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
   ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
@@ -178,7 +183,11 @@ const contact = {
 const seedReset = async () => {
   const r = await fetch("/api/reset", { method: "POST", headers: { "x-admin": adminToken }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw Object.assign(new Error("reset " + r.status), { status: r.status });
-  const out = await r.json(); ready = load(); await ready; fire(); return out;
+  const out = await r.json();
+  // The reset already succeeded; a failed reload must not turn it into a reported failure.
+  ready = load();
+  try { await ready; fire(); } catch {}
+  return out;
 };
 window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) : ({ db, user, geocode, revgeo, news, history: hist, photo, contact, seedReset: adminToken ? seedReset : null })[n] ?? null };
 })();

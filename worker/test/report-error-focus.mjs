@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
 const playwrightModule = process.env.PLAYWRIGHT_MODULE || "playwright";
-const { chromium } = await import(playwrightModule);
+const require = createRequire(import.meta.url);
+const { chromium } = require(playwrightModule);
 const base = process.env.REPORT_ERROR_FOCUS_BASE || "http://localhost:8813";
 const visitorId = "a".repeat(16);
 const token = `${visitorId}.${"b".repeat(64)}`;
