@@ -1075,13 +1075,19 @@ function render() {
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
         ${i.notes.map(x => `<div class="addl"><div class="meta">${x.other ? "其他市民補充" : "市民補充"} · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
-        ${canWrite && me && i.author === me && i.notes.filter(x => !x.other).length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
-          ${(() => { const s = noteStates.get(i.id) || {}; const busy = s.uploading || s.sending; const pics = notePics.get(i.id) || [];
-            return `<textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${s.sending ? "disabled" : ""}></textarea>
+        ${canWrite && me && i.author === me ? (() => {
+          const ownN = i.notes.filter(x => !x.other).length, full = ownN >= 10 || noteLimits.has(i.id);
+          const s = noteStates.get(i.id) || {}, busy = s.uploading || s.sending, pics = notePics.get(i.id) || [];
+          const draft = full ? (document.getElementById(`note-${i.id}`)?.value || "") : "";
+          if (full && !draft && !pics.length) return `<div class="note" data-notefull="${esc(i.id)}">此案件已達 10 則補充上限。</div>`;
+          return `<form class="addnote" data-note="${esc(i.id)}">
+            <div class="note">${full ? "此案件已達 10 則補充上限。草稿已保留，請自行複製。" : `每件案件最多 10 則補充，目前已 ${ownN} 則。`}</div>
+            <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明" ${full ? "readonly" : s.sending ? "disabled" : ""}></textarea>
           <div class="phprev">${pics.map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
-          <div class="row">${photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
-            <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
-        </form>` : ""}
+          <div class="row">${!full && photoFn && pics.length < PHOTO_MAX ? `<label class="btn">加入照片<input type="file" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" data-notepic="${esc(i.id)}" multiple ${busy ? "disabled" : ""}></label>` : ""}
+            <button class="btn" type="submit" ${full || busy ? "disabled" : ""}>${full ? "已達上限" : "新增補充"}</button><span class="status" role="status">${esc(full ? "" : s.status || "")}</span></div>
+        </form>`;
+        })() : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
         ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
@@ -1293,6 +1299,7 @@ const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|�
 const notePics = new Map();
 const noteStates = new Map();
 const noteAttempts = new Map();
+const noteLimits = new Set();
 const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
@@ -2518,7 +2525,7 @@ $("list").addEventListener("submit", async e => {
       const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
       if (!raw) throw new Error("not_found");
       const notes = Array.isArray(raw.notes) ? raw.notes : [];
-      if (notes.length >= 10) throw new Error("note_limit");
+      if (notes.length >= 10) throw Object.assign(new Error("note_limit"), { error:"note_limit" });
       await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
     }
     // a live re-render may already have replaced this form: clear the current one by id
@@ -2526,6 +2533,11 @@ $("list").addEventListener("submit", async e => {
     const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
   } catch (err) {
     state.sending = false;
+    if (err && err.error === "note_limit") {
+      noteLimits.add(id);
+      state.status = "此案件已達 10 則補充上限，草稿已保留，請自行複製。";
+      render(); toast("此案件已達 10 則補充上限"); return;
+    }
     state.status = err && err.status === 429 ? "送出太頻繁，補充內容已保留，請稍後重試。" : "送出失敗，補充內容已保留，請再試一次。";
     render(); fail(err);
   }
