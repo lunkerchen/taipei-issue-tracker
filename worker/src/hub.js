@@ -29,6 +29,8 @@ const THREADS = [
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
+// A case number is a positive integer below 1e6; the page uses the same range.
+const caseNo = v => Number.isInteger(v) && v >= 1 && v < 1e6;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Same one-level-deep merge as the page's artifact runtime uses for update()
 const merge = (a, b) => { const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = isObj(v) && isObj(o[k]) ? { ...o[k], ...v } : v; return o; };
@@ -172,6 +174,22 @@ export class Hub extends DurableObject {
     return n;
   }
 
+  // Numbers are assigned once, when a case is created, and never recomputed from what a viewer can see.
+  // Start above every stored issue number and PR number so the two kinds never collide.
+  // ponytail: scans every reports and triage doc; fine for a demo-sized database.
+  nextCaseNumber() {
+    let max = 0;
+    for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
+      const items = JSON.parse(r.data).items;
+      if (isObj(items)) for (const x of Object.values(items)) if (isObj(x) && caseNo(x.n)) max = Math.max(max, x.n);
+    }
+    for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'triage/%'").toArray()) {
+      const events = JSON.parse(r.data).events;
+      if (Array.isArray(events)) for (const e of events) if (isObj(e) && e.type === "pr" && caseNo(e.n)) max = Math.max(max, e.n);
+    }
+    return Math.min(999999, max + 1);
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
@@ -196,6 +214,12 @@ export class Hub extends DurableObject {
   floodCheck(path, oldDoc, doc, ip) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
+    // A visitor may not choose a number: an existing case keeps its stored n, and a new case is numbered below.
+    for (const [k, x] of Object.entries(items)) {
+      if (!isObj(x)) continue;
+      const prev = old[k];
+      if (isObj(prev) && caseNo(prev.n)) x.n = prev.n; else delete x.n;
+    }
     const fresh = Object.keys(items).filter(k => !Object.hasOwn(old, k));
     if (!fresh.length) return null;
     if (fresh.length > 1) return { status: 400, error: "one_report_per_write" };
@@ -212,6 +236,7 @@ export class Hub extends DurableObject {
       for (const x of Object.values(JSON.parse(r.data).items || {}))
         if (x && x !== it && now - Date.parse(x.createdAt) < DUP_WINDOW && norm(x.body) === body) return { status: 409, error: "duplicate_report" };
     this.sql.exec("INSERT INTO quota VALUES (?, ?, ?)", who, ip, now);
+    if (isObj(it)) it.n = this.nextCaseNumber();
     return null;
   }
 
@@ -242,6 +267,8 @@ export class Hub extends DurableObject {
       // ponytail: no mailer exists yet; a progress-notification sender would read `email` from the `contacts` table.
       reportContact = { name, phone, email, realName: c.realName, t: new Date().toISOString() };
       contactKey = `${path.slice(8)}:${data.key}`;
+      // The case number is permanent and assigned here, once; a number the client sent is ignored.
+      data.item.n = this.nextCaseNumber();
       data = { items: { [data.key]: data.item } }; op = "update";
     }
     let doc = null;

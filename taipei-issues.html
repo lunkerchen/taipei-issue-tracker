@@ -828,12 +828,14 @@ const fmtDate = d => new Date(d).toLocaleDateString("zh-TW", { year:"numeric", m
 
 // Reports and triage are written by other people: keep only well-formed data and drop the rest.
 const isStr = x => typeof x === "string", isObj = x => !!x && typeof x === "object" && !Array.isArray(x);
+// Same 1..999999 range the Worker assigns at creation.
+const caseNo = x => Number.isInteger(x) && x >= 1 && x < 1e6;
 const validDate = x => isStr(x) && Number.isFinite(+new Date(x));
 const deptOf = d => isStr(d) && Object.hasOwn(DEPTS, d) ? d : "1999 待分派";
 function cleanItem(key, it, docId) {
   if (!/^[\w-]{1,64}$/.test(key) || !isObj(it)) return null;
   const seed = docId === "demo-seed";
-  if (seed && (!Number.isInteger(it.n) || it.n < 1 || it.n >= 1e6)) return null; // citizen n is ignored, see build()
+  if (seed && !caseNo(it.n)) return null; // a demo case always carries its number
   if (!isStr(it.title) || !isStr(it.body) || !validDate(it.createdAt)) return null;
   const tags = it.tags ?? [];
   if (!Array.isArray(tags) || !tags.every(isStr)) return null;
@@ -845,7 +847,7 @@ function cleanItem(key, it, docId) {
   const own = seed ? "demo/" : docId + "/";
   const photos = Array.isArray(it.photos) ? it.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && (k.startsWith(own) || k.startsWith("admin/"))).slice(0, 3) : [];
   return { ...geo, ...(LOC_KINDS.includes(it.loc) ? { loc:it.loc } : {}), ...(isStr(it.address) && it.address && it.address.length <= 100 ? { address:it.address } : {}),
-    seed, n:seed ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
+    seed, n:seed || caseNo(it.n) ? it.n : 0, title:it.title.slice(0, 200), body:it.body.slice(0, 2000), district:DISTRICTS.includes(it.district) ? it.district : "", dept:deptOf(it.dept),
     tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), category:isStr(it.category) && /^TYPEA-AC\d{4}$/.test(it.category) ? it.category : "", flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
     createdAt:it.createdAt, author:isStr(it.author) ? it.author : "", photos,
     // Follow-ups the reporter added later: text plus up to 3 own photos each, at most 10
@@ -874,11 +876,13 @@ function build(checkMine) {
     const c = cleanItem(key, it, r.id);
     if (c) list.push({ ...c, key, id:c.seed ? key : `${r.id}:${key}`, reporter:r.id });
   }
-  // ponytail: citizen n is computed here, not trusted. Order is createdAt (a future date counts as now), then id, numbered after demo-seed's highest n.
-  // A citizen can backdate createdAt to take an earlier number; that only reorders numbers, and a PR event's number can later equal an issue's.
-  let n = Math.max(0, ...list.filter(x => x.seed).map(x => x.n)), now = Date.now();
-  const when = x => Math.min(+new Date(x.createdAt), now);
-  list.filter(x => !x.seed).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
+  // A case number is permanent: use the number the Worker stored when the case was created, so every viewer sees
+  // the same one. Only legacy items without a number are numbered here, above every issue and PR number in use,
+  // in createdAt (a future date counts as now) then id order. A backdated legacy item only reorders legacy numbers.
+  const stored = x => x.n > 0, now = Date.now(), when = x => Math.min(+new Date(x.createdAt), now);
+  let n = Math.max(0, ...list.filter(stored).map(x => x.n),
+    ...list.flatMap(x => (tri[x.id]?.events || []).filter(e => e.type === "pr" && Number.isFinite(e.n)).map(e => e.n)));
+  list.filter(x => !stored(x)).sort((a, b) => when(a) - when(b) || (a.id < b.id ? -1 : 1)).forEach(x => x.n = ++n);
   all = list.map(x => { const t = tri[x.id] || {}; return { ...x, status:t.status || "open", dept:t.dept || x.dept, milestone:t.milestone, hidden:t.hidden, events:t.events,
     notes:[...x.notes, ...(addenda[x.id] || [])].sort((a, b) => a.t.localeCompare(b.t)) }; });
   issues = all.filter(i => admin || !hiddenFor(i));
