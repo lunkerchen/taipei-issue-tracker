@@ -175,13 +175,14 @@ html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:var(--b
 
   <div id="s8" class="L">
     <div style="position:absolute;inset:0;background:radial-gradient(ellipse 620px 640px at 540px 940px,#0d1117f2 30%,#0d111700)"></div>
-    <div class="c mono" id="e0" style="top:500px;font-size:36px;color:var(--green)">$ git checkout taipei</div>
-    <div class="c shine" id="e1" style="top:590px;font-size:168px;font-weight:900;line-height:1.15">台北 1999</div>
-    <div class="c shine" id="e2" style="top:790px;font-size:168px;font-weight:900;line-height:1.15">快速通報</div>
-    <div class="c" id="e3" style="top:1020px;font-size:44px;color:#d1d7e0;letter-spacing:4px">看得見 · 找得到人 · 追得到進度</div>
-    <div class="c mono" id="e4" style="top:1120px;font-size:34px;color:var(--muted)">target: <span style="color:var(--green)">0 open issues</span></div>
+    <div class="c mono" id="e0" style="top:470px;font-size:36px;color:var(--green)">$ git checkout taipei</div>
+    <div class="c shine" id="e1" style="top:545px;font-size:150px;font-weight:900;line-height:1.15">台北市，</div>
+    <div class="c shine" id="e2" style="top:725px;font-size:150px;font-weight:900;line-height:1.15">你給我聽好了</div>
+    <div class="c" id="e6" style="top:925px;font-size:62px;font-weight:900;letter-spacing:6px"><span style="color:var(--green);margin-right:18px">｜</span>市民 1999 通報地圖</div>
+    <div class="c" id="e3" style="top:1048px;font-size:40px;color:#d1d7e0;letter-spacing:4px">看得見 · 找得到人 · 追得到進度</div>
+    <div class="c mono" id="e4" style="top:1130px;font-size:32px;color:var(--muted)">target: <span style="color:var(--green)">0 open issues</span></div>
     <div id="url">taipei-issue-tracker.labanchen.workers.dev</div>
-    <div class="c" id="e5" style="top:1400px;font-size:22px;color:var(--muted)">案件為模擬資料；歷史派工為 data.taipei 真實資料</div>
+    <div class="c" id="e5" style="top:1400px;font-size:22px;color:var(--muted);text-shadow:0 0 6px #0d1117,0 0 12px #0d1117,0 0 18px #0d1117">案件為模擬資料；歷史派工為 data.taipei 真實資料</div>
   </div>
 </div>
 <canvas id="fx" width="1080" height="1920"></canvas>
@@ -540,11 +541,14 @@ function s7(t) {
 }
 function s8(t) {
   const el = $("s8"), o = seg(t, 26.95, 27.2); show(el, o); if (!o) return;
-  [["e0", 27.05], ["e1", 27.15], ["e2", 27.3], ["e3", 27.6], ["e4", 27.8], ["e5", 28.1]].forEach(([id, T]) => {
+  [["e0", 27.05], ["e1", 27.15], ["e6", 27.75], ["e3", 27.95], ["e4", 28.1], ["e5", 28.3]].forEach(([id, T]) => {
     const k = seg(t, T, T + .4); show($(id), k, `translateY(${(1 - eo(k)) * 70}px) scale(${lerp(1.15, 1, eo(k))})`, k < 1 ? `blur(${(1 - k) * 14}px)` : "");
   });
+  // 你給我聽好了 slams in; drop-shadow because text-shadow would cover the clipped gradient.
+  const sk = seg(t, 27.45, 27.6), dx = 26 * imp(t, 27.45, 5);
+  show($("e2"), sk, `scale(${lerp(2.4, 1, eo(sk))})`, (sk < 1 ? `blur(${(1 - sk) * 18}px) ` : "") + (dx > .3 ? `drop-shadow(${dx}px 0 #ff2a6d) drop-shadow(${-dx}px 0 #05d9e8)` : ""));
   ["e1", "e2"].forEach((id, i) => $(id).style.backgroundPosition = `${lerp(100, -60, seg(t, 27.6 + i * .12, 28.9 + i * .12))}% 0`);
-  const uk = seg(t, 27.95, 28.3); show($("url"), uk, `translateX(-50%) scale(${uk ? back(uk) : 0})`);
+  const uk = seg(t, 28.2, 28.5); show($("url"), uk, `translateX(-50%) scale(${uk ? back(uk) : 0})`);
   $("e0").textContent = "$ " + typed("git checkout taipei", t, 27.05, .03);
 }
 
@@ -569,7 +573,7 @@ function fxLayer(t) {
   fctx.globalAlpha = clamp(seg(t, DUR - .35, DUR)); fctx.fillStyle = "#000"; fctx.fillRect(0, 0, W, H);
 }
 // Screen shake on the hard hits.
-const SHAKE = [[3.0, 18], [8.7, 22], [9.35, 22], [10.0, 22], [12.0, 16], [21.95, 14]];
+const SHAKE = [[3.0, 18], [8.7, 22], [9.35, 22], [10.0, 22], [12.0, 16], [21.95, 14], [27.45, 22]];
 function shake(t) {
   let s = 0; for (const [T, a] of SHAKE) s += a * imp(t, T, 9);
   const f = Math.floor(t * 30);
