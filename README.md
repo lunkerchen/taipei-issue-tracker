@@ -30,7 +30,7 @@
 - **我的陳情與補充**：「我的陳情」列出你送出的案件。你可以在自己的案件新增文字和最多 3 張照片；請等照片上傳完成再送出補充。上傳失敗時，文字與已上傳的照片會留在表單。每件案件最多 10 則補充。Worker 網站會用一次寫入追加每則補充，同時送出的補充也會分別保留。
 - **定位**：使用 GPS、在小地圖拖曳大頭針，或在地圖上長按。在電腦上，對地圖按右鍵。長按後，網站先顯示地址與座標，確認後才開啟通報表單。
 - **AI 分派（taipei-bot）**：Claude 判斷負責局處、1999 官方分類（9 大類、136 子類）與行政區。它也會找出重複的陳情、台北市以外的地點、內容不清楚的陳情與垃圾訊息。
-- **個資遮蔽**：送出陳情前，網站會遮蔽電話、Email 與身分證字號。瀏覽器會把每張照片縮小並重新編碼，這樣會移除 EXIF 資料與拍攝位置。
+- **個資遮蔽**：送出陳情或補充前，網站會遮蔽台灣電話（包含常見斜線分隔，以及 `+886`、`00886` 手機國碼格式）、Email 與身分證字號；聯絡資料欄位仍以私有資料保存。瀏覽器會把每張照片縮小並重新編碼，這樣會移除 EXIF 資料與拍攝位置。
 - **地圖**：地圖依 1999 九大類各分一個圖層。新通報會立即出現（WebSocket）。地圖下方有兩個按鈕：**Live**（今天最新的陳情）與 **回報**。紫色虛線標出 12 個行政區的區界。
 - **歷史派工時間軸**：時間軸顯示 2026 年 1 月到 9 月共 128,640 件真實 1999 派工。可以一次看一天，也可以依序播放。地圖載入中選擇歷史模式後，地圖就緒時會自動開啟；也可以取消選擇，或在載入失敗後重試。每個點位只到路段，不顯示門牌。
 - **照片**：案件詳情與地圖彈窗會顯示照片。點照片會在燈箱中放大。案件詳情另有一張小地圖標出位置。
@@ -148,12 +148,13 @@ node worker/test/votes.mjs
 node worker/test/visitor.mjs
 ```
 
-瀏覽器回歸測試需要 Playwright 與運作中的本機 Worker。請在測試環境安裝 Playwright，也可以用 `PLAYWRIGHT_MODULE` 指定套件路徑、`CHROME_EXECUTABLE_PATH` 指定已安裝的 Chrome 執行檔。
+瀏覽器回歸測試需要 Playwright 與運作中的本機 Worker。請在測試環境安裝 Playwright，也可以用 `PLAYWRIGHT_MODULE` 指定套件路徑、`CHROME_EXECUTABLE_PATH` 指定已安裝的 Chrome 執行檔。電話遮罩測試預設使用 8788 埠；其他本機網址可用 `PHONE_MASK_BASE` 設定。設定 `PHONE_MASK_EVIDENCE_DIR` 可儲存瀏覽器截圖。
 
 ```bash
 node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
 node worker/test/addendum-flow.mjs
+node worker/test/phone-mask.mjs
 node worker/test/note-photos.cjs
 node worker/test/share-links.mjs
 ```
