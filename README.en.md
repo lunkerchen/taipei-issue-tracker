@@ -2,6 +2,8 @@
 
 [繁體中文](README.md) | English
 
+![台北市，你給我聽好了｜市民 1999 通報地圖](docs/og.jpg)
+
 <!-- Written in ASD-STE100 Simplified Technical English. README.md is the Traditional Chinese translation of this file. -->
 
 This website shows Taipei City as a GitHub repository. A 1999 citizen report is an issue. A repair by a city department is a pull request. Each monthly dispatch summary is a release.
