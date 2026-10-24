@@ -23,9 +23,14 @@ const createVisitor = async () => {
   return { token, id:token.split(".")[0] };
 };
 const write = async (headers, op, path, data) => json(await post("/api/db", headers, { op, path, data }));
-const report = (owner, key, title, body, dept) => write({ "x-visitor":owner.token }, "update", `reports/${owner.id}`, {
-  items:{ [key]:{ author:owner.id, title, body, dept, tags:["交通號誌"], district:"大安區", createdAt:new Date().toISOString() } }
-});
+const report = async (owner, key, title, body, dept) => {
+  const saved = await post("/api/contact", { "x-visitor":owner.token }, { item:key, name:"合成測試", phone:"0912000000",
+    email:"synthetic@example.com", realName:false });
+  assert.equal(saved.status, 200, `contact for ${key}`);
+  return write({ "x-visitor":owner.token }, "update", `reports/${owner.id}`, {
+    items:{ [key]:{ author:owner.id, title, body, dept, tags:["交通號誌"], district:"大安區", createdAt:new Date().toISOString() } }
+  });
+};
 const adminHeaders = { "x-admin":adminToken };
 const deleteDoc = async (path, headers = adminHeaders) => json(await post("/api/db", headers, { op:"delete", path }));
 
