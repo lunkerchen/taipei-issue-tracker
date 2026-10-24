@@ -1533,7 +1533,7 @@ function mapMessage(message, retry = false) {
 }
 function initMap() {
   if (mainLM) return;
-  mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25 });
+  mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25, tapHold:true });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
