@@ -371,6 +371,12 @@ BASE=http://localhost:8788 node worker/test/create-item-validation.mjs
 BASE=http://localhost:8788 node worker/test/report-contact-bypass.mjs
 ```
 
+訪客文件結構測試驗證訪客寫入 `votes/<visitor>` 與 `addenda/<visitor>` 的資料驗證。測試確認不合法的投票格式、非布林值與非案件編號欄位會回傳 400 `bad_item`，且未驗證或超長之補充資料不會出現在公開快照中：
+
+```bash
+BASE=http://localhost:8788 node worker/test/visitor-doc-schema.mjs
+```
+
 ```bash
 cd worker && node test/sync.mjs
 ```
