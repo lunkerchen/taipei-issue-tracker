@@ -87,6 +87,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `data/1999-categories.json` | Official 1999 case categories (9 main categories, 136 subcategories) |
 | `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
 | `data/history-roads.json` | Cache of road coordinates |
+| `data/districts.geojson`, `data/li.geojson` | Boundaries of the 12 districts and the 456 villages (里), WGS84 |
 | `scripts/` | Data scripts. Refer to the table below. |
 | `deck/` | Slides and product screenshots |
 | `DEMO.md`, `SCRIPT.md` | Demo procedure and speaker script |
@@ -95,6 +96,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | Script | Purpose |
 |---|---|
 | `scripts/fetch-1999-history.mjs` | Downloads the data.taipei 1999 dispatch CSV files, gets the road sections, finds the coordinates, and makes `data/history-2026.json` |
+| `scripts/build-li.mjs` | Downloads the data.taipei village boundary map (TWD97 shapefile), changes it to WGS84, simplifies it, and makes `data/li.geojson` and `data/districts.geojson`. Needs `unzip`. |
 | `scripts/history-releases.mjs` | Makes the monthly dispatch reports from the history data (`--write` writes them to the live database) |
 | `scripts/enrich-seed.mjs` | Adds 1999 categories and coordinates to the demo cases |
 | `scripts/codex-proxy.mjs` | Local development only: sends AI sorting requests to Codex CLI |
@@ -164,6 +166,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 | Data | Source |
 |---|---|
 | 1999 dispatches (January to September 2026) | [Taipei City Open Data Platform](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed). The source data has only the case date. It does not have the close status. |
+| District and village boundaries | [Taipei City Village Boundary Map](https://data.taipei/dataset/detail?id=6b17b31d-4e16-495e-95b1-9fd1f47c80d8), Department of Civil Affairs. The districts are the union of their villages. |
 | 1999 case categories | [Taipei 1999 Citizen Hotline](https://1999.gov.taipei/) |
 | Base map | Taiwan e-Map, National Land Surveying and Mapping Center |
 | Addresses and coordinates | © OpenStreetMap contributors (Nominatim) |

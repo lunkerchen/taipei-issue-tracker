@@ -87,6 +87,7 @@ Cloudflare Worker（worker/src/index.js）
 | `data/1999-categories.json` | 1999 官方案件分類（9 大類、136 子類） |
 | `data/history-2026.json` | 2026 年 1 月到 9 月的 1999 派工（路段層級） |
 | `data/history-roads.json` | 路段座標快取 |
+| `data/districts.geojson`、`data/li.geojson` | 12 個行政區與 456 個里的界線（WGS84） |
 | `scripts/` | 資料腳本，請參閱下表 |
 | `deck/` | 簡報與產品截圖 |
 | `DEMO.md`、`SCRIPT.md` | 展示流程與口說文字稿 |
@@ -95,6 +96,7 @@ Cloudflare Worker（worker/src/index.js）
 | 腳本 | 用途 |
 |---|---|
 | `scripts/fetch-1999-history.mjs` | 下載 data.taipei 的 1999 派工 CSV，取出路段、查詢座標，並產生 `data/history-2026.json` |
+| `scripts/build-li.mjs` | 下載 data.taipei 的臺北市里界圖（TWD97 shapefile），轉成 WGS84 並簡化，產生 `data/li.geojson` 與 `data/districts.geojson`。需要 `unzip`。 |
 | `scripts/history-releases.mjs` | 由歷史資料產生每月派工報告（`--write` 寫入線上資料庫） |
 | `scripts/enrich-seed.mjs` | 幫示範案件加上 1999 分類與座標 |
 | `scripts/codex-proxy.mjs` | 只用於本機開發：把 AI 分類請求轉給 Codex CLI |
@@ -164,6 +166,7 @@ cd worker && npx wrangler deploy
 | 資料 | 來源 |
 |---|---|
 | 1999 派工（2026 年 1 月到 9 月） | [臺北市政府資料開放平台](https://data.taipei/dataset/detail?id=b796f87a-0ed8-4e57-89f6-225a4941b1ed)。原始資料只有立案日期，沒有結案狀態。 |
+| 行政區與里界 | [臺北市里界圖](https://data.taipei/dataset/detail?id=6b17b31d-4e16-495e-95b1-9fd1f47c80d8)，臺北市政府民政局。行政區界由所屬各里合併而成。 |
 | 1999 案件分類 | [臺北市 1999 市民當家熱線](https://1999.gov.taipei/) |
 | 底圖 | 內政部國土測繪中心臺灣通用電子地圖 |
 | 地址與座標 | © OpenStreetMap contributors（Nominatim） |

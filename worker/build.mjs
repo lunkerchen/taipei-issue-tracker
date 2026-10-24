@@ -160,7 +160,7 @@ window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) 
 </script>`;
 
 mkdirSync(here("public"), { recursive: true });
-if (existsSync(here("../data/history-2026.json"))) copyFileSync(here("../data/history-2026.json"), here("public/history-2026.json"));
+for (const f of ["history-2026.json", "districts.geojson", "li.geojson"]) if (existsSync(here("../data/" + f))) copyFileSync(here("../data/" + f), here("public/" + f));
 writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>台北市 Issue Tracker</title></head><body style="margin:0">
 <div style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">展示版：資料為模擬資料，所有訪客共用、即時同步。</div>
 ${shim}${page}</body></html>`);
