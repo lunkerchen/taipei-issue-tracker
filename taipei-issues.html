@@ -40,6 +40,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px
 .btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.title:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bar input[type=search]{flex:1 1 220px;min-width:0}
+.bar select{min-width:0;max-width:100%}
 input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
 .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .boxhead{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 14px;background:var(--hover);border-bottom:1px solid var(--line);font-size:14px}
@@ -323,7 +324,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
 @media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:160px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
-.ticker{position:fixed;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:0 12px;z-index:11;border-top:1px solid var(--line)}
+.ticker{position:fixed;left:0;right:0;bottom:0;height:auto;min-height:32px;box-sizing:border-box;display:flex;align-items:center;gap:10px;background:var(--term);color:var(--term-fg);font-size:13px;padding:4px 12px;z-index:11;border-top:1px solid var(--line)}
 .ticker .lab{font-family:var(--mono);color:var(--term-dim);flex:none}
 .tk-view{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 .tk-track{display:flex;width:max-content}
@@ -338,7 +339,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .has-tk .wrap{padding-bottom:104px}
 /* Fixed ticker and mobile nav must not cover a focused control or the last buttons. */
 html{scroll-padding-bottom:32px}
-@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(58px + env(safe-area-inset-bottom))}html.citizen.has-tk{scroll-padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
+@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + 2px)}html.citizen.has-tk{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + var(--tkh,33px) + 2px)}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
@@ -347,12 +348,12 @@ html.citizen [hidden]{display:none!important}
 .citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
 @media (max-width:760px){
 .citizen .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;margin:0;gap:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
-.citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-bottom:0;border-top:2px solid transparent;border-radius:0}
+.citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;line-height:1.15;white-space:normal;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
 .citizen .nav .ni{display:block!important}.citizen .nav .cnt,.citizen #newBtn{display:none}
-.citizen .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom))}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
-.citizen .ticker{bottom:calc(57px + env(safe-area-inset-bottom))}
-.citizen .toast,.citizen.has-tk .toast{bottom:104px}
+.citizen .wrap{padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + 23px)}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + var(--tkh,33px) + 30px)}
+.citizen .ticker{bottom:var(--navh,calc(57px + env(safe-area-inset-bottom)))}
+.citizen .toast,.citizen.has-tk .toast{bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + var(--tkh,33px) + 14px)}
 .citizen .mapbox{height:max(320px,calc(100vh - var(--hdr,170px) - 222px));height:max(320px,calc(100svh - var(--hdr,170px) - 222px))}}
 .has-tk .wrap.wide{padding-bottom:48px}
 .has-tk .mapgrid{height:calc(100vh - var(--hdr,170px) - 32px)}
@@ -2559,6 +2560,16 @@ function drawTicker() {
   }
 }
 reduceMQ.addEventListener("change", drawTicker);
+// The bottom bars grow with the user's text size: keep the ticker, toast and content above the nav's real height.
+function syncBottomBars() {
+  const nav = $("nav"), tick = $("ticker");
+  const n = nav ? nav.getBoundingClientRect().height : 0;
+  const t = tick && tick.getClientRects().length ? tick.getBoundingClientRect().height : 0;
+  const s = document.documentElement.style;
+  s.setProperty("--navh", n.toFixed(1) + "px"); s.setProperty("--tkh", t.toFixed(1) + "px");
+}
+if (window.ResizeObserver) { const ro = new ResizeObserver(syncBottomBars); ro.observe($("nav")); ro.observe($("ticker")); }
+syncBottomBars();
 async function loadNews() {
   try {
     const r = await tryTwice(() => newsFn(), 12000);
