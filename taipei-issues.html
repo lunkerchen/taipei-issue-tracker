@@ -227,6 +227,18 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:#1f2328;font-weight:700;font-size:14px;text-shadow:0 0 3px #fff,0 0 3px #fff;pointer-events:none}
 .leaflet-tooltip.dlabel::before{display:none}
 .leaflet-tooltip.dlabel.hot{background:#1f2328;color:#fff;text-shadow:none;padding:4px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:1}
+.leaflet-tooltip.dlabel.gone{display:none}
+.leaflet-li-pane path{cursor:pointer}
+.lipanel ol{list-style:none;margin:0;padding:0}
+.lipanel li{border-top:1px solid var(--line)}
+.lipanel li:first-child{border-top:0}
+.lipanel li button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;cursor:pointer;font-size:15px}
+.lipanel li button:hover,.lipanel li button[aria-current="true"]{background:var(--hover)}
+.lipanel li button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.lipanel .nm{flex:1;font-weight:600}
+.lipanel .cnt{border:1.5px solid var(--fixed);color:var(--fixed);background:none;min-width:28px;text-align:center;font-size:13px}
+.lipanel .chev{color:var(--muted);font-size:18px}
+.mapside[hidden]{display:none}
 .distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
 .distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
@@ -390,7 +402,12 @@ Switched to branch 'taipei'
         <ol id="liveList"></ol>
       </section>
       </div>
-      <aside class="box mapside" aria-label="圖層">
+      <aside class="box mapside lipanel" id="liPanel" aria-label="各里未完成陳情" hidden>
+        <div class="boxhead"><b id="liTitle"></b><span class="spacer"></span><span class="note" id="liSum"></span></div>
+        <ol id="liList"></ol>
+        <div class="foot note" id="liFoot"></div>
+      </aside>
+      <aside class="box mapside" id="layerPanel" aria-label="圖層">
         <div class="boxhead"><b>圖層</b><span class="spacer"></span><span class="note">1999 九大類</span></div>
         <div id="mapLayers"></div>
         <div class="foot note" id="mapFoot"></div>
@@ -1198,17 +1215,69 @@ function openDistrict(d) {
   const l = distLayers[d]; if (!l) return;
   curDist = d;
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
-  l.bringToFront();
+  l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone");
   mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
   $("distBack").hidden = false; $("distBack").textContent = "← 全市";
+  $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
+  loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
 }
 function closeDistrict() {
-  curDist = "";
-  for (const x of Object.values(distLayers)) x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity });
+  curDist = ""; curLi = "";
+  for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
+  liGroup?.clearLayers(); liLayers = {};
+  $("layerPanel").hidden = false; $("liPanel").hidden = true;
   cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
   $("distBack").hidden = true;
 }
 $("distBack").addEventListener("click", closeDistrict);
+
+// Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
+let liGeo = null, liP = null, liGroup = null, liLayers = {}, curLi = "";
+const LI_STYLE = { weight:1, color:"#ffffff", opacity:.9, fillColor:"#ffffff", fillOpacity:0 };
+function loadLi() {
+  return liP ||= tryTwice(async () => { const r = await fetch("li.geojson"); if (!r.ok) throw new Error("li " + r.status); return r.json(); }, 15000)
+    .then(gj => { liGeo = gj.features.map(f => ({ ...f.properties, polys: f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates, f }));
+      for (const x of liGeo) { const pts = x.polys.flat(2); x.box = [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))]; } })
+    .catch(e => { liP = null; throw e; });
+}
+// Even-odd over all rings of a polygon, so holes count as outside. GeoJSON rings are [lng, lat].
+const inPoly = (rings, x, y) => { let c = false; for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const liAt = (lat, lng) => liGeo?.find(x => lng >= x.box[0] && lng <= x.box[2] && lat >= x.box[1] && lat <= x.box[3] && x.polys.some(p => inPoly(p, lng, lat)));
+function drawLi(d) {
+  if (!liGroup) { mainLM.createPane("li").style.zIndex = 355; liGroup = L.layerGroup().addTo(mainLM); }
+  liGroup.clearLayers(); liLayers = {};
+  for (const x of liGeo.filter(x => x.district === d)) {
+    const l = L.geoJSON(x.f, { pane:"li", style:LI_STYLE }).getLayers()[0];
+    l.bindTooltip(x.li, { sticky:true, className:"lilabel" });
+    l.on("mouseover", () => { if (curLi !== x.li) l.setStyle({ fillOpacity:.35 }); });
+    l.on("mouseout", () => { if (curLi !== x.li) l.setStyle(LI_STYLE); });
+    l.on("click", () => selectLi(x.li));
+    liLayers[x.li] = l; liGroup.addLayer(l);
+  }
+}
+function selectLi(li) {
+  const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  curLi = li; const l = liLayers[li]; if (!l) return;
+  l.setStyle({ weight:3, fillOpacity:.45 }); l.bringToFront();
+  mainLM.flyToBounds(l.getBounds(), { padding:[40, 40], maxZoom:15, duration:.5 });
+  for (const b of document.querySelectorAll("#liList button")) b.setAttribute("aria-current", b.dataset.li === li);
+}
+// Unfinished = not fixed. Reports without a point, or outside every 里, are left out of the 里 counts.
+function liOpen(d) {
+  const by = {};
+  for (const i of issues) if (i.status !== "fixed" && inTaipei(i.lat, i.lng)) { const x = liAt(i.lat, i.lng); if (x && x.district === d) (by[x.li] ||= []).push(i); }
+  return by;
+}
+function renderLiList() {
+  if (!curDist || !liGeo) return;
+  const all = liGeo.filter(x => x.district === curDist), by = liOpen(curDist);
+  const rows = all.filter(x => by[x.li]).sort((a, b) => by[b.li].length - by[a.li].length || a.code.localeCompare(b.code));
+  const total = rows.reduce((n, x) => n + by[x.li].length, 0);
+  $("liSum").textContent = `${all.length} 里・未完成 ${total} 件`;
+  $("liList").innerHTML = rows.map(x => `<li><button type="button" data-li="${esc(x.li)}" aria-current="${x.li === curLi}"><span class="nm">${esc(x.li)}</span><span class="cnt">${by[x.li].length}</span><span class="chev" aria-hidden="true">›</span></button></li>`).join("");
+  $("liFoot").textContent = rows.length < all.length ? `其餘 ${all.length - rows.length} 里目前沒有未完成陳情` : "";
+}
+$("liList").addEventListener("click", e => { const b = e.target.closest("[data-li]"); if (b) selectLi(b.dataset.li); });
 
 // Long-press drops a pin and asks first; the address is looked up while the citizen decides
 const askHtml = (title, geo, lat, lng, ok) => `<b>${title}</b><div class="meta">${geo === undefined ? "地址查詢中…" : geo ? esc(geo.address) : "查不到地址，會以座標通報"}</div>
@@ -1275,6 +1344,7 @@ function popupHtml(id) {
 // Incremental: one marker per issue, kept in `markers` and only added, restyled, moved or removed when its issue changes.
 function syncMap() {
   if (!mainLM || histOn) return;
+  renderLiList();
   const c = counts(), live = new Set(), tally = {}, now = Date.now();
   for (const i of issues) {
     if (!inTaipei(i.lat, i.lng)) continue;
