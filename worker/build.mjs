@@ -83,8 +83,11 @@ const offline = on => {
   }, 3000);
 };
 addEventListener("offline", () => offline(true));
+// A short network drop can leave the socket open; clear the banner when the network returns.
+let live = null;
+addEventListener("online", () => { if (live && live.readyState === WebSocket.OPEN) offline(false); });
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
+  const ws = live = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
   ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
