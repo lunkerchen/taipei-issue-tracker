@@ -2227,6 +2227,8 @@ async function togglePickMap() {
   const box = $("pickMap");
   if (!box.hidden) { box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false"); return false; }
   box.hidden = false; $("pinBtn").setAttribute("aria-expanded", "true");
+  // On phones the fixed ticker and tab bar hide a map that opens below the fold; bring it into view first.
+  if (matchMedia("(max-width:760px)").matches) box.scrollIntoView({ block:"center", behavior: reduceMQ.matches ? "auto" : "smooth" });
   try { await loadLeaflet(); } catch {
     if (request !== pickMapIntent || epoch !== formEpoch || $("newBox").hidden || box.hidden) return false;
     box.hidden = true; $("pinBtn").setAttribute("aria-expanded", "false");
@@ -2430,7 +2432,14 @@ $("list").addEventListener("submit", async e => {
     render(); fail(err);
   }
 });
-$("nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) show(b.dataset.view); });
+$("nav").addEventListener("click", e => {
+  const b = e.target.closest("[data-view]");
+  if (!b) return;
+  const changed = b.dataset.view !== curView;
+  show(b.dataset.view);
+  // A tab switch starts at the top; otherwise a long list leaves the map or form above the viewport.
+  if (changed) window.scrollTo(0, 0);
+});
 $("navReport").onclick = () => $("newBtn").click();
 // Light/dark: follows the system until the viewer picks one; the choice is kept per browser (set before paint in <head>)
 const darkNow = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
