@@ -1670,7 +1670,9 @@ $("pinBtn").onclick = async () => {
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
 let newsItems = [], tkTimer = 0, tkI = 0;
 const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
-const tkItem = (n, hid) => { const t = `<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
+// PTT gives "10/24"; Bing and Threads give an ISO time, shown as the Taipei date
+const tkDate = s => { const m = /^\s*(\d{1,2})\/(\d{1,2})/.exec(s), t = Date.parse(s); return m ? `${+m[1]}/${+m[2]}` : t ? new Intl.DateTimeFormat("en-US", { timeZone:"Asia/Taipei", month:"numeric", day:"numeric" }).format(t) : ""; };
+const tkItem = (n, hid) => { const t = `${n.date ? `<span class="src">${n.date}</span>` : ""}<span class="src">${esc(n.source)}</span>${esc(n.title)}`;
   return /^https?:\/\//i.test(n.url) ? `<a href="${esc(n.url)}" target="_blank" rel="noopener"${hid ? ' tabindex="-1"' : ""}>${t}</a>` : `<span class="it">${t}</span>`; };
 function drawTicker() {
   clearInterval(tkTimer);
@@ -1691,7 +1693,7 @@ async function loadNews() {
   try {
     const r = await tryTwice(() => newsFn(), 12000);
     newsItems = (Array.isArray(r) ? r : []).filter(n => isObj(n) && isStr(n.title) && n.title.trim()).slice(0, 30)
-      .map(n => ({ title:n.title.slice(0, 120), url:isStr(n.url) ? n.url : "", source:isStr(n.source) ? n.source.slice(0, 30) : "" }));
+      .map(n => ({ title:n.title.slice(0, 120), url:isStr(n.url) ? n.url : "", source:isStr(n.source) ? n.source.slice(0, 30) : "", date:isStr(n.time) ? tkDate(n.time) : "" }));
   } catch {} // keep the last good list
   drawTicker();
 }
