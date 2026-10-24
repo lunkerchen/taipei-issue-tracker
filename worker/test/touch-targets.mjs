@@ -16,6 +16,8 @@ const title = `觸控目標測試 ${crypto.randomUUID().slice(0, 8)}`;
 const own = { title, body:`本機合成觸控目標測試 ${crypto.randomUUID()}`,
   createdAt:new Date().toISOString(), author:visitorId, dept:"1999 待分派", tags:[], photos:[], notes:[],
   lat:25.033, lng:121.5654, district:"大安區", category:"" };
+assert.equal((await post("/api/contact", { "x-visitor":visitor.id }, { item:key, name:"回歸測試", phone:"0912000000",
+  email:"test@example.com", realName:false })).status, 200, "save contact before creating a case");
 assert.equal((await post("/api/db", { "x-visitor":visitor.id },
   { op:"update", path:`reports/${visitorId}`, data:{ items:{ [key]:own } } })).status, 200,
   "create a private test case on the city map");
@@ -74,10 +76,39 @@ try {
     await page.keyboard.press("c");
     await page.locator("#newBox").waitFor({ state:"visible", timeout:5000 });
     await measure(page.locator("#photoLbl"), "add photo");
+    await measure(page.locator("#submitBtn"), "preview report");
+    await measure(page.locator("#cancelBtn"), "cancel report");
+    await measure(page.locator("#gpsBtn"), "gps button");
+    await measure(page.locator("#pinBtn"), "pin button");
+    await measure(page.locator("#aspects label").first(), "aspect option");
+    await measure(page.locator("#tpls button").first(), "template button");
+    await measure(page.locator("label:has(> #agree)"), "agree terms label");
+
+    await page.locator("#newText").fill("信義路四段 200 號人行道破損，磚塊鬆動");
+    await page.locator("#cName").fill("王大明");
+    await page.locator("#cPhone").fill("0912345678");
+    await page.locator("#cEmail").fill("test@example.com");
+    await page.locator("#agree").check();
     await page.locator("#photoIn").setInputFiles({ name:"photo.png", mimeType:"image/png",
       buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeklEQVR4nO3PUQkAIBTAwJfHiCY0liH8OITBAtxm7fN1wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWPHYBejLBS1qruaIAAAAASUVORK5CYII=", "base64") });
     await page.locator(".phprev button").waitFor({ state:"visible", timeout:10000 });
     await measure(page.locator(".phprev button"), "remove photo");
+
+    await page.locator("#submitBtn").click();
+    await page.locator("#dupBox").waitFor({ state:"visible", timeout:10000 });
+    await measure(page.locator("#dupBox [data-dup]").first(), "preview duplicate action button");
+
+    // Check li page contact call button
+    await page.locator("[data-view=map]").click();
+    await page.waitForTimeout(500);
+    const order = ["中正區", "大同區", "中山區", "松山區", "大安區", "萬華區", "信義區", "士林區", "北投區", "內湖區", "南港區", "文山區"];
+    const dPath = page.locator(".leaflet-districts-pane path").nth(order.indexOf("大安區"));
+    await dPath.waitFor({ state:"visible", timeout:10000 });
+    await dPath.evaluate(el => el.dispatchEvent(new MouseEvent("click", { bubbles:true })));
+    await page.waitForSelector("#liList button", { timeout:5000 });
+    await page.locator("#liList button").first().click();
+    await page.waitForSelector(".ldrow a.btn", { timeout:5000 });
+    await measure(page.locator(".ldrow a.btn").first(), "li contact call button");
 
     assert.ok(close.x + close.width <= 390, "the close button is inside the screen");
     assert.deepEqual(errors, [], "no page errors");

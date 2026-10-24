@@ -76,12 +76,15 @@ const load = async () => {
 let ready = load(); ready.catch(() => {});
 // Banner while the live socket is down; shown only after 3 s so a quick reconnect does not flash it
 let offTimer = null, banner;
+const OFFLINE_MSG = "連線中斷，重新連線中…地圖與列表暫停更新";
 const offline = on => {
-  if (!on) { clearTimeout(offTimer); offTimer = null; if (banner) banner.hidden = true; return; }
+  if (!on) { clearTimeout(offTimer); offTimer = null; if (banner) { banner.hidden = true; banner.textContent = ""; } return; }
   if (offTimer || (banner && !banner.hidden)) return; // reconnect attempts every 2 s must not restart the 3 s wait
   offTimer = setTimeout(() => { offTimer = null;
-    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status"); banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;padding:8px 12px;background:#9a6700;color:#fff;font:14px system-ui;text-align:center"; banner.textContent = "連線中斷，重新連線中…地圖與列表暫停更新"; document.body.append(banner); }
-    banner.hidden = false;
+    if (!banner) { banner = document.createElement("div"); banner.setAttribute("role", "status"); banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:3000;padding:8px 12px;background:#9a6700;color:#fff;font:14px system-ui;text-align:center"; document.body.append(banner); }
+    banner.textContent = ""; banner.hidden = false;
+    // Insert the text after the empty live region is visible, or assistive technology can miss it.
+    requestAnimationFrame(() => { if (banner && !banner.hidden && !banner.textContent) banner.textContent = OFFLINE_MSG; });
   }, 3000);
 };
 addEventListener("offline", () => offline(true));

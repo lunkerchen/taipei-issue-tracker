@@ -197,6 +197,21 @@ export class Hub extends DurableObject {
     return Math.min(999999, max + 1);
   }
 
+  // Release notes name cases by number; a case hidden after the release still must not reach visitors.
+  // Cached per seq: every doc write bumps seq, and a snapshot calls this once per release doc.
+  hiddenCaseNumbers() {
+    if (this.hiddenCache?.seq === this.seq) return this.hiddenCache.out;
+    const out = new Set();
+    for (const r of this.sql.exec("SELECT path, data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
+      const owner = r.path.slice(8), items = JSON.parse(r.data).items;
+      if (!isObj(items)) continue;
+      for (const [key, item] of Object.entries(items))
+        if (isObj(item) && caseNo(item.n) && !this.publicCase(owner === "demo-seed" ? key : `${owner}:${key}`)) out.add(item.n);
+    }
+    this.hiddenCache = { seq: this.seq, out };
+    return out;
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
@@ -220,12 +235,27 @@ export class Hub extends DurableObject {
       }
       return { ...doc, items };
     }
+    if (path.startsWith("releases/")) {
+      if (!isObj(doc)) return doc;
+      const hidden = this.hiddenCaseNumbers();
+      if (!hidden.size) return doc;
+      const ref = new RegExp(`#(?:${[...hidden].join("|")})(?!\\d)`);
+      const fixed = Array.isArray(doc.fixed) ? doc.fixed.filter(n => !hidden.has(n)) : null;
+      const count = fixed ? `本週修好 ${fixed.length} 件` : null;
+      const clean = s => String(s ?? "").split("\n").filter(line => !ref.test(line)).join("\n")
+        .replace(/本週修好\s*\d+\s*件/g, count ?? "$&");
+      const out = { ...doc, body: clean(doc.body) };
+      if (typeof doc.title === "string") out.title = clean(doc.title);
+      if (fixed) out.fixed = fixed;
+      return out;
+    }
     return doc;
   }
 
   // The Worker has already checked who may write where; this checks the data and applies it.
   // New report items in a visitor write: at most one per write, fresh createdAt, not a copy of a recent report, within quota.
-  floodCheck(path, oldDoc, doc, ip) {
+  // needContact is false only for create-report, which saves the contact in the same transaction.
+  floodCheck(path, oldDoc, doc, ip, needContact = true) {
     if (!path.startsWith("reports/")) return null;
     const old = isObj(oldDoc?.items) ? oldDoc.items : {}, items = isObj(doc.items) ? doc.items : {};
     // A visitor may not choose a number: an existing case keeps its stored n, and a new case is numbered below.
@@ -249,6 +279,7 @@ export class Hub extends DurableObject {
     if (body.length >= 4) for (const r of this.sql.exec("SELECT data FROM docs WHERE path LIKE 'reports/%'").toArray())
       for (const x of Object.values(JSON.parse(r.data).items || {}))
         if (x && x !== it && now - Date.parse(x.createdAt) < DUP_WINDOW && norm(x.body) === body) return { status: 409, error: "duplicate_report" };
+    if (needContact && !this.sql.exec("SELECT 1 FROM contacts WHERE k = ?", `${who}:${fresh[0]}`).toArray().length) return { status: 400, error: "bad_contact" };
     this.sql.exec("INSERT INTO quota VALUES (?, ?, ?)", who, ip, now);
     if (isObj(it)) it.n = this.nextCaseNumber();
     return null;
@@ -264,8 +295,7 @@ export class Hub extends DurableObject {
       const current = row ? JSON.parse(row.data) : {};
       if (isObj(current.items) && Object.hasOwn(current.items, data.key)) return { status: 200, data: current, seq: this.seq, created: false };
       // Contact is required: a missing or null contact is a bad_contact, so every new case has a reachable reporter.
-      // ponytail: visitors can still add items with a plain update to reports/<self> (artifact fallback, demo tests);
-      // make create-report the only way to add a visitor item if contact must be guaranteed.
+      // Plain update/set writes skip this check because floodCheck requires an already saved contact for fresh items.
       const c = data.contact;
       const name = typeof c?.name === "string" ? c.name.trim() : "";
       const phone = typeof c?.phone === "string" ? c.phone.replace(/[\s-]/g, "") : "";
@@ -333,7 +363,7 @@ export class Hub extends DurableObject {
         if (isObj(doc.items) && Object.keys(doc.items).length > ITEMS_MAX) return { status: 400, error: "too_many_items" };
       }
       const failure = this.ctx.storage.transactionSync(() => {
-        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip); if (f) return f; }
+        if (!admin) { const f = this.floodCheck(path, row && JSON.parse(row.data), doc, ip, !reportContact); if (f) return f; }
         this.sql.exec("INSERT OR REPLACE INTO docs VALUES (?, ?)", path, JSON.stringify(doc));
         if (reportContact) this.contactPut(contactKey, reportContact);
         return null;
