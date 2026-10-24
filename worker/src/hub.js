@@ -196,6 +196,21 @@ export class Hub extends DurableObject {
     return Math.min(999999, max + 1);
   }
 
+  // Release notes name cases by number; a case hidden after the release still must not reach visitors.
+  // Cached per seq: every doc write bumps seq, and a snapshot calls this once per release doc.
+  hiddenCaseNumbers() {
+    if (this.hiddenCache?.seq === this.seq) return this.hiddenCache.out;
+    const out = new Set();
+    for (const r of this.sql.exec("SELECT path, data FROM docs WHERE path LIKE 'reports/%'").toArray()) {
+      const owner = r.path.slice(8), items = JSON.parse(r.data).items;
+      if (!isObj(items)) continue;
+      for (const [key, item] of Object.entries(items))
+        if (isObj(item) && caseNo(item.n) && !this.publicCase(owner === "demo-seed" ? key : `${owner}:${key}`)) out.add(item.n);
+    }
+    this.hiddenCache = { seq: this.seq, out };
+    return out;
+  }
+
   // A doc as a visitor may see it. null removes the doc from their snapshot; reports and addenda keep only public entries.
   publicDoc(path, doc) {
     if (path === "demo/snapshot") return null; // admin-only demo tooling; it lists hidden triage ids and the admin's votes
@@ -211,6 +226,20 @@ export class Hub extends DurableObject {
       const items = {};
       for (const [id, addendum] of Object.entries(doc.items)) if (isObj(addendum) && this.publicCase(addendum.target)) items[id] = addendum;
       return { ...doc, items };
+    }
+    if (path.startsWith("releases/")) {
+      if (!isObj(doc)) return doc;
+      const hidden = this.hiddenCaseNumbers();
+      if (!hidden.size) return doc;
+      const ref = new RegExp(`#(?:${[...hidden].join("|")})(?!\\d)`);
+      const fixed = Array.isArray(doc.fixed) ? doc.fixed.filter(n => !hidden.has(n)) : null;
+      const count = fixed ? `本週修好 ${fixed.length} 件` : null;
+      const clean = s => String(s ?? "").split("\n").filter(line => !ref.test(line)).join("\n")
+        .replace(/本週修好\s*\d+\s*件/g, count ?? "$&");
+      const out = { ...doc, body: clean(doc.body) };
+      if (typeof doc.title === "string") out.title = clean(doc.title);
+      if (fixed) out.fixed = fixed;
+      return out;
     }
     return doc;
   }
