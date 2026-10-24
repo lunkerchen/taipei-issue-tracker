@@ -1644,7 +1644,9 @@ function drawMinis() {
 let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "", histOn = false;
 const markers = new Map(), seen = new Set(), fresh = new Map();
 let seenInit = false, noteTimer;
-const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10, maxBounds:[[24.85,121.35],[25.30,121.78]] };
+const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10,
+  // City fit reaches the old edge, so popup autoPan had no room and tall popups near the north edge were clipped.
+  maxBounds:[[24.65,121.15],[25.50,121.98]] };
 
 // The map fills the viewport below the nav: --hdr is the distance from the page top to the map.
 function sizeMap() { document.documentElement.style.setProperty("--hdr", Math.round($("v-map").getBoundingClientRect().top + scrollY) + 16 + "px"); }
@@ -1679,6 +1681,14 @@ function mapMessage(message, retry = false) {
 function initMap() {
   if (mainLM) return;
   mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25, tapHold:true });
+  // The phone map is short and narrow; cap the popup to the map and let long content scroll.
+  mainLM.on("popupopen", e => {
+    if (!matchMedia("(max-width:760px)").matches) return;
+    const size = mainLM.getSize();
+    e.popup.options.maxWidth = Math.max(180, size.x - 40);
+    e.popup.options.maxHeight = Math.max(96, size.y - 100);
+    e.popup.update();
+  });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
