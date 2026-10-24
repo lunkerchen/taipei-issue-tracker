@@ -294,7 +294,7 @@ Switched to branch 'taipei'
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
-      <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">🎤 語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
+      <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
       <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
       <div class="row" id="photoRow" hidden>
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
@@ -790,7 +790,7 @@ function render() {
       ${view.open.has(i.id) ? `<div class="detail">
         <div class="body">${esc(i.body)}</div>
         ${photoFn && i.photos.length ? `<div class="photos">${i.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="陳情照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}
-        ${i.notes.map(x => `<div class="addl"><div class="meta">市民補充 · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
+        ${i.notes.map(x => `<div class="addl"><div class="meta">市民補充 · ${ago(x.t)}</div>${x.text ? `<div class="body">${esc(x.text)}</div>` : ""}${photoFn && x.photos.length ? `<div class="photos">${x.photos.map((k, n) => `<a href="${esc(photoUrl(k))}" target="_blank" rel="noopener"><img src="${esc(photoUrl(k))}" alt="補充照片 ${n + 1}：${esc(i.title)}" loading="lazy" width="180" height="135"></a>`).join("")}</div>` : ""}</div>`).join("")}
         ${canWrite && me && i.author === me && i.notes.length < 10 ? `<form class="addnote" data-note="${esc(i.id)}">
           <textarea id="note-${esc(i.id)}" maxlength="500" rows="2" placeholder="補充說明，例：今天又更嚴重了" aria-label="補充說明"></textarea>
           <div class="phprev">${(notePics.get(i.id) || []).map((k, n) => `<figure><img src="${esc(photoUrl(k))}" alt="補充照片預覽 ${n + 1}"></figure>`).join("")}</div>
@@ -960,7 +960,7 @@ $("newForm").addEventListener("submit", async e => {
   if (contactFn) {
     if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
     if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
-    try { localStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
+    try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
   }
   maskedN = m.count;
   $("newText").value = text;
@@ -1646,14 +1646,14 @@ if (SR) {
     const base = $("newText").value, sep = base && !/\s$/.test(base) ? "\n" : "";
     rec.onresult = e => { $("newText").value = (base + sep + [...e.results].map(r => r[0].transcript).join("")).slice(0, 1000); $("newText").dispatchEvent(new Event("input")); };
     rec.onerror = e => { $("micStatus").textContent = e.error === "not-allowed" || e.error === "service-not-allowed" ? "麥克風權限被拒絕，請到瀏覽器設定開啟" : e.error === "no-speech" ? "沒有聽到聲音，請再試一次" : "語音辨識失敗，請改用打字"; };
-    rec.onend = () => { rec = null; $("micBtn").textContent = "🎤 語音輸入"; $("micBtn").setAttribute("aria-pressed", "false"); if ($("micStatus").textContent === "聆聽中…") $("micStatus").textContent = ""; };
+    rec.onend = () => { rec = null; $("micBtn").textContent = "語音輸入"; $("micBtn").setAttribute("aria-pressed", "false"); if ($("micStatus").textContent === "聆聽中…") $("micStatus").textContent = ""; };
     try { rec.start(); $("micBtn").textContent = "■ 停止"; $("micBtn").setAttribute("aria-pressed", "true"); $("micStatus").textContent = "聆聽中…"; } catch { rec = null; }
   };
 }
 $("aspects").addEventListener("change", renderTpls);
-$("newText").addEventListener("input", () => { $("cRealRow").hidden = !REPORT_RE.test($("newText").value); });
+$("newText").addEventListener("input", () => { $("cRealRow").hidden = !REPORT_RE.test(withoutTemplate($("newText").value)); });
 $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (!b) return;
-  const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""]; $("newText").value = g[b.dataset.tpl]; $("newText").focus(); });
+  const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""]; $("newText").value = g[b.dataset.tpl]; $("newText").dispatchEvent(new Event("input")); $("newText").focus(); });
 
 // GitHub-style keyboard shortcuts.
 document.addEventListener("keydown", e => {
@@ -1674,7 +1674,7 @@ document.addEventListener("keydown", e => {
   [db, sample, geocode, revgeo, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("revgeo"), opt("news")]);
   if (typeof revgeo !== "function") revgeo = null;
   contactFn = await opt("contact"); if (contactFn && typeof contactFn.save === "function") { $("contactBox").hidden = false;
-    try { const c = JSON.parse(localStorage.getItem("contact") || "null"); if (c) { $("cName").value = c.name || ""; $("cPhone").value = c.phone || ""; } } catch {} } else contactFn = null;
+    try { const c = JSON.parse(sessionStorage.getItem("contact") || "null"); if (c) { $("cName").value = c.name || ""; $("cPhone").value = c.phone || ""; } } catch {} } else contactFn = null;
   photoFn = await opt("photo"); if (typeof photoFn === "function") $("photoRow").hidden = false; else photoFn = null;
   histFn = await opt("history"); if (typeof histFn === "function") $("tline").hidden = false; else histFn = null;
   if (typeof geocode !== "function") geocode = null;
