@@ -65,6 +65,8 @@ try {
   await page.locator("#draftBox").waitFor({ state:"hidden" });
   assert.equal((await write({ "x-admin":"1" }, "update", `triage/${id}`, { hidden:false })).status, 200, "release again");
   await page.waitForFunction(t => [...document.querySelectorAll("#list button.title")].some(b => b.textContent.trim() === t), title, { timeout:10000 });
+  // With no draft left, hiding closed the detail; open it again to check the form.
+  if (await page.locator(`textarea[id="note-${id}"]`).count() === 0) await titleButton.click();
   assert.equal(await page.locator(`textarea[id="note-${id}"]`).inputValue(), "", "a discarded draft does not come back");
   assert.deepEqual(pageErrors, [], "no page errors");
   console.log("OK orphan draft is kept, announced, restored, and discardable");

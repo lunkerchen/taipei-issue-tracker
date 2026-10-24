@@ -1083,7 +1083,10 @@ function render() {
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
   if (!gotReports || !gotTriage) { $("list").innerHTML = `<div class="empty">正在載入陳情案件…</div>`; return; }
   // A live change or a filter can remove an open case from the list; close it and do not keep its #issue URL.
-  const staleOpen = [...view.open].filter(id => !rows.some(i => i.id === id));
+  // Not stale: a just-sent own case that is not in the snapshot yet, and a hidden case with a kept addition draft
+  // (renderDrafts tells the visitor, and the draft goes back into the form when the case is public again).
+  const staleOpen = [...view.open].filter(id => !rows.some(i => i.id === id) && !noteDrafts.has(id)
+    && !((id === mine || id === scrollTo) && !issues.some(i => i.id === id)));
   const dropHadFocus = staleOpen.length > 0 && $("list").contains(document.activeElement);
   if (staleOpen.length) {
     for (const id of staleOpen) view.open.delete(id);
