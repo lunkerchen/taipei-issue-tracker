@@ -65,7 +65,8 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Photos**: The case details and the map pop-up show photos. Click a photo to make it larger in a lightbox. The case details also show a small map with the location. If a photo cannot be added, the error shows next to the photo picker, not at the bottom of the form. The page moves the error into view, and a screen reader reads it. The error goes away after you add a valid photo. The add-photo and remove-photo buttons are 44px, so they are easy to tap.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
 - **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases. After a citizen files a report, the keyboard focus goes to the new case. A status message "已送出陳情" also confirms the successful report. The `c` shortcut opens the report form. Escape then returns the keyboard focus to 通報. On a short screen, the form keeps its description heading in view. A skip link at the top of the page goes to the main content. The page has one main landmark. The report form has a name. The preview starts with a level 3 heading. A small case map is a named group, not an image, because it contains the map attribution links. The photo picker shows a focus ring. Screen readers can read the classification in the preview. The name, phone and email fields are marked as required. A field with an error stays marked until the citizen corrects it. Label text has sufficient contrast in the light and dark themes. When the network drops, a banner shows the lost connection. When the network returns and the live connection is still open, the banner goes away.
-- **Case links**: Each case has a stable link from its data ID, not its changing number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
+- **Case numbers**: A case gets a number when the Worker creates it. The number is permanent. Citizens and staff see the same number. The number does not change when other cases are hidden or released. A reload or a new snapshot keeps the same number. Case numbers and PR numbers never have the same value. An old case that has no stored number still shows a number on the page.
+- **Case links**: Each case has a stable link from its data ID, not its number. The page waits for server-confirmed reports and triage, clears filters, and opens the correct open or fixed list. It scrolls to the case again when vote counts arrive, so a +1 sort cannot move the case off the screen. The copied link has no query parameters. If clipboard access fails, select and copy the link shown in the case details.
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
@@ -78,6 +79,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Counts**: The number in the Open tab and the 未結案件 number in the back office are the same. Both include cases that the admin hides or flags. Hidden cases stay out of the work queues.
 - **Search hint**: The search field shows 搜尋標題或內容. It does not show the unsupported `is:issue` filter.
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
+- **Repair order feedback**: A repair order title has a maximum of 80 characters, and the field shows the limit. After you make a repair order, the field is empty and the page shows the PR number. After you merge a repair order or mark a case fixed, the page shows a message. If the case leaves the Open list, the detail closes and the page shows the case list again.
 - **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
@@ -290,6 +292,18 @@ BASE=http://localhost:8788 node worker/test/admin-small-ux.mjs
 
 The admin small UX test uses 390px and 1280px viewports. It checks that the active admin tab stays in view, that a long contact email wraps inside the case details, that the Open tab and the 未結案件 KPI agree, and that the search hint has no `is:issue`. It creates hidden and flagged cases. Use a separate local Worker persistence directory because the test resets the local demo data to remove its private contact row.
 
+```bash
+BASE=http://localhost:8788 node worker/test/pr-merge-feedback.mjs
+```
+
+The repair order feedback test uses desktop and 390px phone viewports. It checks that a long title stops at 80 characters and that one click makes one repair order. It also checks that the field is empty after a repair order, and that merge or fixed shows a message and returns the page to the case list. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
+```bash
+BASE=http://localhost:9034 node worker/test/stable-case-number.mjs
+```
+
+The stable case number test uses two visitors and one administrator. It checks that a case keeps the same number in the staff view and the owner's citizen view. It releases and hides another case and checks for the same number. It also reloads the page and takes a new snapshot. The test deletes its cases when it ends. Use a separate local Worker persistence directory.
+
 Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment
@@ -321,7 +335,7 @@ CAUTION: The live database loads `worker/data.json` only at the first start. If 
 - Administrator mode applies only to the browser tab that you opened with `?admin`.
 - Browsers without Web Locks can create different visitor identities if you open two tabs for the first time at the same time. "My reports" is tied to the identity kept by this browser.
 - The Worker site makes report creation and note additions atomic. The claude.ai artifact keeps its existing database update method and does not have these server guarantees.
-- Case numbers can be the same if many persons send reports at the same time. If two administrators change one case at the same time, one change can replace the other change.
+- If two administrators change one case at the same time, one change can replace the other change.
 - AI sorting and the personal data mask operate in the browser. The Worker checks the prompt prefix and the length limit.
 - If you upload a photo and do not send the report, the photo stays in R2. The system does not remove it automatically.
 - Each history point shows only the road section. For approximately 6% of cases, the road section was not found. These points show near the center of the district.
