@@ -330,7 +330,13 @@ BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 ```
 
-短視窗測試使用 320×568、640×400、512×384 與 390×844 視窗。測試確認行政區地圖至少 300px 高、12 個行政區標籤都顯示，且標籤很少重疊。測試也從地圖開啟一個行政區再返回。可用 `BASE` 指定其他本機網址。測試不會寫入資料。
+短視窗測試使用 320×568、640×400、512×384 與 390×844 視窗，確認行政區地圖至少 300px 高、12 個行政區標籤皆能顯示且極少重疊，並能從地圖開啟行政區與返回。可設定 `BASE` 使用其他本機網址。測試不寫入資料。
+
+```bash
+BASE=http://localhost:8788 node worker/test/dark-map-controls.mjs
+```
+
+深色模式地圖控制項測試使用 1440×900 視窗，確認在深色模式下主地圖縮放鈕與通報選點地圖縮放鈕背景為深色且文字對比至少 4.5:1、行政區標籤文字清晰可讀，並確認淺色模式外觀維持原本樣式。可設定 `BASE` 使用其他本機網址。測試不寫入資料。
 
 ```bash
 BASE=http://localhost:8788 node worker/test/map-open-from-case.mjs

@@ -347,6 +347,12 @@ BASE=http://localhost:8788 node worker/test/text-scale-layout.mjs
 The text-scale layout test uses 390×844 and 320×568 phone viewports. It sets the text size to 200%. It checks that the page keeps the viewport width, that each bottom tab stays on the screen, that the news ticker stays above the navigation bar, and that the last case scrolls above the ticker. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/dark-map-controls.mjs
+```
+
+The dark map controls test uses a 1440×900 viewport. It checks that map zoom buttons and location pickbox zoom buttons in dark mode have dark backgrounds and contrast of at least 4.5:1 against text, that district labels stay readable, and that light mode controls keep their white styling. Set `BASE` to use another local URL. The test does not write data.
+
+```bash
 BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
