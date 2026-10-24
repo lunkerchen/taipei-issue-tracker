@@ -246,7 +246,13 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .me{display:block;width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px rgba(26,115,232,.35)}
 .pin{display:block;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .mk-new{transform-box:fill-box;transform-origin:center;stroke-width:6;stroke-opacity:.6}
-@media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}}
+@media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}.rpin.mk-new{animation:pinbounce .5s ease-out 6}}
+@keyframes pinbounce{0%,100%{translate:0 0}50%{translate:0 -8px}}
+.rpin{background:none;border:0}
+.boxhead .btn.sm{padding:2px 10px;min-height:0;font-size:13px}
+.rpin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.rpin.fixed{opacity:.5}
+.rpin.mk-new svg path{stroke:#000;stroke-width:2.5}
 @keyframes mkpulse{0%{transform:scale(1);stroke-width:2;stroke-opacity:1}100%{transform:scale(2.6);stroke-width:1;stroke-opacity:0}}
 @media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mapbox{height:calc(100vh - var(--hdr,170px) - 165px);height:calc(100svh - var(--hdr,170px) - 165px);min-height:160px}.mapcol .mapbox{flex:none}.mapside{overflow:visible}.livebox{max-height:none}}
 /* News ticker: fixed bottom bar; marquee pauses on hover/focus; reduced motion gets a static 5s rotation (see drawTicker) */
@@ -408,7 +414,7 @@ Switched to branch 'taipei'
         <div class="foot note" id="liFoot"></div>
       </aside>
       <aside class="box mapside" id="layerPanel" aria-label="圖層">
-        <div class="boxhead"><b>圖層</b><span class="spacer"></span><span class="note">1999 九大類</span></div>
+        <div class="boxhead"><b>圖層</b><span class="note">1999 九大類</span><span class="spacer"></span><button class="btn sm" type="button" id="layerAll" aria-pressed="false">全選</button></div>
         <div id="mapLayers"></div>
         <div class="foot note" id="mapFoot"></div>
       </aside>
@@ -1192,13 +1198,17 @@ function initMap() {
 const DIST_COLOR = { 北投區:"#ff8cc6", 士林區:"#ff9e1b", 內湖區:"#5bd8f5", 中山區:"#d9e35b", 大同區:"#5bd8f5", 松山區:"#ff8cc6",
   信義區:"#d9e35b", 南港區:"#fff4c8", 大安區:"#ff9e1b", 中正區:"#ff8cc6", 萬華區:"#ff9e1b", 文山區:"#5bd8f5" };
 const DIST_STYLE = { weight:1.5, color:"#ffffff", opacity:1, fillOpacity:.9 };
-let distLayers = {}, curDist = "", cityBounds = null;
+let distLayers = {}, curDist = "", cityBounds = null, distGeo = null;
+// Which district a point is in, from the boundary file; until it loads, the report's own district field is used.
+const distAt = (lat, lng) => distGeo?.find(x => x.polys.some(p => inPoly(p, lng, lat)))?.d;
 async function drawDistricts() {
   let gj;
   try { gj = await tryTwice(async () => { const r = await fetch("districts.geojson"); if (!r.ok) throw new Error("districts " + r.status); return r.json(); }, 10000); }
   catch { addBase(mainLM); return; } // the artifact build has no boundary file: fall back to the street map
   mainLM.createPane("districts").style.zIndex = 350;
   mainLM.createPane("dlabels").style.zIndex = 360; // own pane: inside "districts" the labels sat under the fills
+  distGeo = gj.features.map(f => ({ d:f.properties.district, polys:f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates }));
+  for (const r of markers.values()) { const ll = r.m.getLatLng(); r.dist = distAt(ll.lat, ll.lng) || r.i.district; }
   L.geoJSON(gj, { pane:"districts", style: f => ({ ...DIST_STYLE, fillColor:DIST_COLOR[f.properties.district] || "#ddd" }),
     onEachFeature: (f, l) => {
       const d = f.properties.district;
@@ -1217,7 +1227,7 @@ function openDistrict(d) {
   for (const [k, x] of Object.entries(distLayers)) { x.getElement()?.classList.remove("hot"); x.setStyle({ fillOpacity: k === d ? .9 : .25 }); }
   l.bringToFront(); l.getTooltip()?.getElement()?.classList.add("gone");
   mainLM.flyToBounds(l.getBounds(), { padding:[24, 24], duration:.6 });
-  $("distBack").hidden = false; $("distBack").textContent = "← 全市";
+  $("distBack").hidden = false; $("distBack").textContent = "← 全市"; setPins();
   $("layerPanel").hidden = true; $("liPanel").hidden = false; $("liTitle").textContent = d; $("liList").innerHTML = ""; $("liSum").textContent = "載入中…";
   loadLi().then(() => { if (curDist === d) { drawLi(d); renderLiList(); } }).catch(() => { if (curDist === d) $("liSum").textContent = "里界載入失敗"; });
 }
@@ -1225,7 +1235,7 @@ function closeDistrict() {
   curDist = ""; curLi = "";
   for (const x of Object.values(distLayers)) { x.setStyle({ fillOpacity:DIST_STYLE.fillOpacity }); x.getTooltip()?.getElement()?.classList.remove("gone"); }
   liGroup?.clearLayers(); liLayers = {};
-  $("layerPanel").hidden = false; $("liPanel").hidden = true;
+  $("layerPanel").hidden = false; $("liPanel").hidden = true; setPins();
   cityBounds ? mainLM.flyToBounds(cityBounds, { padding:[12, 12], duration:.6 }) : mainLM.flyTo(TAIPEI_VIEW.center, TAIPEI_VIEW.zoom, { duration:.6 });
   $("distBack").hidden = true;
 }
@@ -1331,9 +1341,15 @@ if (matchMedia("(hover:hover)").matches) $("lpHint").textContent = "或在地圖
 
 const layerOf = i => { const s = SUBS[i.category]; return s && groups[s.mid] ? s.mid : "none"; };
 function markerStyle(i, votes, key) {
-  const color = LAYERS.find(l => l.id === key).color, fixed = i.status === "fixed";
-  return { radius:7 + Math.min(4, votes), color, weight:2, opacity:fixed ? .5 : 1, fillColor:color, fillOpacity:fixed ? .25 : .75 };
+  return { color:LAYERS.find(l => l.id === key).color, fixed:i.status === "fixed", h:28 + 2 * Math.min(4, votes) };
 }
+// Report marker: a map pin in the category colour; more +1 votes make it a little taller, fixed cases are faded.
+const pinIcon = ({ color, fixed, h }) => L.divIcon({ className:"rpin" + (fixed ? " fixed" : ""), iconSize:[h * .75, h], iconAnchor:[h * .375, h], popupAnchor:[0, -h + 4],
+  html:`<svg viewBox="0 0 24 32" width="${h * .75}" height="${h}" aria-hidden="true"><path d="M12 31s10-11.2 10-19A10 10 0 0 0 2 12c0 7.8 10 19 10 19z" fill="${color}" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>` });
+// Live pins are added to the map one by one: in a district, all of its pins; on the city map, only the ticked layers.
+const pinVisible = r => !histOn && (curDist ? r.dist === curDist : layerOn[r.key] === true);
+const setPin = r => { const want = pinVisible(r); if (want !== mainLM.hasLayer(r.m)) want ? r.m.addTo(mainLM) : r.m.remove(); };
+const setPins = () => { if (mainLM) for (const r of markers.values()) setPin(r); };
 function popupHtml(id) {
   const r = markers.get(id); if (!r) return "";
   const i = r.i, st = STATUS[i.status] || STATUS.open, sub = SUBS[i.category];
@@ -1353,19 +1369,19 @@ function syncMap() {
     tally[key] = (tally[key] || 0) + 1;
     let r = markers.get(i.id);
     if (!r) {
-      r = { m:L.circleMarker([i.lat, i.lng], st), key, sig, votes, i };
+      r = { m:L.marker([i.lat, i.lng], { icon:pinIcon(st), keyboard:false, riseOnHover:true }), key, sig, votes, i, dist:distAt(i.lat, i.lng) || i.district };
       r.m.bindPopup(""); r.m.on("popupopen", () => r.m.setPopupContent(popupHtml(i.id)));
-      markers.set(i.id, r); groups[key].addLayer(r.m);
+      markers.set(i.id, r); setPin(r);
       if (now - (fresh.get(i.id) || 0) < 3000) pulse(r.m);
       continue;
     }
-    if (r.key !== key) { groups[r.key].removeLayer(r.m); groups[key].addLayer(r.m); r.key = key; }
-    if (r.sig !== sig) { r.m.setStyle(st); r.sig = sig; }
-    const ll = r.m.getLatLng(); if (ll.lat !== i.lat || ll.lng !== i.lng) r.m.setLatLng([i.lat, i.lng]);
+    if (r.key !== key) { r.key = key; setPin(r); }
+    if (r.sig !== sig) { r.m.setIcon(pinIcon(st)); r.sig = sig; }
+    const ll = r.m.getLatLng(); if (ll.lat !== i.lat || ll.lng !== i.lng) { r.m.setLatLng([i.lat, i.lng]); r.dist = distAt(i.lat, i.lng) || i.district; setPin(r); }
     r.i = i; r.votes = votes;
     if (r.m.isPopupOpen()) r.m.setPopupContent(popupHtml(i.id));
   }
-  for (const [id, r] of markers) if (!live.has(id)) { groups[r.key].removeLayer(r.m); markers.delete(id); }
+  for (const [id, r] of markers) if (!live.has(id)) { r.m.remove(); markers.delete(id); }
   const sig = LAYERS.map(l => tally[l.id] || 0).join() + cats.map(x => x.name).join() + issues.length;
   if (sig === layerSig) return;
   layerSig = sig;
@@ -1374,10 +1390,19 @@ function syncMap() {
 }
 function layerPanel(tally, foot) {
   $("mapLayers").innerHTML = LAYERS.map(l => { const name = l.id === "none" ? "未分類" : (cats.find(x => x.id === l.id) || {}).name || l.id;
-    return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === false ? "" : "checked"}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
-  $("mapFoot").textContent = foot;
+    return `<label class="lyr"><input type="checkbox" data-layer="${esc(l.id)}" ${layerOn[l.id] === true ? "checked" : ""}><i style="background:${l.color}"></i><span class="nm">${esc(name)}</span><span class="cnt">${tally[l.id] || 0}</span></label>`; }).join("");
+  $("mapFoot").textContent = foot; allBtn();
 }
-// Flash a new marker for 3s via CSS (.mk-new on its SVG path). A hidden layer has no element, so there is nothing to flash.
+const allBtn = () => { const on = LAYERS.every(l => layerOn[l.id] === true); $("layerAll").textContent = on ? "全不選" : "全選"; $("layerAll").setAttribute("aria-pressed", String(on)); };
+$("layerAll").onclick = () => {
+  const on = !LAYERS.every(l => layerOn[l.id] === true);
+  for (const l of LAYERS) layerOn[l.id] = on;
+  for (const b of document.querySelectorAll("[data-layer]")) b.checked = on;
+  if (histOn) for (const l of LAYERS) on ? mainLM.addLayer(histGroups[l.id]) : mainLM.removeLayer(histGroups[l.id]);
+  else setPins();
+  allBtn();
+};
+// Flash a new pin for 3s via CSS (.mk-new on its icon). A hidden pin has no element, so there is nothing to flash.
 function pulse(m) { const el = m.getElement(); if (!el) return; el.classList.add("mk-new"); setTimeout(() => el.classList.remove("mk-new"), 3000); }
 // Issues that appear after the first complete load are "new"; the first load is the baseline.
 function trackNew() {
@@ -1395,7 +1420,8 @@ function trackNew() {
 $("mapLayers").addEventListener("change", e => {
   const g = b => (histOn ? histGroups : groups)[b.dataset.layer];
   const b = e.target.closest("[data-layer]"); if (!b || !g(b)) return;
-  layerOn[b.dataset.layer] = b.checked;
+  layerOn[b.dataset.layer] = b.checked; allBtn();
+  if (!histOn) return setPins();
   b.checked ? mainLM.addLayer(g(b)) : mainLM.removeLayer(g(b));
 });
 // Popup button: jump to Issues with that case expanded. Filters are cleared so the case is certain to be listed.
@@ -1429,8 +1455,9 @@ async function setHist(on) {
   for (const l of LAYERS) {
     histGroups[l.id] ||= L.layerGroup();
     const [show, hide] = on ? [histGroups[l.id], groups[l.id]] : [groups[l.id], histGroups[l.id]];
-    mainLM.removeLayer(hide); if (layerOn[l.id] !== false) mainLM.addLayer(show);
+    mainLM.removeLayer(hide); if (on && layerOn[l.id] === true) mainLM.addLayer(show);
   }
+  setPins();
   $("histRow").hidden = $("histSrc").hidden = !on;
   $("liveBox").hidden = true; $("liveBtn").setAttribute("aria-pressed", "false");
   if (on) drawHist(); else { $("histDate").textContent = $("histCount").textContent = ""; for (const g of Object.values(histGroups)) g.clearLayers(); layerSig = ""; syncMap(); }
@@ -1485,7 +1512,8 @@ $("liveList").addEventListener("click", e => {
   const b = e.target.closest("[data-live]"); if (!b) return;
   const r = markers.get(b.dataset.live);
   if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
-  if (!mainLM.hasLayer(groups[r.key])) { layerOn[r.key] = true; mainLM.addLayer(groups[r.key]); const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; }
+  if (curDist && r.dist !== curDist) closeDistrict();
+  if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
   $("map").scrollIntoView({ block:"center", behavior:"smooth" });
   mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
 });
