@@ -16,11 +16,12 @@ const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
 // Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
 const BING_NEWS = "https://www.bing.com/news/search?q=" + encodeURIComponent("臺北") + "&format=rss&setlang=zh-TW&cc=TW";
 const PTT = "https://www.ptt.cc/bbs/Taipei/index.html";
-// Threads has no open search: a hand-picked list of 台北 posts (picked 2026-10-24, read only). Edit by hand to refresh.
+// Threads has no open search: a hand-picked list of 台北 posts (picked 2026-10-24, read only). Edit by hand to refresh;
+// time is the post date, decoded from the post code (id >> 23 = ms since 2011-08-24).
 const THREADS = [
-  { title: "台北市的自來水真的不能直接燒水喝嗎", url: "https://www.threads.com/@rouninnmew__/post/De19teMmqwD", source: "Threads" },
-  { title: "桃園台北通勤，下雨天遲到被老闆問：你怎麼不搭機捷？", url: "https://www.threads.com/@vos_non_scitis/post/Dexyji9n5ay", source: "Threads" },
-  { title: "信義區深夜遇陌生男子搭訕、尾隨，提醒大家注意安全", url: "https://www.threads.com/@ariellhsu_/post/DesOwlGEv3X", source: "Threads" }
+  { title: "台北市的自來水真的不能直接燒水喝嗎", url: "https://www.threads.com/@rouninnmew__/post/De19teMmqwD", source: "Threads", time: "2026-10-23T16:15:30Z" },
+  { title: "桃園台北通勤，下雨天遲到被老闆問：你怎麼不搭機捷？", url: "https://www.threads.com/@vos_non_scitis/post/Dexyji9n5ay", source: "Threads", time: "2026-10-22T01:21:04Z" },
+  { title: "信義區深夜遇陌生男子搭訕、尾隨，提醒大家注意安全", url: "https://www.threads.com/@ariellhsu_/post/DesOwlGEv3X", source: "Threads", time: "2026-10-19T21:32:04Z" }
 ];
 // Not news: buy/sell/giveaway posts, surveys and board notices
 const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;

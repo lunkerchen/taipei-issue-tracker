@@ -37,7 +37,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Dark and light mode**: Use the button in the header to change the mode. Initially, the website uses the system setting. The browser keeps your selection. The map colors also change.
 - **Keyboard and multiple tabs**: Case details keep the keyboard focus when they open or close. Live updates keep the text and cursor in an addition form. A +1 change updates only that case, so a different tab cannot remove votes for other cases.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. If the browser cannot keep it, you can read cases but cannot send reports. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
-- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
 **Department administrators** (add `?admin=<token>` to the URL. After you open the page, the website removes the token from the address bar.)
 

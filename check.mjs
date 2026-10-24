@@ -1,4 +1,4 @@
-// Pull maskPII, isoWeek and cleanItem (with the consts it needs) out of taipei-issues.html and assert on them. Run: node check.mjs
+// Pull maskPII, isoWeek, tkDate and cleanItem (with the consts it needs) out of taipei-issues.html and assert on them. Run: node check.mjs
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 const html = readFileSync(new URL("./taipei-issues.html", import.meta.url), "utf8");
@@ -9,6 +9,9 @@ const grab = name => { const m = html.match(new RegExp(`^function ${name}\\b[\\s
 const grabConst = name => { const m = html.match(new RegExp(`^const ${name}\\b[\\s\\S]*?;[ \\t]*$`, "m")); assert(m, `${name} not found`); return m[0]; };
 const { maskPII, isoWeek } = new Function("DAY", `${grab("maskPII")}\n${grab("isoWeek")}\nreturn { maskPII, isoWeek };`)(864e5);
 const { cleanItem, inTaipei } = new Function(["DISTRICTS","DEPTS","CODEOWNERS","TAGS","BOUNDS","TAIPEI_RING","inRing","isStr","validDate","deptOf","inTaipei","PHOTO_MAX"].map(n => grabConst(n)).join("\n") + `\n${grab("cleanItem")}\nreturn { cleanItem, inTaipei };`)();
+
+const tkDate = new Function(`${grabConst("tkDate")}\nreturn tkDate;`)();
+for (const [src, want] of [["10/24", "10/24"], [" 9/05", "9/5"], ["2026-10-23T16:15:30Z", "10/24"], ["", ""]]) assert.equal(tkDate(src), want, src);
 
 const M = "［已遮蔽］";
 for (const [src, want] of [
