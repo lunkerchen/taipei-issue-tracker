@@ -48,7 +48,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
   While a +1 is saving, the site checks that the report preview is still current. If the visitor changes the draft, cancels the form, or opens a new report, the site keeps the current state and confirms that the +1 was saved.
 
   An addition to your own case shows as "citizen addition". Additions from other visitors show as "addition from another citizen". The website keeps each addition in `addenda/<visitor ID>`.
-- **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate.
+- **My reports and additions**: "My reports" shows the cases that you sent. You can add text and a maximum of 3 photos to your own case. Wait until the photos finish uploading before you send an addition. If an upload fails, the text and uploaded photos stay in the form. Each case can have a maximum of 10 additions. On the Worker site, one write adds each note, so notes sent at the same time stay separate. If a live update makes the case private while you write an addition, the website keeps the text in a rescue area above the list and tells you that it kept the text. You can copy or discard the text there. The text goes back into the form when the case is public again.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. After you push and hold, the website shows the address and the coordinates. The report form opens only after you confirm. A late GPS result cannot replace a pin that you chose or cleared.
 - **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: The website hides Taiwan telephone numbers, including common slash and dash separators and the `+886` and `00886` prefixes on landline and mobile numbers, email addresses and ID numbers before it sends a report or an addition. The mask does not apply to the contact fields: they stay out of the citizen pages, but the demo admin console (no verification) shows them to anyone. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
@@ -220,6 +220,12 @@ cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 
 ```bash
 BASE=http://localhost:8788 node worker/test/form-open-focus.mjs
+```
+
+The orphan draft test hides an open case that has an unsent addition, then makes the case public again. It checks the rescue area, the announcement, the restored draft and the discard action.
+
+```bash
+BASE=http://localhost:8788 node worker/test/orphan-draft.mjs
 ```
 
 The form open focus test uses a phone viewport. It opens the report form with the `c` shortcut and checks that Escape returns focus to 通報. It also opens the form at 320px and checks that the description heading and the focused field stay in view. Set `BASE` to use another local URL. The test does not write data.
