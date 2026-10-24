@@ -128,4 +128,11 @@ const pbase = { title:"t", body:"b", createdAt:"2026-10-01T00:00:00Z" }, me16 = 
 assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:[`${me16}/a.jpg`, "fedcba9876543210/b.jpg", "demo/c.jpg", "../x.jpg", `${me16}/d.webp`, `${me16}/e.jpg`, `${me16}/f.jpg`, `${me16}/g.jpg`] }, me16).photos, [`${me16}/a.jpg`, `${me16}/e.jpg`, `${me16}/f.jpg`]);
 assert.deepEqual(cleanItem("x", { ...pbase, n:1, photos:["demo/demo-01.jpg", "javascript:alert(1)"] }, "demo-seed").photos, ["demo/demo-01.jpg"]);
 assert.deepEqual(cleanItem("x", { ...pbase, author:me16, photos:"demo/a.jpg" }, me16).photos, []);
+// Accessibility wiring: required contact fields, a focus ring for the clipped photo input, and an announced preview.
+assert.match(html, /id="cName"[^>]*aria-required="true"/);
+assert.match(html, /id="cPhone"[^>]*aria-required="true"/);
+assert.match(html, /#photoIn:focus-visible\+#photoLbl/);
+assert.match(html, /<dl class="pv" id="dupDetails">/);
+assert.match(html, /data-dup="new" aria-describedby="dupDetails">確認送出/);
+assert.match(html, /color:color-mix\(in srgb, \$\{color\} 60%, var\(--fg\)\)/);
 console.log("OK");
