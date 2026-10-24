@@ -1086,7 +1086,7 @@ function render() {
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
         ${admin && i.status !== "fixed" ? `<div class="admin">
-          <input id="pr-${esc(i.id)}" placeholder="修繕單標題，例：人行道全段重鋪" aria-label="修繕單標題" style="flex:1 1 220px;min-width:0">
+          <input id="pr-${esc(i.id)}" maxlength="80" placeholder="修繕單標題（最多 80 字），例：人行道全段重鋪" aria-label="修繕單標題（最多 80 字）" style="flex:1 1 220px;min-width:0">
           <button class="btn" data-pr="${esc(i.id)}">Open pull request</button>
         </div>` : ""}
         ${admin ? `<div class="admin">
@@ -1152,15 +1152,39 @@ async function onListClick(e) {
     try { contactCache.set(btn.dataset.contact, await contactFn.get(btn.dataset.contact)); render(); }
     catch (e) { if (e.status !== 403) throw e; toast("示範後台看不到聯絡資料，需要管理者金鑰"); } // the token-free demo admin gets 403
   });
+  const fromList = !!btn.closest("#list"); // the admin queues share this handler but must keep their own view and URL
   const i = issues.find(x => x.id === (btn.dataset.id || btn.dataset.pr));
-  if (btn.dataset.status) return run(btn, () => act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }));
-  if (btn.dataset.merge) return run(btn, () => act(i, [{ type:"merged", pr:+btn.dataset.merge }], { status:"fixed" }));
+  if (btn.dataset.status) return run(btn, async () => {
+    if (await act(i, [{ type:"status", to:btn.dataset.status }], { status:btn.dataset.status }) && fromList) fixedFeedback(i, btn.dataset.status);
+  });
+  if (btn.dataset.merge) {
+    const pr = +btn.dataset.merge;
+    return run(btn, async () => { if (await act(i, [{ type:"merged", pr }], { status:"fixed" }) && fromList) fixedFeedback(i, "fixed", pr); });
+  }
   if (btn.dataset.hide) return run(btn, () => act(i, [], { hidden: btn.dataset.hide === "true" }));
-  const title = $("pr-" + i.id).value.trim();
-  if (!title) return $("pr-" + i.id).focus();
+  const prInput = $("pr-" + i.id), title = prInput.value.trim().slice(0, 80);
+  if (!title) return prInput.focus();
+  if (prInput.value !== title) prInput.value = title; // keep the field and the saved title equal if a scripted value passed maxlength
+  let pr = 0;
   const isOpen = cur => (cur.status || "open") === "open";
-  run(btn, () => act(i, cur => [{ type:"pr", n:nextN(), title:title.slice(0, 80) }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])],
-    cur => isOpen(cur) ? { status:"progress" } : {}));
+  run(btn, async () => {
+    if (!await act(i, cur => { pr = nextN(); return [{ type:"pr", n:pr, title }, ...(isOpen(cur) ? [{ type:"status", to:"progress" }] : [])]; },
+      cur => isOpen(cur) ? { status:"progress" } : {})) return;
+    // Clear the fresh input, not the one from click time: a live re-render can replace it and restore the old text.
+    const live = $("pr-" + i.id); if (live) live.value = "";
+    toast(`已建立 PR #${pr}`);
+    render();
+  });
+}
+// A fixed case leaves the Open list: close the detail and keep the URL on the list. The toast confirms the action either way.
+function fixedFeedback(i, status, pr) {
+  if (pr) toast(`已合併 PR #${pr}，案件標記為已修復`);
+  else if (status === "fixed") toast("已標記為已修復");
+  if (status !== "fixed" || view.closed) return;
+  view.open.delete(i.id);
+  activeShareId = null;
+  replaceHash("#issues");
+  render();
 }
 $("list").addEventListener("click", onListClick);
 function onListChange(e) {
