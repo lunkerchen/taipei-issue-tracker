@@ -30,9 +30,12 @@ async function writeDb(req, env) {
   let b;
   try { if (text.length > BODY_MAX) return err(413, "too_large"); b = JSON.parse(text); } catch { return err(400, "bad_json"); }
   const { op, path, data } = b || {};
-  if (!["set", "update", "delete", "append-note", "create-report"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
-  const citizenReportOp = op === "append-note" || op === "create-report";
-  if (citizenReportOp ? admin || path !== `reports/${id}` : !admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
+  if (!["set", "update", "delete", "append-note", "append-addendum", "create-report"].includes(op) || typeof path !== "string" || !PATH.test(path)) return err(400, "bad_request");
+  if (op === "append-note" || op === "create-report") {
+    if (admin || path !== `reports/${id}`) return err(403, "forbidden");
+  } else if (op === "append-addendum") {
+    if (admin || path !== `addenda/${id}`) return err(403, "forbidden");
+  } else if (!admin && path !== `reports/${id}` && path !== `votes/${id}` && path !== `addenda/${id}`) return err(403, "forbidden");
   return reply(await hub(env).write(op, path, data, admin, h.get("cf-connecting-ip") || ""));
 }
 

@@ -602,7 +602,7 @@ const ICON = {
 
 let db = null, me = null, admin = false, canWrite = false, sample = null, geocode = null, revgeo = null, newsFn = null;
 let addenda = {}, reports = [], tri = {}, all = [], issues = [], votes = [], myVotes = {}, history = {}, pending = null, milestones = [], releases = [];
-let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false;
+let reportRevision = 0, previewRun = 0, reportAttempt = null, formOpener = null, reportCreating = false, supplementBusy = false;
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
@@ -982,7 +982,7 @@ function restoreFormFocus() {
 function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
-  if (!reportCreating) $("submitBtn").disabled = false;
+  if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 $("cancelBtn").onclick = () => {
   if (reportCreating) return;
@@ -1043,6 +1043,7 @@ const REPORT_RE = /檢舉|違規|違停|停車|噪音|吵|違建|加蓋|占用|�
 const notePics = new Map();
 const noteStates = new Map();
 const noteAttempts = new Map();
+const supplementAttempts = new Map();
 let photoFn = null, shots = [], shotGen = 0, shrinking = Promise.resolve();
 const PHOTO_MAX = 3, PHOTO_RE = /^(?:[\da-f]{16}|admin|demo)\/[\w-]{1,64}\.jpg$/;
 const photoUrl = k => photoFn ? photoFn.url(k) : "";
@@ -1078,7 +1079,7 @@ function invalidateReportPreview() {
   if (reportAttempt && reportAttempt.signature !== stamp) reportAttempt = null;
   reportRevision++; previewRun++; pending = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
-  if (!reportCreating) $("submitBtn").disabled = false;
+  if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
   if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
@@ -1103,7 +1104,7 @@ $("photoIn").addEventListener("change", () => {
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!db || !canWrite || $("submitBtn").disabled || reportCreating) return;
+  if (!db || !canWrite || $("submitBtn").disabled || reportCreating || supplementBusy) return;
   const run = ++previewRun, revision = reportRevision;
   const current = () => run === previewRun && revision === reportRevision;
   const finish = () => { if (run === previewRun) $("submitBtn").disabled = false; };
@@ -1178,19 +1179,66 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
 }
 function doneReport(openId) {
   clearReportFlow();
-  view.open.add(openId); view.closed = false;
+  supplementAttempts.clear(); view.open.add(openId); view.closed = false;
   $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); render();
   restoreFormFocus();
 }
 // A supplement to someone else's case lives in addenda/<me> (visitors may only write their own docs)
-async function supplement(t, text, photos) {
-  $("submitBtn").disabled = true; $("newStatus").textContent = "補充中…";
+async function supplement(t, text, photos, signature) {
+  if (text.length > 500) { $("newStatus").textContent = "補充內容最多 500 字，請縮短後再補充"; return; }
+  const startRevision = reportRevision, attemptKey = JSON.stringify([t.dup.id, signature]);
+  let attempt = supplementAttempts.get(attemptKey);
+  if (!attempt) {
+    attempt = { id:crypto.randomUUID(), target:t.dup.id, text, photoKeys:new Map(), photos:null };
+    supplementAttempts.set(attemptKey, attempt);
+  }
+  const unchanged = () => startRevision === reportRevision && signature === reportInputStamp();
+  supplementBusy = true; $("submitBtn").disabled = true; $("newStatus").textContent = "補充中…";
   try {
-    if (!photos) { await shrinking; photos = await Promise.all(shots.map(x => photoFn(x.blob))); }
-    await db.doc("addenda/" + me).update({ items:{ [crypto.randomUUID()]:{ target:t.dup.id, t:new Date().toISOString(), text, photos } } });
-    if (!myVotes[t.dup.id]) setVote(t.dup.id, true);
-    doneReport(t.dup.id); toast(`已補充到 #${t.dup.n}`);
-  } catch (e) { $("newStatus").textContent = ""; fail(e); } finally { $("submitBtn").disabled = false; }
+    await shrinking;
+    if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    if (photos !== undefined && !attempt.photos && photos.every(k => k.startsWith(me + "/"))) {
+      attempt.photos = [...photos];
+      shots.forEach((shot, i) => { if (photos[i]) attempt.photoKeys.set(shot.key, photos[i]); });
+    }
+    if (!attempt.photos) {
+      const uploaded = [];
+      for (const shot of shots) {
+        let key = attempt.photoKeys.get(shot.key);
+        if (!key) {
+          key = await photoFn(shot.blob, true);
+          attempt.photoKeys.set(shot.key, key);
+        }
+        uploaded.push(key);
+        if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+      }
+      attempt.photos = uploaded;
+    }
+    if (!unchanged()) { $("newStatus").textContent = "內容已更新，請重新預覽通報"; return; }
+    if (attempt.photos.length > PHOTO_MAX || attempt.photos.some(k => !PHOTO_RE.test(k) || !k.startsWith(me + "/"))) {
+      $("newStatus").textContent = "照片無法安全附加，請重新選擇照片"; return;
+    }
+    supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
+    const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
+    if (typeof db.appendAddendum === "function") {
+      const result = await db.appendAddendum("addenda/" + me, item);
+      if (!result || typeof result.created !== "boolean") throw new Error("bad_addendum_response");
+    } else {
+      const ref = db.doc("addenda/" + me), snap = await ref.get(), items = snap.exists && isObj(snap.data().items) ? snap.data().items : {};
+      const stored = items[attempt.id];
+      if (stored && (stored.target !== item.target || stored.text !== item.text || JSON.stringify(stored.photos) !== JSON.stringify(item.photos)))
+        throw Object.assign(new Error("idempotency_conflict"), { status:409 });
+      if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }) : ref.set({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }));
+    }
+    if (!myVotes[attempt.target]) setVote(attempt.target, true);
+    supplementAttempts.delete(attemptKey);
+    if (unchanged()) doneReport(attempt.target);
+    else { $("newStatus").textContent = "補充已送出；目前修改中的內容已保留"; render(); }
+    toast(`已補充到 #${t.dup.n}`);
+  } catch (e) { $("newStatus").textContent = ""; fail(e); }
+  finally {
+    supplementBusy = false; reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false;
+  }
 }
 $("dupBox").addEventListener("click", e => {
   const b = e.target.closest("[data-dup]");
@@ -1207,7 +1255,7 @@ $("dupBox").addEventListener("click", e => {
       return create({ ...t, dup:null }, text, signature, maskedN);
     }).finally(() => { reportCreating = false; $("cancelBtn").disabled = false; $("submitBtn").disabled = false; });
   }
-  if (b.dataset.dup === "add") return supplement(t, text, photos);
+  if (b.dataset.dup === "add") return supplement(t, text, photos, signature);
   setVote(t.dup.id, true);
   doneReport(t.dup.id);
 });

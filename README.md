@@ -22,7 +22,7 @@
 - **送出前預覽**：AI 分類完成後，網站先顯示標題、負責局處、1999 分類、行政區、地點與分派理由。自行選擇位置後，預覽會顯示該位置的座標，無論是否有地址。按下「確認送出」後，網站才建立案件。修改表單後必須重新預覽。送出失敗時，未修改內容的重試會沿用同一個案件 ID。
 - **隱私權告知、使用條款與非官方聲明**：通報表單與頁尾說明本站不是臺北市政府網站。網站不會把陳情轉給 1999 或市府局處。緊急事件請撥 110 或 119。送出陳情前，必須同意隱私權告知與使用條款。隱私權告知說明誰蒐集資料、目的、哪些資料公開、第三方（Anthropic、Cloudflare、OpenStreetMap Nominatim、國土測繪中心）、保存期間，以及個資法第 3 條的權利。這兩份文件是 `taipei-issues.html` 裡的 `<dialog>`（`#privacy`、`#terms`）。營運者或聯絡信箱改變時，請在這裡修改。
 - **相同或類似的陳情**：AI 可能判斷出重複的陳情。伺服器也可能找到 30 分鐘內內容相同的陳情。這時網站提供三個選擇：
-  - 「補充到 #N」：網站把你的描述和照片加到那件案件，並幫它 +1。
+  - 「補充到 #N」：網站把你的描述和照片加到那件案件，並幫它 +1。重試時，Worker 會沿用同一個補充 ID 與已上傳的照片 key，只建立一則補充，也會保留其他既有補充。
   - 「只幫 #N 按 +1」。
   - 送出新案件。如果內容完全相同，這個選項會改成「修改內容」。
 
@@ -152,6 +152,7 @@ node worker/test/visitor.mjs
 ```bash
 node worker/test/report-flow.mjs
 BASE=http://localhost:8807 node worker/test/coordinate-preview.mjs
+node worker/test/addendum-flow.mjs
 node worker/test/note-photos.cjs
 ```
 
