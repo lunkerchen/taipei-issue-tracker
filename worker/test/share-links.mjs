@@ -180,7 +180,7 @@ try {
   assert.equal(await hiddenRace.locator("#list [data-share-url]").count(), 0, "a hidden case has no manual fallback");
 
   // Keyboard activation keeps focus on the issue button while opening the detail.
-  // Back returns to the prior page; Forward reopens the case.
+  // Back returns to the issues list; Forward reopens the case.
   const historyContext = await context();
   const historyPage = await openPage(historyContext, "#insights");
   historyPage.on("pageerror", error => pageErrors.push(error.message));
@@ -192,7 +192,7 @@ try {
   assert.equal(new URL(historyPage.url()).hash, `#issue/${encodeURIComponent(ids.open)}`);
   assert.equal(await keyboardTarget.evaluate(el => el === document.activeElement), true, "keyboard activation restores focus to the expanded issue");
   await historyPage.goBack();
-  await historyPage.waitForFunction(() => location.hash === "#insights");
+  await historyPage.waitForFunction(() => location.hash === "#issues");
   await historyPage.goForward();
   await assertExpanded(historyPage, ids.open, titles.open);
 
