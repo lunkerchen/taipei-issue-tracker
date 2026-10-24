@@ -72,7 +72,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
-- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). There are also monthly 1999 dispatch reports for January to September 2026.
+- **Releases**: AI writes a draft of the weekly summary of closed cases. The tag is v<year>.<week> (for example v2026.43). Hidden cases stay out of the summary. There are also monthly 1999 dispatch reports for January to September 2026.
 - **Insights**: The website shows the SLA (average number of days to repair) for each department. A case that is open again does not count as fixed. A case that is fixed again uses the latest repair date. If a department is more than the limit, the website shows "failing".
 - **Demo tools**: Save and reset a demo snapshot. After a rehearsal, one push sets the data back.
 - **Reset demo data** (重設模擬資料, Worker website only): Puts the full database back to the seed data in `worker/data.json`. It removes all citizen reports, additions, +1 votes, contact data and demo snapshots. Push the button two times in 10 seconds. All open pages show the change immediately. Uploaded photos stay in R2.
@@ -100,7 +100,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 **Security and limits**
 
 - A visitor can write only their own reports and +1 votes (`reports/<id>`, `votes/<id>`). The Worker checks the identity with a signature. Demo mode: any request with an `x-admin` header is an administrator request. No token is checked.
-- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin`.
+- Visitors receive only public cases in the database snapshot and in live updates. A hidden case or a case that waits for approval is not in the visitor data. The administrator receives all cases. The administrator live socket opens with `?admin`. The admin-only demo snapshot is also not in visitor data.
 - Because the demo administrator needs no token, administrator writes, contact saves and photo uploads are limited to 120 per minute for each IP address, and an administrator document can be at most 256 KB.
 - Protection against a flood of reports. The server examines each new report:
   - Each request can add only one report.
