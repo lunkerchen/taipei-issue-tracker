@@ -312,7 +312,7 @@ BASE=http://localhost:8788 node worker/test/photo-error-feedback.mjs
 BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 ```
 
-觸控目標測試使用 390px 手機視窗，確認地圖縮放鈕、圖層鈕、彈窗關閉鈕、彈窗按鈕、行政區返回鈕、照片選擇區與移除照片鈕都至少有 44px。測試會在本機 Worker 寫入一件私人案件，結束時刪除。請使用獨立的 Worker 持久化目錄。
+觸控目標測試使用 390px 手機視窗。測試檢查地圖縮放鈕、圖層切換鈕、彈窗關閉鈕、彈窗按鈕、行政區返回鈕、照片選擇鈕、照片刪除鈕、通報表單按鈕（#submitBtn、#cancelBtn、#gpsBtn、#pinBtn、範本按鈕、大方向選項、同意條款標籤）、預覽重複通報操作鈕以及里頁面聯絡窗口撥打按鈕皆達到至少 44px。測試會寫入一件私人案件並在結束時刪除。請使用獨立的本機 Worker persist 目錄。
 
 ```bash
 BASE=http://localhost:8788 node worker/test/tab-hash.mjs

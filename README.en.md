@@ -312,7 +312,7 @@ The photo error feedback test uses phone viewports of 390px and 320px. It adds a
 BASE=http://localhost:8788 node worker/test/touch-targets.mjs
 ```
 
-The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, and the photo remove button are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
+The touch target test uses a 390px phone viewport. It checks that the map zoom buttons, the layer button, the pop-up close button, the pop-up button, the district back button, the photo picker, the photo remove button, the report form buttons (#submitBtn, #cancelBtn, #gpsBtn, #pinBtn, template buttons, aspect labels, consent label), the preview duplicate action buttons, and the neighborhood contact call buttons are at least 44px. The test writes one private case and deletes it when it ends. Use a separate local Worker persistence directory.
 
 ```bash
 BASE=http://localhost:8788 node worker/test/tab-hash.mjs

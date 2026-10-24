@@ -364,6 +364,9 @@ html{scroll-padding-bottom:32px}
 html.citizen [hidden]{display:none!important}
 .citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
 @media (max-width:760px){
+.new .btn,.dup .btn,.ldrow .btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.aspects label{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
+.new label:has(> #agree),.new label#cRealRow{min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}
 .citizen .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;margin:0;gap:0;background:var(--panel);border-top:1px solid var(--line);border-bottom:0;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
 .citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;line-height:1.15;white-space:normal;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
