@@ -1,9 +1,8 @@
-// Run against a local Worker: BASE=http://localhost:8805 ADMIN_TOKEN=<local token> node worker/test/report-contact.mjs
+// Run against a local Worker: BASE=http://localhost:8805 node worker/test/report-contact.mjs
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
-const base = process.env.BASE || "http://localhost:8805", admin = process.env.ADMIN_TOKEN;
-assert.ok(admin, "Set ADMIN_TOKEN to the local Worker's test token");
+const base = process.env.BASE || "http://localhost:8805", admin = "1"; // demo mode: any x-admin value is admin
 const post = (path, headers, body) => fetch(base + path, {
   method: "POST", headers: { "content-type": "application/json", ...headers },
   body: JSON.stringify(body), signal: AbortSignal.timeout(8000)

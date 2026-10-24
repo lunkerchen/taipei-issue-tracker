@@ -1,8 +1,7 @@
-// Smoke test against `wrangler dev` (default http://localhost:8787); reads ADMIN_TOKEN from worker/.dev.vars. Run: node test/smoke.mjs
-import { readFileSync } from "node:fs";
+// Smoke test against `wrangler dev` (default http://localhost:8787). Run: node test/smoke.mjs
 import assert from "node:assert/strict";
 const BASE = process.env.BASE || "http://localhost:8787";
-const admin = process.env.ADMIN_TOKEN || /^ADMIN_TOKEN=(.*)$/m.exec(readFileSync(new URL("../.dev.vars", import.meta.url), "utf8"))[1];
+const admin = "1"; // demo mode: any x-admin value is admin
 const post = (path, headers, body) => fetch(BASE + path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: body && JSON.stringify(body), signal: AbortSignal.timeout(8000) });
 const write = (headers, op, path, data) => post("/api/db", headers, { op, path, data });
 const visitor = async () => { const { id } = await (await post("/api/visitor")).json(); return { token: id, id: id.split(".")[0] }; };
@@ -41,13 +40,13 @@ voteState = (await (await fetch(BASE + "/api/db")).json()).votes[A.id].issues;
 assert.equal(voteState["smoke-a"], false, "cancelled vote is false");
 assert.equal(voteState["smoke-b"], true, "other vote stays true after cancellation");
 
-// forged / missing / foreign visitor, wrong admin token -> 403
+// forged / missing / foreign visitor -> 403
 const forged = A.id + "." + "0".repeat(64);
 assert.equal((await write({ "x-visitor": forged }, "set", `votes/${A.id}`, { issues: {} })).status, 403, "forged signature");
 assert.equal((await write({}, "set", `votes/${A.id}`, { issues: {} })).status, 403, "no visitor header");
 assert.equal((await write({ "x-visitor": A.token }, "set", `votes/${B.id}`, { issues: {} })).status, 403, "A writing B's votes");
 assert.equal((await write({ "x-visitor": A.token }, "set", "triage/x", { status: "open" })).status, 403, "visitor writing triage/x");
-assert.equal((await write({ "x-admin": "wrong" }, "set", "triage/x", {})).status, 403, "wrong admin token");
+assert.notEqual((await write({ "x-admin": "any" }, "set", "triage/x", {})).status, 403, "demo mode: any x-admin value is admin");
 assert.equal((await write({ "x-visitor": A.token }, "set", "bad path/x", {})).status, 400, "bad path");
 
 // limits

@@ -21,8 +21,7 @@ async function visitorId(env, h) {
 const reply = r => r.error ? err(r.status, r.error) : Response.json(r);
 
 async function writeDb(req, env) {
-  const h = req.headers, adminHdr = h.get("x-admin");
-  const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+  const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   const id = admin ? null : await visitorId(env, h.get("x-visitor"));
   if (!admin && !id) return err(403, "forbidden");
   // Per verified visitor id (a venue shares one IP); admin is unlimited
@@ -43,8 +42,7 @@ async function writeDb(req, env) {
 // Reporter contact (private): a signed visitor saves name/phone for one of its own reports; only the admin reads it back.
 const ITEM = /^[\w-]{1,64}$/, NAME_MAX = 30;
 async function contact(req, env, searchParams) {
-  const h = req.headers, adminHdr = h.get("x-admin");
-  const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+  const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   if (req.method === "GET") {
     const k = searchParams.get("id") || "";
     if (!admin) return err(403, "forbidden");
@@ -123,8 +121,7 @@ async function photo(req, env, key) {
       "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'", etag: o.httpEtag } });
   }
   if (req.method !== "POST" || key) return err(405, "method_not_allowed");
-  const h = req.headers, adminHdr = h.get("x-admin");
-  const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+  const h = req.headers, admin = !!h.get("x-admin"); // demo mode: any x-admin value is admin, no token
   const id = admin ? "admin" : await visitorId(env, h.get("x-visitor"));
   if (!id) return err(403, "forbidden");
   if (!admin && !(await env.PHOTO_LIMITER.limit({ key: id })).success) return err(429, "rate_limited");
@@ -167,8 +164,7 @@ export default {
     if (pathname === "/api/health") return Response.json({ ai: !!(env.ANTHROPIC_API_KEY || env.AI_PROXY_URL) });
     if (pathname === "/api/db") {
       if (req.method === "GET") {
-        const adminHdr = req.headers.get("x-admin");
-        const admin = !!(adminHdr && env.ADMIN_TOKEN && await same(env.ADMIN_TOKEN, adminHdr));
+        const admin = !!req.headers.get("x-admin");
         return Response.json(await hub(env).snapshot(admin), { headers: { "cache-control": "no-store" } });
       }
       return req.method === "POST" ? writeDb(req, env) : err(405, "method_not_allowed");

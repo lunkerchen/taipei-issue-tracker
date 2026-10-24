@@ -1,6 +1,6 @@
 // Builds public/index.html: the artifact page plus a window.claude stand-in.
 // State lives in the Worker's Hub Durable Object: the shim loads GET /api/db, applies pushes from /api/ws, and writes via POST /api/db.
-// AI calls go to the Worker's /api/sample. ?admin=<token> sends x-admin so the presenter gets the bureau controls (merge, draft release).
+// AI calls go to the Worker's /api/sample. ?admin sends x-admin so the presenter gets the bureau controls (merge, draft release); no token is checked.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
@@ -25,13 +25,13 @@ const req = async (url, init = {}) => {
   throw last;
 };
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-// Admin token moves from ?admin=<token> to sessionStorage and is stripped from the URL bar, so the projector never shows it.
+// Demo mode, no token: ?admin turns the 局處後台 on and ?citizen turns it off; the choice stays in sessionStorage for this tab.
 const adminToken = (() => {
-  const q = new URLSearchParams(location.search), t = q.get("admin");
-  if (t === null) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
-  try { sessionStorage.setItem("admin", t); } catch {}
-  q.delete("admin"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
-  return t;
+  const q = new URLSearchParams(location.search), on = q.has("admin"), off = q.has("citizen");
+  if (!on && !off) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
+  try { on ? sessionStorage.setItem("admin", "1") : sessionStorage.removeItem("admin"); } catch {}
+  q.delete("admin"); q.delete("citizen"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
+  return on ? "1" : "";
 })();
 
 // Visitor identity: "<id>.<signature>" from the Worker, kept in localStorage; the page only sees the id.

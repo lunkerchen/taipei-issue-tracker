@@ -48,7 +48,7 @@
 - **瀏覽器身分**：Worker 網站會在這個瀏覽器保留訪客身分。如果 Worker 無法簽發身分，或瀏覽器無法保留身分，網站會維持唯讀並隱藏通報按鈕。允許網站儲存資料並重新整理後即可通報。支援 Web Locks 的瀏覽器會讓同時開啟的分頁共用同一個身分。
 - **跑馬燈**：頁面底部顯示 Bing News 與 PTT Taipei 板的台北新聞，不顯示交易或徵求類貼文。另外也顯示人工挑選的 Threads 貼文。每則前面標日期，例如 10/24。
 
-**局處管理者**（在網址加上 `?admin=<token>`。開啟頁面後，網站會把 token 從網址列移除。）
+**局處管理者**（示範模式，不需驗證：點頁面底部的 **局處後台（示範，免驗證）**，或在網址加上 `?admin`；點 **回到市民畫面** 或加上 `?citizen` 回到市民畫面。任何拿到網址的人都能使用全部管理功能，包含通報者姓名與電話，只能放模擬資料。）
 
 - **後台**：後台顯示今日通報、未結案件、待審核、待分派與逾期案件。三個待辦佇列可以放行、隱藏、改派，或把案件設為「處理中」或「已修復」。
 - **案件操作**：開修繕單（PR）、Merge 以結案、改派局處、設定里程碑，以及查看市民的聯絡資料。
@@ -132,7 +132,6 @@ npm install -g wrangler   # 若尚未安裝
 
 ```
 VISITOR_SECRET=<一段夠長的隨機字串>
-ADMIN_TOKEN=<本機管理者 token>
 ANTHROPIC_API_KEY=<選填；留空時 AI 分類設為「1999 待分派」>
 AI_PROXY_URL=<選填；本機改用 Codex CLI 分類：http://127.0.0.1:8799>
 ```
@@ -184,7 +183,7 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 ```
 
 定位測試使用合成訪客身分，在瀏覽器中延遲 GPS 與地址查詢結果，並攔截資料庫寫入。
-重複案導向回歸測試使用 `DUPLICATE_NAV_BASE`（預設為 `http://localhost:8809`）；需要 Playwright 或指定 Chrome 時，可設定 `PLAYWRIGHT_MODULE` 與 `CHROME_EXECUTABLE_PATH`。`DUPLICATE_NAV_ADMIN_TOKEN` 要與本機 Worker 的 `ADMIN_TOKEN` 相同。測試只會寫入本機 Worker 的隨機合成案件，結束時會刪除。請為此測試使用獨立的本機 Worker 持久化目錄。
+重複案導向回歸測試使用 `DUPLICATE_NAV_BASE`（預設為 `http://localhost:8809`）；需要 Playwright 或指定 Chrome 時，可設定 `PLAYWRIGHT_MODULE` 與 `CHROME_EXECUTABLE_PATH`。測試只會寫入本機 Worker 的隨機合成案件，結束時會刪除。請為此測試使用獨立的本機 Worker 持久化目錄。
 瀏覽器測試也會延遲 +1 與補充寫入，確認改稿、取消或重開通報表單時不會覆蓋目前流程；也會檢查投票排序後的案件導向、等待先前尚未完成的 +1，以及補充已存但 +1 失敗時顯示部分成功。
 
 ```bash
@@ -192,14 +191,14 @@ cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 ```
 
 ```bash
-BASE=http://localhost:8788 ADMIN_TOKEN=<local-test-token> node worker/test/report-contact.mjs
+BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
 ```bash
 cd worker && node test/sync.mjs
 ```
 
-本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin=<ADMIN_TOKEN>`。
+本機網址：<http://localhost:8788>。管理者模式：`http://localhost:8788/?admin`。
 
 ## 部署
 
@@ -207,7 +206,7 @@ cd worker && node test/sync.mjs
 cd worker && npx wrangler deploy
 ```
 
-正式環境需要三個 secret。用 `wrangler secret put <名稱>` 設定每一個：`VISITOR_SECRET`、`ADMIN_TOKEN`、`ANTHROPIC_API_KEY`。另外也需要 R2 bucket `taipei-issue-photos`。
+正式環境需要兩個 secret。用 `wrangler secret put <名稱>` 設定每一個：`VISITOR_SECRET`、`ANTHROPIC_API_KEY`。Worker 不再使用 `ADMIN_TOKEN`，可用 `wrangler secret delete ADMIN_TOKEN` 刪除。另外也需要 R2 bucket `taipei-issue-photos`。
 
 注意：線上資料庫只在第一次啟動時載入 `worker/data.json`。之後如果修改種子資料，要用管理者權限寫入。請使用腳本的 `--write` 選項，或 `ADMIN` 與 `BASE` 環境變數。
 

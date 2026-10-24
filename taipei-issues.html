@@ -513,7 +513,7 @@ Switched to branch 'taipei'
     </div></div>
   </section>
 
-  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
+  <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
 <div class="ticker" id="ticker" hidden role="region" aria-label="台北新聞與社群熱點"><span class="lab">台北新聞</span><div class="tk-view" id="tkView"></div></div>
 <div class="toast" id="toast" role="status"></div>
@@ -705,6 +705,7 @@ function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
   document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
   $("newBtn").hidden = $("navReport").hidden = $("reportBtn").hidden = $("lpHint").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
+  $("roleLink").textContent = admin ? "回到市民畫面" : "局處後台（示範，免驗證）"; $("roleLink").href = admin ? "?citizen#map" : "?admin#admin";
   $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
   $("cancelBtn").textContent = admin ? "Cancel" : "取消";
   $("q").placeholder = admin ? "is:issue 搜尋標題或內容" : "搜尋標題、內容或行政區";

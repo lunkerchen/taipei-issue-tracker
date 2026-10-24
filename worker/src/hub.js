@@ -47,13 +47,6 @@ async function get(url, headers, gap = 500) {
   throw last;
 }
 
-const enc = new TextEncoder();
-// Hash before compare so the timing does not depend on the input length
-const sameText = async (a, b) => {
-  if (!a || !b) return false;
-  const [x, y] = await Promise.all([a, b].map(s => crypto.subtle.digest("SHA-256", enc.encode(s))));
-  return crypto.subtle.timingSafeEqual(x, y);
-};
 const ent = s => s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) => {
   const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[e.toLowerCase()];
   if (named) return named;
@@ -284,8 +277,8 @@ export class Hub extends DurableObject {
     if (req.headers.get("upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
-    // The admin page adds ?admin=<token>; sockets without a valid token get the visitor view.
-    server.serializeAttachment({ admin: await sameText(new URL(req.url).searchParams.get("admin") || "", this.env.ADMIN_TOKEN || "") });
+    // Demo mode: the admin page adds ?admin; any socket with it gets the admin view, no token needed.
+    server.serializeAttachment({ admin: new URL(req.url).searchParams.has("admin") });
     return new Response(null, { status: 101, webSocket: client });
   }
   webSocketMessage() {} // read-only socket: clients write through POST /api/db

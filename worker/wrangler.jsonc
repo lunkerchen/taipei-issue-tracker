@@ -14,7 +14,7 @@
   ],
   // Report photos (JPEG/WebP, already resized in the browser); keys are <visitor id>/<uuid>.jpg, admin/<uuid>.jpg or demo/<name>.jpg
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "taipei-issue-photos" }],
-  // Secrets: VISITOR_SECRET, ADMIN_TOKEN, ANTHROPIC_API_KEY (local: worker/.dev.vars)
+  // Secrets: VISITOR_SECRET, ANTHROPIC_API_KEY (local: worker/.dev.vars)
   "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "Hub" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }],
   "observability": { "enabled": true }

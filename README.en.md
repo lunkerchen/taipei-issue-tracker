@@ -48,7 +48,7 @@ This is a 1999 quick-report website for mobile phones. A citizen sends a report.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
 - **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24.
 
-**Department administrators** (add `?admin=<token>` to the URL. After you open the page, the website removes the token from the address bar.)
+**Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
 - **Back office**: The back office shows the reports of today, open cases, cases for review, cases without a department, and late cases. Three work queues let you approve, hide, send to a different department, or set a case to "in progress" or "fixed".
 - **Case operations**: Make a repair order (PR). Merge it to close the case. Send the case to a different department. Set a milestone. Read the contact data of the citizen.
@@ -132,7 +132,6 @@ Make the file `worker/.dev.vars`. Do not put this file in git.
 
 ```
 VISITOR_SECRET=<a long random string>
-ADMIN_TOKEN=<local administrator token>
 ANTHROPIC_API_KEY=<optional; if it is empty, AI sorting sets "1999 待分派">
 AI_PROXY_URL=<optional; use Codex CLI for local sorting: http://127.0.0.1:8799>
 ```
@@ -184,7 +183,7 @@ HISTORY_MAP_LOADING_BASE=http://localhost:8788 node worker/test/history-map-load
 ```
 
 The location test uses a synthetic visitor identity, delays GPS and address results in the browser, and intercepts database writes.
-The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. Set `DUPLICATE_NAV_ADMIN_TOKEN` to the same local test value as the Worker's `ADMIN_TOKEN`. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
+The duplicate target navigation test uses `DUPLICATE_NAV_BASE` (default: `http://localhost:8809`), `PLAYWRIGHT_MODULE`, and `CHROME_EXECUTABLE_PATH` when set. The test writes generated cases to the local Worker and deletes them when it ends. Use a separate local Worker persistence directory.
 The browser test delays +1 and addendum writes while the visitor edits, cancels, or reopens the report form. It also checks navigation after vote sorting, waits for an earlier pending +1, and reports partial success when +1 fails after an addendum is saved.
 
 ```bash
@@ -192,14 +191,14 @@ cd worker && BASE=http://localhost:8788 node test/smoke.mjs
 ```
 
 ```bash
-BASE=http://localhost:8788 ADMIN_TOKEN=<local-test-token> node worker/test/report-contact.mjs
+BASE=http://localhost:8788 node worker/test/report-contact.mjs
 ```
 
 ```bash
 cd worker && node test/sync.mjs
 ```
 
-Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin=<ADMIN_TOKEN>`.
+Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?admin`.
 
 ## Deployment
 
@@ -207,7 +206,7 @@ Local URL: <http://localhost:8788>. Administrator mode: `http://localhost:8788/?
 cd worker && npx wrangler deploy
 ```
 
-The production environment must have three secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ADMIN_TOKEN`, `ANTHROPIC_API_KEY`. You must also have the R2 bucket `taipei-issue-photos`.
+The production environment must have two secrets. Set each secret with `wrangler secret put <name>`: `VISITOR_SECRET`, `ANTHROPIC_API_KEY`. The Worker does not use `ADMIN_TOKEN`; you can delete it with `wrangler secret delete ADMIN_TOKEN`. You must also have the R2 bucket `taipei-issue-photos`.
 
 CAUTION: The live database loads `worker/data.json` only at the first start. If you change the seed data after that, write it with administrator access. Use the `--write` option of a script, or the `ADMIN` and `BASE` environment variables.
 
