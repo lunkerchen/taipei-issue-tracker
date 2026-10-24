@@ -6,7 +6,7 @@
 :root{
   --bg:#ffffff; --panel:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0;
   --accent:#1f883d; --accent-fg:#ffffff; --link:#0969da; --term:#161b22; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa;
+  --open:#1a7f37; --progress:#9a6700; --fixed:#8250df; --hover:#f6f8fa; --bad:#cf222e;
   --merged:#8250df; --hm0:#eff2f5; --hm1:#aceebb; --hm2:#4ac26b; --hm3:#2da44e; --hm4:#116329;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
@@ -14,13 +14,17 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0d1117; --panel:#0d1117; --fg:#f0f6fc; --muted:#9198a1; --line:#3d444d;
   --accent:#238636; --accent-fg:#ffffff; --link:#4493f8; --term:#151b23; --term-fg:#f0f6fc; --term-dim:#9198a1;
-  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; color-scheme:dark}
+  --open:#3fb950; --progress:#d29922; --fixed:#ab7df8; --hover:#151b23; --merged:#8957e5; --hm0:#151b23; --hm1:#033a16; --hm2:#196c2e; --hm3:#2ea043; --hm4:#56d364; --bad:#ff7b72; color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
 .wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:18px}
+.skip{position:absolute;left:8px;top:-48px;z-index:80;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);font-weight:600;text-decoration:none}
+.skip:focus{top:8px}
+#main{display:flex;flex-direction:column;gap:18px}
+#main:focus{outline:none}
 .repo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;justify-content:space-between}
 .repo h1{margin:0;font-family:var(--mono);font-size:20px;font-weight:400}
 .repo h1 b{font-weight:600}
@@ -72,6 +76,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .lb{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh;width:100vw;height:100vh;margin:0;display:none;place-items:center}
 .doc{max-width:min(680px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);padding:16px 20px;overflow:auto}
 .doc::backdrop{background:rgba(0,0,0,.5)}.doc h2{margin:0 0 8px;font-size:18px}.doc h3{font-size:15px;margin:14px 0 4px}.doc ul{padding-left:20px;margin:4px 0}.doc p{margin:4px 0}.doc form{text-align:right;margin-top:12px}
+.doc .doc-close{position:sticky;top:-16px;z-index:1;display:flex;justify-content:flex-end;margin:-16px -20px 12px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .lb[open]{display:grid}.lb::backdrop{background:rgba(0,0,0,.85)}
 .lb img{max-width:min(96vw,1280px);max-height:86vh;object-fit:contain;border-radius:6px}
 .lb button{position:fixed;font:inherit;font-size:22px;line-height:1;width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}
@@ -81,7 +86,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .phprev{display:flex;flex-wrap:wrap;gap:8px}
 .phprev figure{position:relative;margin:0}
 .phprev img{display:block;width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
-.phprev button{position:absolute;top:2px;right:2px;min-width:28px;min-height:28px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.phprev button{position:absolute;top:2px;right:2px;min-width:44px;min-height:44px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+#photoLbl{display:inline-flex;align-items:center;min-height:44px}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #photoIn:focus-visible+#photoLbl,.btn:has(> input.vh:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
@@ -99,6 +105,8 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .aspects input:checked+label{background:var(--accent,#0969da);border-color:transparent;color:#fff}
 .aspects input:focus-visible+label{outline:2px solid var(--accent,#0969da);outline-offset:2px}
 .status{font-size:13px;color:var(--muted)}
+.field-err{display:block;margin:4px 0 0;font-size:13px;color:var(--bad)}
+input[aria-invalid=true],textarea[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
 .toast{position:fixed;left:16px;right:16px;bottom:16px;margin:0 auto;width:fit-content;max-width:480px;background:var(--term);color:var(--term-fg);border-radius:8px;padding:10px 14px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:10}
 .toast:empty{opacity:0;pointer-events:none}
 .hm-wrap{overflow-x:auto;padding:12px 14px 6px}
@@ -225,11 +233,13 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 :root[data-theme="dark"] :is(.mapbox,.pickbox) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}
 .pop b{display:block;margin-bottom:2px}
-.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:14px}
+.pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
 .pop .asp{flex:none;width:32px;height:32px;margin:0;aspect-ratio:auto;border-radius:50%}
 .pop .addr{display:block;margin-top:2px;color:var(--link)}
-.pop .btn{margin-top:8px}
+.pop .btn{margin-top:8px;min-height:44px;padding:7px 16px}
+.mapbox .leaflet-control-container .leaflet-bar a,.pickbox .leaflet-control-container .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:22px}
+.mapbox .leaflet-container a.leaflet-popup-close-button,.pickbox .leaflet-container a.leaflet-popup-close-button{width:44px;height:44px;line-height:44px;font-size:24px;padding:0}
 .pickbox.minimap{height:180px;margin:0 0 12px}
 .pickbox{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden;isolation:isolate}
 .pickbox .leaflet-container{font:inherit;background:var(--hover);height:100%}
@@ -291,7 +301,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 #ldEvents .meta{grid-column:1/-1;font-size:13px;color:var(--muted)}
 #ldEvents .chip{align-self:start;border:1.5px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:12px;white-space:nowrap}
 .ldreport{width:100%;min-height:44px;font-size:15px;font-weight:600}
-.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600}
+.distback{position:absolute;top:10px;left:56px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.25);font-weight:600;display:inline-flex;align-items:center;min-height:44px}
 .distback[hidden]{display:none}
 .locbtn{position:absolute;right:10px;bottom:36px;z-index:1000;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer}
 .locbtn[aria-busy="true"]{opacity:.6}
@@ -301,7 +311,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.mk-new{animation:mkpulse 1s ease-out 3}.rpin.mk-new{animation:pinbounce .5s ease-out 6}}
 @keyframes pinbounce{0%,100%{translate:0 0}50%{translate:0 -8px}}
 .rpin{background:none;border:0}
-.boxhead .btn.sm{padding:2px 10px;min-height:0;font-size:13px}
+.boxhead .btn.sm{padding:2px 10px;min-height:44px;min-width:44px;font-size:13px}
 .rpin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
 .rpin.fixed{opacity:.5}
 .rpin.mk-new svg path{stroke:#000;stroke-width:2.5}
@@ -321,6 +331,9 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 @media (prefers-reduced-motion:no-preference){.tk-track{animation:tkmove linear infinite}.ticker:hover .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}}
 @keyframes tkmove{to{transform:translateX(-50%)}}
 .has-tk .wrap{padding-bottom:104px}
+/* Fixed ticker and mobile nav must not cover a focused control or the last buttons. */
+html{scroll-padding-bottom:32px}
+@media (max-width:760px){html.citizen{scroll-padding-bottom:calc(58px + env(safe-area-inset-bottom))}html.citizen.has-tk{scroll-padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
 #v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
@@ -332,7 +345,7 @@ html.citizen [hidden]{display:none!important}
 .citizen .nav button{flex:1 1 0;flex-direction:column;justify-content:center;gap:2px;min-height:56px;padding:4px 2px;font-size:12px;border-bottom:0;border-top:2px solid transparent;border-radius:0}
 .citizen .nav button[aria-current=page]{border-top-color:#fd8c73;color:var(--link)}
 .citizen .nav .ni{display:block!important}.citizen .nav .cnt,.citizen #newBtn{display:none}
-.citizen .wrap{padding-bottom:80px}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:112px}
+.citizen .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom))}.citizen.has-tk .wrap,.citizen.has-tk .wrap.wide{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .citizen .ticker{bottom:calc(57px + env(safe-area-inset-bottom))}
 .citizen .toast,.citizen.has-tk .toast{bottom:104px}
 .citizen .mapbox{height:calc(100vh - var(--hdr,170px) - 222px);height:calc(100svh - var(--hdr,170px) - 222px)}}
@@ -349,6 +362,7 @@ html.citizen [hidden]{display:none!important}
 </style>
 
 <div class="wrap" id="wrap">
+  <a class="skip" href="#main">跳到主要內容</a>
   <header class="repo">
     <h1><span class="gh">taipei-city / <b>1999</b><span class="vis">Public</span></span><span class="cz">台北市，你給我聽好了｜<b>市民 1999 通報地圖</b></span></h1>
     <button class="btn" id="themeBtn" type="button" aria-label="切換深色或淺色模式"></button>
@@ -369,6 +383,7 @@ html.citizen [hidden]{display:none!important}
   </nav>
   <div class="empty share-notice" id="shareNotice" role="status" hidden></div>
 
+  <main id="main" tabindex="-1">
   <div class="view" id="v-issues">
 
   <div class="term" aria-label="終端機示意"><span class="p">$</span> git checkout taipei
@@ -382,17 +397,19 @@ Switched to branch 'taipei'
   </section>
 
   <section class="box" id="newBox" hidden>
-    <form class="new" id="newForm">
+    <form class="new" id="newForm" aria-label="新增陳情">
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <div class="joinbox" id="joinBox" hidden><span id="joinMsg"></span><button class="btn" type="button" id="joinVote">只按 +1</button><button class="btn" type="button" id="joinOff">改為新案件</button></div>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
       <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
-      <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <textarea id="newText" maxlength="1000" aria-required="true" aria-describedby="formErr" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
+      <span class="field-err" id="formErr" role="alert" hidden></span>
       <div class="row" id="photoRow" hidden>
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
         <label class="btn" for="photoIn" id="photoLbl">加入照片</label>
         <span class="note">最多 3 張，會自動縮小並移除拍攝位置等資訊</span>
+        <span class="status" id="photoStatus" role="status"></span>
       </div>
       <div class="phprev" id="photoPrev"></div>
       <div class="dup" id="dupBox" hidden></div>
@@ -538,6 +555,7 @@ Switched to branch 'taipei'
       <span class="status" id="snapStatus" role="status"></span>
     </div></div>
   </section>
+  </main>
 
   <p class="note">本站是個人開發的示範專案，不是臺北市政府或 1999 的官方網站，陳情不會轉給市府。示範資料為模擬陳情，非台北市政府真實案件。分類由 Claude 自動判斷，僅供示意。緊急事件請撥 110 或 119。<br><a href="#privacy" data-doc="privacy">隱私權告知</a> · <a href="#terms" data-doc="terms">使用條款</a> · <a href="?admin#admin" id="roleLink">局處後台（示範，免驗證）</a><span class="kbd-hint"><br>鍵盤快捷鍵：<kbd>c</kbd> 新增陳情、<kbd>/</kbd> 搜尋、<kbd>j</kbd> <kbd>k</kbd> 上下移動、<kbd>Esc</kbd> 關閉表單</span></p>
 </div>
@@ -545,6 +563,7 @@ Switched to branch 'taipei'
 <div class="toast" id="toast" role="status"></div>
 
 <dialog class="doc" id="privacy" aria-labelledby="privacyH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉隱私權告知">關閉</button></form>
   <h2 id="privacyH">隱私權告知</h2>
   <p class="note">依個人資料保護法第 8 條告知。最後更新：2026-10-24。</p>
   <h3>誰蒐集你的資料</h3>
@@ -573,9 +592,9 @@ Switched to branch 'taipei'
   <p>你可以依個資法第 3 條，請求查詢、閱覽、複製、補充或更正、停止蒐集處理利用，以及刪除你的資料。請寄信到上面的信箱，並附上陳情編號。</p>
   <h3>不提供資料的影響</h3>
   <p>姓名、手機與 Email 是必填。不提供時，無法送出陳情。</p>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="doc" id="terms" aria-labelledby="termsH">
+  <form method="dialog" class="doc-close"><button class="btn" type="submit" aria-label="關閉使用條款">關閉</button></form>
   <h2 id="termsH">使用條款</h2>
   <p class="note">最後更新：2026-10-24。</p>
   <h3>非官方服務</h3>
@@ -600,11 +619,12 @@ Switched to branch 'taipei'
     <li>跑馬燈：Bing News、PTT Taipei 板，版權屬原作者。</li>
     <li>示範照片由 AI 生成，不是真實現場。</li>
   </ul>
-  <form method="dialog"><button class="btn">關閉</button></form>
 </dialog>
 <dialog class="lb" id="lb" aria-label="陳情照片"><img id="lbImg" alt=""><button class="pv" id="lbPrev" type="button" aria-label="上一張">‹</button><button class="nx" id="lbNext" type="button" aria-label="下一張">›</button><button class="x" id="lbClose" type="button" aria-label="關閉">×</button><div class="ct" id="lbCt"></div></dialog>
 <script>
 document.documentElement.classList.add("citizen"); // applyRole drops it for admins
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionBehavior = () => REDUCED_MOTION ? "auto" : "smooth";
 const DEPTS = {
   "工務局新工處":  "#0969da", "工務局公園處": "#1a7f37", "工務局水利處": "#0e8a9e",
   "交通局":        "#bf3989", "環保局":       "#6f7f00", "警察局":       "#1f3a93",
@@ -1043,7 +1063,7 @@ function render() {
             <button class="btn" type="submit" ${busy ? "disabled" : ""}>新增補充</button><span class="status" role="status">${esc(s.status || "")}</span></div>`; })()}
         </form>` : ""}
         ${i.address || Number.isFinite(i.lat) ? `<div class="meta" style="margin:-4px 0 10px">地點：${esc(i.address || "")}${Number.isFinite(i.lat) ? `${i.address ? "（" : ""}${coordText(i.lat, i.lng)}${i.address ? "）" : ""}` : ""}${i.loc === "district" ? "（行政區概略位置）" : ""}</div>` : ""}
-        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="img" aria-label="陳情位置地圖"></div>` : ""}
+        ${Number.isFinite(i.lat) ? `<div class="pickbox minimap" data-mini="${i.lat},${i.lng}" role="group" aria-label="陳情位置地圖（唯讀）"></div>` : ""}
         <div class="bot"><div class="h">${admin ? "taipei-bot" : "1999"} 自動分派${t.by === "fallback" ? "（AI 無法使用，待人工）" : ""}</div>
           <div class="b">分類為 <b>${esc((i.tags||[]).join("、") || "未分類")}</b>，轉交 <b>${esc(i.dept)}</b>。${sub ? `<br>1999 官方分類：<b>${esc(sub.main)} › ${esc(sub.name)}</b> <span class="meta">${esc(i.category)}</span>` : ""}${t.reason ? "<br>理由：" + esc(t.reason) : ""}</div></div>
         ${timeline(i)}
@@ -1149,10 +1169,12 @@ $("newBtn").onclick = () => {
   }
   if (histWanted || histOn || $("histOn").checked) setHist(false); // a new report is today's: show the live map again
   renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
+  // Focus can scroll the heading out of a short viewport; show the start of the form again.
+  if ($("newBox").getBoundingClientRect().top < 0) $("newBox").scrollIntoView({ block:"start" });
 };
 function restoreFormFocus() {
   const visible = el => el && el.isConnected && !el.hidden && el.getClientRects().length;
-  const target = visible(formOpener) ? formOpener : visible($("newBtn")) ? $("newBtn") : null;
+  const target = [formOpener, $("newBtn"), $("navReport"), $("reportBtn")].find(visible) || null;
   formOpener = null;
   target && target.focus({ preventScroll:true });
 }
@@ -1168,6 +1190,7 @@ function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
   $("cName").removeAttribute("aria-invalid"); $("cPhone").removeAttribute("aria-invalid"); $("cEmail").removeAttribute("aria-invalid");
+  $("newText").removeAttribute("aria-invalid"); $("formErr").textContent = ""; $("formErr").hidden = true;
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 $("cancelBtn").onclick = () => {
@@ -1245,10 +1268,15 @@ function drawShots() {
   $("photoPrev").innerHTML = shots.map((s, n) => `<figure><img src="${s.url}" alt="待上傳照片 ${n + 1}"><button type="button" data-rmshot="${n}" aria-label="移除照片 ${n + 1}">×</button></figure>`).join("");
   $("photoLbl").hidden = shots.length >= PHOTO_MAX;
 }
+function setPhotoFeedback(text) {
+  $("photoStatus").textContent = text;
+  // The picker can sit against the fixed bottom bars; bring the message fully into view when it changes.
+  if (text) $("photoStatus").scrollIntoView({ block:"center" });
+}
 function clearShots(only) {
   const gone = only || shots; gone.forEach(s => URL.revokeObjectURL(s.url));
   shots = shots.filter(s => !gone.includes(s)); if (!only) shotGen++;
-  $("photoIn").value = ""; drawShots();
+  $("photoIn").value = ""; $("photoStatus").textContent = ""; drawShots();
 }
 function reportInputStamp() {
   const aspect = document.querySelector("#aspects input:checked");
@@ -1268,7 +1296,7 @@ function invalidateReportPreview() {
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
-  if (e.target.matches("#cName,#cPhone,#cEmail")) e.target.removeAttribute("aria-invalid");
+  if (e.target.matches("#newText,#cName,#cPhone,#cEmail")) clearFieldError(e.target);
   if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cEmail,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
 };
 $("newForm").addEventListener("input", reportInputChanged);
@@ -1277,8 +1305,9 @@ $("newForm").addEventListener("change", e => {
 });
 $("photoIn").addEventListener("change", () => {
   // While a report is being sent its photo set is fixed; a pick now would be lost or leak into the next report
-  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("newStatus").textContent = "送出中，請稍候再加照片"; return; }
+  if ($("submitBtn").disabled) { $("photoIn").value = ""; $("photoStatus").textContent = "送出中，請稍候再加照片"; return; }
   invalidateReportPreview();
+  $("photoStatus").textContent = ""; // a new pick replaces the previous pick's feedback
   const files = [...$("photoIn").files], gen = shotGen; $("photoIn").value = ""; $("photoIn").disabled = true; // no second pick while these are shrinking
   shrinking = (async () => {
     const problems = [];
@@ -1288,10 +1317,24 @@ $("photoIn").addEventListener("change", () => {
       try { const blob = await shrink(f); if (gen !== shotGen) break; shots.push({ key:crypto.randomUUID(), blob, url:URL.createObjectURL(blob) }); drawShots(); }
       catch (err) { problems.push(err && err.message === "too_large" ? "有一張照片太大，請改用較小的圖片" : "有一張照片無法讀取，請改用 JPEG 或 PNG"); }
     }
-    if (gen === shotGen && problems.length) $("newStatus").textContent = problems.join("；");
+    if (gen === shotGen && problems.length) setPhotoFeedback(problems.join("；"));
   })().finally(() => { $("photoIn").disabled = false; drawShots(); });
 });
 $("photoPrev").addEventListener("click", e => { const b = e.target.closest("[data-rmshot]"); if (!b) return; const [s] = shots.splice(+b.dataset.rmshot, 1); URL.revokeObjectURL(s.url); drawShots(); invalidateReportPreview(); });
+function clearFieldError(el) {
+  if (el.getAttribute("aria-invalid") !== "true") return;
+  el.removeAttribute("aria-invalid"); el.removeAttribute("aria-errormessage");
+  const box = $("formErr"); box.textContent = ""; box.hidden = true;
+}
+// Keep the one visible error next to the invalid field, above the fixed mobile bars.
+function fieldError(el, msg) {
+  for (const f of $("newForm").querySelectorAll('[aria-invalid="true"]')) { f.removeAttribute("aria-invalid"); f.removeAttribute("aria-errormessage"); }
+  const box = $("formErr");
+  box.hidden = false; box.textContent = msg;
+  (el.closest(".row") || el).insertAdjacentElement("afterend", box);
+  el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-errormessage", "formErr");
+  el.focus({ preventScroll:true }); el.scrollIntoView({ block:"center" });
+}
 $("newForm").addEventListener("submit", async e => {
   e.preventDefault();
   if (!db || !canWrite || $("submitBtn").disabled || reportCreating || supplementBusy) return;
@@ -1303,15 +1346,15 @@ $("newForm").addEventListener("submit", async e => {
     await shrinking; // Photos still shrinking belong to this report.
     if (!current()) return;
     const m = maskPII($("newText").value.trim()), text = m.text;
-    if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
-    if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
+    if (!text) { fieldError($("newText"), "請描述你遇到的問題"); return; }
+    if (!withoutTemplate(text)) { fieldError($("newText"), "請在範本的冒號後面填上內容"); return; }
     if (contactFn) {
-      if (!$("cName").value.trim()) { $("cName").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      if (!$("cName").value.trim()) { fieldError($("cName"), "請填寫姓名"); return; }
       $("cName").removeAttribute("aria-invalid");
-      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("cPhone").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { fieldError($("cPhone"), "請填寫手機號碼（09 開頭共 10 碼）"); return; }
       $("cPhone").removeAttribute("aria-invalid");
       const mail = $("cEmail").value.trim();
-      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { $("cEmail").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫 Email（用來通知處理進度）"; $("cEmail").focus(); return; }
+      if (mail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { fieldError($("cEmail"), "請填寫 Email（用來通知處理進度）"); return; }
       $("cEmail").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim(), email:mail })); } catch {}
     }
@@ -1344,7 +1387,7 @@ $("newForm").addEventListener("submit", async e => {
     pending = { t, text, signature };
     $("newStatus").textContent = note;
     const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
-    $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
+    $("dupBox").innerHTML = `<div class="h" role="heading" aria-level="3">確認送出前，請看一下 1999 的分類結果</div>
       <dl class="pv" id="dupDetails"><dt>標題</dt><dd>${esc(t.title)}</dd>
       <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
       <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
@@ -1356,7 +1399,8 @@ $("newForm").addEventListener("submit", async e => {
       <div class="row"><button class="btn primary" type="button" data-dup="new" aria-describedby="dupDetails">確認送出</button>
       <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
-    $("dupBox").querySelector("[data-dup=new]").focus();
+    const next = $("dupBox").querySelector("[data-dup=new]");
+    next.focus({ preventScroll:true }); next.scrollIntoView({ block:"center" });
   } catch (err) { if (current()) { $("newStatus").textContent = ""; fail(err); } }
   finally { finish(); }
 });
@@ -1371,7 +1415,8 @@ function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
     <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
     ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
   $("dupBox").hidden = false;
-  $("dupBox").querySelector("[data-dup=add]").focus();
+  const add = $("dupBox").querySelector("[data-dup=add]");
+  add.focus({ preventScroll:true }); add.scrollIntoView({ block:"center" });
 }
 function doneReport(openId, { publicTarget = false } = {}) {
   clearReportFlow(); setJoin(null);
@@ -1520,6 +1565,7 @@ function completeCreatedReport(attempt) {
   }
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
+  else toast("已送出陳情");
 }
 async function create(t, text, signature = reportInputStamp(), maskedCount = maskedN, restoreOnFailure = false) {
   const startRevision = reportRevision;
@@ -1613,7 +1659,9 @@ function drawMinis() {
 let curView = "issues", mainLM = null, mapP = null, groups = {}, layerOn = {}, layerSig = "", histOn = false;
 const markers = new Map(), seen = new Set(), fresh = new Map();
 let seenInit = false, noteTimer;
-const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10, maxBounds:[[24.85,121.35],[25.30,121.78]] };
+const TAIPEI_VIEW = { center:[25.0478,121.5319], zoom:12, minZoom:10,
+  // City fit reaches the old edge, so popup autoPan had no room and tall popups near the north edge were clipped.
+  maxBounds:[[24.65,121.15],[25.50,121.98]] };
 
 // The map fills the viewport below the nav: --hdr is the distance from the page top to the map.
 function sizeMap() { document.documentElement.style.setProperty("--hdr", Math.round($("v-map").getBoundingClientRect().top + scrollY) + 16 + "px"); }
@@ -1648,6 +1696,14 @@ function mapMessage(message, retry = false) {
 function initMap() {
   if (mainLM) return;
   mainLM = L.map("map", { ...TAIPEI_VIEW, zoomSnap:.25, tapHold:true });
+  // The phone map is short and narrow; cap the popup to the map and let long content scroll.
+  mainLM.on("popupopen", e => {
+    if (!matchMedia("(max-width:760px)").matches) return;
+    const size = mainLM.getSize();
+    e.popup.options.maxWidth = Math.max(180, size.x - 40);
+    e.popup.options.maxHeight = Math.max(96, size.y - 100);
+    e.popup.update();
+  });
   for (const l of LAYERS) groups[l.id] = L.layerGroup().addTo(mainLM);
   // Long-press on touch and right-click with a mouse both fire contextmenu
   mainLM.on("contextmenu", e => askReport(e.latlng));
@@ -1706,7 +1762,7 @@ $("distBack").addEventListener("click", closeDistrict);
 function mapMode() {
   const v = $("v-map"); v.classList.toggle("indist", !!curDist); v.classList.toggle("inli", !!curLi);
   mainLM.invalidateSize({ pan:false });
-  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:"smooth" }), 600);
+  if (curLi && matchMedia("(max-width:760px)").matches) setTimeout(() => $("liDetail").scrollIntoView({ block:"start", behavior:motionBehavior() }), 600);
 }
 
 // Villages (里): loaded on the first district click. Each report belongs to the 里 whose polygon holds its point.
@@ -2166,7 +2222,7 @@ $("liveBtn").onclick = () => {
   if (histWanted || histOn || $("histOn").checked) setHist(false); // Live is about today; leave (or cancel loading) the history view
   const open = $("liveBox").hidden; $("liveBox").hidden = !open; $("liveBtn").setAttribute("aria-pressed", String(open));
   renderLive(); if (mainLM) mainLM.invalidateSize();
-  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:"smooth" });
+  if (open) $("liveBox").scrollIntoView({ block:"nearest", behavior:motionBehavior() });
 };
 $("liveList").addEventListener("click", e => {
   const b = e.target.closest("[data-live]"); if (!b) return;
@@ -2174,10 +2230,10 @@ $("liveList").addEventListener("click", e => {
   if (!r || !mainLM) { const i = issues.find(x => x.id === b.dataset.live); if (i) { view.open.add(i.id); view.closed = i.status === "fixed"; show("issues"); render(); } return; }
   if (curDist && r.dist !== curDist) closeDistrict();
   if (!curDist && layerOn[r.key] !== true) { layerOn[r.key] = true; const c = document.querySelector(`[data-layer="${CSS.escape(r.key)}"]`); if (c) c.checked = true; allBtn(); setPins(); }
-  $("map").scrollIntoView({ block:"center", behavior:"smooth" });
+  $("map").scrollIntoView({ block:"center", behavior:motionBehavior() });
   mainLM.flyTo(r.m.getLatLng(), Math.max(mainLM.getZoom(), 16)); mainLM.once("moveend", () => r.m.openPopup());
 });
-$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:"smooth" }); };
+$("reportBtn").onclick = () => { $("newBtn").click(); $("newBox").scrollIntoView({ block:"start", behavior:motionBehavior() }); };
 
 // ---- Location picker on the New issue form ----
 let picked = null, pickLM = null, pinM = null;
@@ -2699,6 +2755,7 @@ $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl
 // GitHub-style keyboard shortcuts.
 // Privacy notice and terms: any [data-doc] link opens that <dialog>
 document.addEventListener("click", e => { const a = e.target.closest("[data-doc]"); if (a) { e.preventDefault(); $(a.dataset.doc).showModal(); } });
+for (const d of document.querySelectorAll("dialog.doc")) d.addEventListener("click", e => { if (e.target === d) d.close(); });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("newBox").hidden && !document.querySelector("dialog[open]")) return $("cancelBtn").click();
   if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input,textarea,select")) return;
