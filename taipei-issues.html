@@ -1056,23 +1056,25 @@ function render() {
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
   $("tabClosed").setAttribute("aria-pressed", view.closed);
 
-  const prev = dept;
+  const prev = dept, ms = $("msFilter").value;
+  // Option counts follow the tab, the search and the milestone, so a count never opens a different number of rows.
+  const counted = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
+    .filter(i => view.mine || !ms || i.milestone === ms)
+    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
+      || (qNum !== null && Number(i.n) === qNum));
   const byDept = {};
-  issues.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  counted.forEach(i => byDept[i.dept] = (byDept[i.dept] || 0) + 1);
+  // Keep a selected department visible with zero rows instead of silently clearing the filter.
+  const deptOptions = Object.keys(DEPTS).filter(d => byDept[d] || d === prev);
   $("deptFilter").innerHTML = `<option value="">全部局處</option>` +
-    Object.keys(DEPTS).filter(d => byDept[d]).map(d => `<option value="${esc(d)}">${esc(d)}（${byDept[d]}）</option>`).join("");
+    deptOptions.map(d => `<option value="${esc(d)}">${esc(d)}（${byDept[d] || 0}）</option>`).join("");
   $("deptFilter").value = prev;
-  const ms = $("msFilter").value;
   $("msFilter").innerHTML = `<option value="">全部里程碑</option>` + milestones.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join("");
   $("msFilter").value = ms;
   renderViews(c); if (admin) renderAdmin(c); syncDataNote();
   trackNew(); syncMap(); renderLive();
 
-  let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
-    .filter(i => view.mine || !dept || i.dept === dept)
-    .filter(i => view.mine || !ms || i.milestone === ms)
-    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
-      || (qNum !== null && Number(i.n) === qNum));
+  let rows = counted.filter(i => view.mine || !dept || i.dept === dept);
   const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
     votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
   rows.sort(sorts[$("sort").value]);
