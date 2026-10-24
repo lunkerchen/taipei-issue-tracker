@@ -10,6 +10,8 @@ const NOMINATIM_UA = "taipei-issue-tracker (labanchen@gmail.com)";
 // Bing, not Google News: Google answers Cloudflare's egress IPs with a 503 "Sorry" bot page.
 const BING_NEWS = "https://www.bing.com/news/search?q=" + encodeURIComponent("臺北") + "&format=rss&setlang=zh-TW&cc=TW";
 const PTT = "https://www.ptt.cc/bbs/Taipei/index.html";
+// Not news: buy/sell/giveaway posts, surveys and board notices
+const PTT_SKIP = /^\[(?:交易|贈送|徵求|販售|出售|收購|二手|問卷|公告|徵人|廣告|租屋|分租)\]/;
 const isObj = v => v && typeof v === "object" && !Array.isArray(v);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Same one-level-deep merge as the page's artifact runtime uses for update()
@@ -54,8 +56,8 @@ async function pttNews() {
   const html = (await (await get(PTT)).text()).split("r-list-sep")[0]; // drop pinned posts below the separator
   return html.split('class="r-ent"').slice(1).map(x => {
     const m = /<div class="title">\s*<a href="([^"]+)">([^<]*)<\/a>/.exec(x);
-    return m && { title: clean(m[2]), url: "https://www.ptt.cc" + m[1], source: "PTT Taipei", time: clean((/class="date">\s*([^<]*)</.exec(x) || [])[1] || "") };
-  }).filter(i => i && i.title).reverse().slice(0, 15); // the index lists oldest first
+    return m && { title: clean(m[2]).replace(/^(?:(?:Fw|Re):\s*)+/i, ""), url: "https://www.ptt.cc" + m[1], source: "PTT Taipei", time: clean((/class="date">\s*([^<]*)</.exec(x) || [])[1] || "") };
+  }).filter(i => i && i.title && !PTT_SKIP.test(i.title)).reverse().slice(0, 15); // the index lists oldest first
 }
 
 export class Hub extends DurableObject {
@@ -157,14 +159,14 @@ export class Hub extends DurableObject {
   }
 
   async news() {
-    const hit = this.cacheGet("news");
+    const hit = this.cacheGet("news2");
     if (hit) return hit;
     const [g, p] = await Promise.allSettled([bingNews(), pttNews()]);
     const out = { items: [...(g.value || []), ...(p.value || [])] };
     if (!out.items.length) return { error: "upstream_error", status: 502 };
     // A source that failed or came back empty (bot page, changed markup) counts as down: retry in 1 min, not 10
     const up = r => r.status === "fulfilled" && r.value.length > 0;
-    this.cachePut("news", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
+    this.cachePut("news2", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
     return out;
   }
 }
