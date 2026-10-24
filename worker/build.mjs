@@ -1,6 +1,6 @@
 // Builds public/index.html: the artifact page plus a window.claude stand-in.
 // State lives in the Worker's Hub Durable Object: the shim loads GET /api/db, applies pushes from /api/ws, and writes via POST /api/db.
-// AI calls go to the Worker's /api/sample. ?admin=<token> sends x-admin so the presenter gets the bureau controls (merge, draft release).
+// AI calls go to the Worker's /api/sample. ?admin sends x-admin so the presenter gets the bureau controls (merge, draft release); no token is checked.
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
@@ -25,13 +25,13 @@ const req = async (url, init = {}) => {
   throw last;
 };
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-// Admin token moves from ?admin=<token> to sessionStorage and is stripped from the URL bar, so the projector never shows it.
+// Demo mode, no token: ?admin turns the 局處後台 on and ?citizen turns it off; the choice stays in sessionStorage for this tab.
 const adminToken = (() => {
-  const q = new URLSearchParams(location.search), t = q.get("admin");
-  if (t === null) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
-  try { sessionStorage.setItem("admin", t); } catch {}
-  q.delete("admin"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
-  return t;
+  const q = new URLSearchParams(location.search), on = q.has("admin"), off = q.has("citizen");
+  if (!on && !off) { try { return sessionStorage.getItem("admin") || ""; } catch { return ""; } }
+  try { on ? sessionStorage.setItem("admin", "1") : sessionStorage.removeItem("admin"); } catch {}
+  q.delete("admin"); q.delete("citizen"); history.replaceState(null, "", location.pathname + (q.size ? "?" + q : "") + location.hash);
+  return on ? "1" : "";
 })();
 
 // Visitor identity: "<id>.<signature>" from the Worker, kept in localStorage; the page only sees the id.
@@ -62,7 +62,7 @@ let baseSeq = -1;
 const put = (path, d) => { const [c, id] = path.split("/"); if (d === null) { if (DATA[c]) delete DATA[c][id]; } else (DATA[c] ||= {})[id] = d; };
 const apply = (path, d, seq) => { if (!(seq > Math.max(baseSeq, pathSeq[path] || 0))) return; pathSeq[path] = seq; put(path, d); fire(); };
 const load = async () => {
-  const r = await req("/api/db"); if (!r.ok) throw new Error("db " + r.status);
+  const r = await req("/api/db", adminToken ? { headers: { "x-admin": adminToken } } : undefined); if (!r.ok) throw new Error("db " + r.status);
   const { _seq = 0, ...fresh } = await r.json(), old = DATA;
   if (_seq < baseSeq) return; // an older snapshot finished after a newer one
   DATA = fresh; baseSeq = _seq;
@@ -84,7 +84,7 @@ const offline = on => {
 };
 addEventListener("offline", () => offline(true));
 const connect = () => {
-  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws");
+  const ws = new WebSocket((location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + "/api/ws" + (adminToken ? "?admin=" + encodeURIComponent(adminToken) : ""));
   ws.onmessage = e => { try { const m = JSON.parse(e.data); apply(m.path, m.data, m.seq); } catch {} };
   // Refetch on every open: covers writes between the first snapshot and this socket, and anything missed while dropped
   ws.onopen = () => { offline(false); ready = load(); ready.then(fire, () => {}); };
