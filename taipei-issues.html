@@ -461,13 +461,29 @@ const ASPECTS = {
   "樂": "休閒：公園、遊具、運動中心、文化設施、觀光景點；多屬【公園…】或【文教、體育…】，常見單位工務局公園處、體育局、文化局",
   "醫療": "醫療：醫院診所、藥品、長照、防疫、病媒；多屬【衛福、勞動…】，常見單位衛生局"
 };
+// Suggested templates per 大方向 ("" = 不確定). Every line is a label ending in "：" so withoutTemplate can strip it.
+const ROAD = "地點（路名、門牌或地標）：\n狀況（坑洞大小、磚塊鬆動…）：\n影響（有人跌倒、機車打滑…）：";
+const NOISE = "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：";
+const LAMP = "地點（路名、巷弄、最近的門牌）：\n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始：";
 const TEMPLATES = {
-  "路面或人行道": "地點（路名、門牌或地標）：\n狀況（坑洞大小、磚塊鬆動…）：\n影響（有人跌倒、機車打滑…）：",
-  "噪音": "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：",
-  "路燈": "地點（路名、巷弄、最近的門牌）：\n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始：",
-  "空白": ""
+  "": { "路面或人行道": ROAD, "噪音": NOISE, "路燈": LAMP },
+  "食": { "食品衛生": "店家名稱與地點：\n問題（過期、異物、環境髒亂…）：\n購買或用餐時間：",
+          "餐飲油煙": "店家名稱與地點：\n狀況（油煙、異味、排水）：\n時段：",
+          "攤販占用": "地點（路名、門牌或地標）：\n狀況（占用騎樓、人行道、車道）：\n時段：" },
+  "住": { "噪音": NOISE,
+          "垃圾堆積": "地點（路名、門牌或地標）：\n狀況（垃圾種類、多久沒清、有無異味）：",
+          "違建或漏水": "地點（路名、巷弄或地標）：\n狀況（違建、外牆剝落、漏水）：\n影響（危險、鄰居受害…）：" },
+  "行": { "路面或人行道": ROAD, "路燈": LAMP,
+          "號誌": "路口（兩條路名）：\n狀況（不亮、一直閃黃燈、秒數太短）：\n方向（往哪個方向）：",
+          "違規停車": "地點（路名、門牌或地標）：\n狀況（占用人行道、紅線、身障車位）：\n時段：" },
+  "育": { "通學安全": "學校與路段：\n狀況（缺斑馬線、車速快、人行道窄）：\n時段（上學、放學）：",
+          "學校或圖書館設施": "地點（學校或圖書館名稱）：\n設施與狀況：" },
+  "樂": { "公園遊具": "公園名稱：\n設施（溜滑梯、鞦韆、座椅…）：\n狀況（鬆脫、破損、尖角）：",
+          "運動或文化設施": "場館名稱：\n設施與狀況：\n影響：" },
+  "醫療": { "病媒": "地點（路名、門牌或地標）：\n狀況（老鼠、蚊蟲、積水容器）：\n出現時段：",
+          "醫療院所或藥品": "院所或店家名稱與地點：\n問題：\n發生時間：" }
 };
-const TPL_LINES = Object.values(TEMPLATES).flatMap(t => t.split("\n")).filter(Boolean);
+const TPL_LINES = Object.values(TEMPLATES).flatMap(g => Object.values(g)).flatMap(t => t.split("\n")).filter(Boolean);
 // What the user actually wrote once template labels are removed; empty means only a template was submitted
 const withoutTemplate = text => text.split("\n").map(l => { l = l.trim().replace(/:/g, "："); const t = TPL_LINES.find(t => l.startsWith(t)); return t ? l.slice(t.length).trim() : l; }).join("").trim();
 const STALE_DAYS = 7, DAY = 864e5;
@@ -808,7 +824,7 @@ let formFrom = "issues";
 $("newBtn").onclick = () => {
   if ($("newBox").hidden) formFrom = curView === "map" ? "map" : "issues"; // an already-open form keeps where it came from
   if ($("histOn").checked) { $("histOn").checked = false; setHist(false); } // a new report is today's: show the live map again
-  show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
+  renderTpls(); show(curView === "mine" ? "mine" : "issues"); $("newBox").hidden = false; $("newText").focus();
 };
 $("cancelBtn").onclick = () => { $("newBox").hidden = true; $("dupBox").hidden = true; pending = null; clearPick(); clearShots(); if (formFrom === "map") show("map"); };
 
@@ -1526,8 +1542,12 @@ $("resetBtn").onclick = () => run($("resetBtn"), async () => {
 
 // Issue templates fill the textarea with the fields 1999 needs.
 $("aspects").insertAdjacentHTML("beforeend", ["不確定", ...Object.keys(ASPECTS)].map((k, i) => `<input type="radio" name="aspect" id="asp${i}" value="${i ? k : ""}"${i ? "" : " checked"}><label for="asp${i}">${k}</label>`).join(""));
-$("tpls").insertAdjacentHTML("beforeend", Object.keys(TEMPLATES).map(k => `<button class="btn" type="button" data-tpl="${k}">${k}</button>`).join(""));
-$("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (b) { $("newText").value = TEMPLATES[b.dataset.tpl]; $("newText").focus(); } });
+function renderTpls() { const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""];
+  $("tpls").innerHTML = `<span class="note">範本：</span>` + Object.keys(g).map(k => `<button class="btn" type="button" data-tpl="${esc(k)}">${esc(k)}</button>`).join(""); }
+renderTpls();
+$("aspects").addEventListener("change", renderTpls);
+$("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (!b) return;
+  const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""]; $("newText").value = g[b.dataset.tpl]; $("newText").focus(); });
 
 // GitHub-style keyboard shortcuts.
 document.addEventListener("keydown", e => {
