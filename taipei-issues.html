@@ -80,6 +80,7 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .phprev img{display:block;width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
 .phprev button{position:absolute;top:2px;right:2px;min-width:28px;min-height:28px;padding:0;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#photoIn:focus-visible+#photoLbl,.btn:has(> input.vh:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .bot{border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:68ch}
 .bot .h{font-size:13px;background:var(--hover);padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
 .bot .b{padding:8px 10px;font-size:14px}
@@ -376,7 +377,7 @@ Switched to branch 'taipei'
       </div>
       <div class="pickbox" id="pickMap" hidden></div>
       <fieldset class="contact" id="contactBox" hidden><legend class="note">聯絡資料（必填，只有管理者看得到，不會公開）</legend>
-        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼"></div>
+        <div class="row"><input id="cName" autocomplete="name" maxlength="30" placeholder="姓名" aria-label="姓名" aria-required="true"><input id="cPhone" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="手機 0912345678" aria-label="手機號碼" aria-required="true"></div>
         <label class="note" id="cRealRow" hidden><input type="checkbox" id="cReal"> 實名檢舉：同意局處以你的姓名受理這件檢舉。不勾選時，身分只用於聯繫查證，不會告知被檢舉人。</label>
       </fieldset>
       <p class="note">本站不是臺北市政府網站，陳情<b>不會</b>轉給 1999 或市府局處。要正式陳情，請撥 1999 或到 <a href="https://1999.gov.taipei/" target="_blank" rel="noopener">1999.gov.taipei</a>。緊急事件請撥 110 或 119。</p>
@@ -668,7 +669,7 @@ const PR_ICON = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const lbl = (text, color) => `<span class="lbl" style="color:${color};border-color:color-mix(in srgb, ${color} 45%, transparent);background:color-mix(in srgb, ${color} 12%, transparent)">${esc(text)}</span>`;
+const lbl = (text, color) => `<span class="lbl" style="color:color-mix(in srgb, ${color} 60%, var(--fg));border-color:color-mix(in srgb, ${color} 45%, transparent);background:color-mix(in srgb, ${color} 12%, transparent)">${esc(text)}</span>`;
 const ago = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
   return m < 60 ? `${Math.max(m,1)} 分鐘前` : m < 1440 ? `${Math.round(m/60)} 小時前` : `${Math.round(m/1440)} 天前`; };
 
@@ -1097,6 +1098,7 @@ function restoreReportRetryFocus(requested, revision) {
 function clearReportFlow() {
   reportRevision++; previewRun++; pending = null; reportAttempt = null;
   $("dupBox").replaceChildren(); $("dupBox").hidden = true;
+  $("cName").removeAttribute("aria-invalid"); $("cPhone").removeAttribute("aria-invalid");
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 $("cancelBtn").onclick = () => {
@@ -1197,6 +1199,7 @@ function invalidateReportPreview() {
   if (!reportCreating && !supplementBusy) $("submitBtn").disabled = false;
 }
 const reportInputChanged = e => {
+  if (e.target.matches("#cName,#cPhone")) e.target.removeAttribute("aria-invalid");
   if (e.target.matches("#newText,#newDistrict,#cName,#cPhone,#cReal,#agree,#aspects input")) invalidateReportPreview(); // withdrawing consent voids the preview
 };
 $("newForm").addEventListener("input", reportInputChanged);
@@ -1231,8 +1234,10 @@ $("newForm").addEventListener("submit", async e => {
     if (!text) { $("newStatus").textContent = "請描述你遇到的問題"; $("newText").focus(); return; }
     if (!withoutTemplate(text)) { $("newStatus").textContent = "請在範本的冒號後面填上內容"; $("newText").focus(); return; }
     if (contactFn) {
-      if (!$("cName").value.trim()) { $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
-      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      if (!$("cName").value.trim()) { $("cName").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫姓名"; $("cName").focus(); return; }
+      $("cName").removeAttribute("aria-invalid");
+      if (!/^09\d{8}$/.test($("cPhone").value.replace(/[\s-]/g, ""))) { $("cPhone").setAttribute("aria-invalid", "true"); $("newStatus").textContent = "請填寫手機號碼（09 開頭共 10 碼）"; $("cPhone").focus(); return; }
+      $("cPhone").removeAttribute("aria-invalid");
       try { sessionStorage.setItem("contact", JSON.stringify({ name:$("cName").value.trim(), phone:$("cPhone").value.trim() })); } catch {}
     }
     $("newText").value = text;
@@ -1248,9 +1253,9 @@ $("newForm").addEventListener("submit", async e => {
     if (t.outside || t.vague) {
       pending = { t, text, signature };
       $("newStatus").textContent = note;
-      $("dupBox").innerHTML = `<div>${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
+      $("dupBox").innerHTML = `<div id="dupNotice">${t.outside ? "這個地點看起來不在台北市，台北市無法派工。請改向當地縣市的 1999 陳情（市話或手機直撥 1999 會轉到所在縣市）。" : "taipei-bot 看不出發生了什麼問題或在哪裡。請補充地點（路名、門牌或地標）和狀況，局處才能派工。"}</div>
         <div class="row"><button class="btn primary" type="button" data-dup="edit">修改內容</button>
-        <button class="btn" type="button" data-dup="new">仍要送出</button></div>`;
+        <button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出</button></div>`;
       $("dupBox").hidden = false;
       return;
     }
@@ -1264,7 +1269,7 @@ $("newForm").addEventListener("submit", async e => {
     $("newStatus").textContent = note;
     const sub = SUBS[t.category], addr = (picked && picked.address) || t.address;
     $("dupBox").innerHTML = `<div class="h">確認送出前，請看一下 1999 的分類結果</div>
-      <dl class="pv"><dt>標題</dt><dd>${esc(t.title)}</dd>
+      <dl class="pv" id="dupDetails"><dt>標題</dt><dd>${esc(t.title)}</dd>
       <dt>負責局處</dt><dd>${lbl(t.dept, DEPTS[t.dept] || DEPTS["1999 待分派"])}</dd>
       <dt>1999 分類</dt><dd>${sub ? `${esc(sub.main)} › ${esc(sub.name)}` : "待人工分類"}</dd>
       <dt>行政區</dt><dd>${esc(t.district || "未判斷")}</dd>
@@ -1272,7 +1277,7 @@ $("newForm").addEventListener("submit", async e => {
       ${t.tags.length ? `<dt>標籤</dt><dd>${t.tags.map(x => esc(x)).join("、")}</dd>` : ""}
       ${t.triage.reason ? `<dt>分派理由</dt><dd>${esc(t.triage.reason)}</dd>` : ""}</dl>
       ${t.flagged ? `<div class="note">這則內容需經局處審核後才會公開。</div>` : ""}
-      <div class="row"><button class="btn primary" type="button" data-dup="new">確認送出</button>
+      <div class="row"><button class="btn primary" type="button" data-dup="new" aria-describedby="dupDetails">確認送出</button>
       <button class="btn" type="button" data-dup="edit">修改內容</button></div>`;
     $("dupBox").hidden = false;
     $("dupBox").querySelector("[data-dup=new]").focus();
@@ -1284,11 +1289,11 @@ $("newForm").addEventListener("submit", async e => {
 // or still send a new one (not offered when the server already refused the copy).
 function showDup(t, text, canNew, photos, signature = reportInputStamp()) {
   pending = { t, text, photos, signature };
-  $("dupBox").innerHTML = `<div>${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
+  $("dupBox").innerHTML = `<div id="dupNotice">${canNew ? "這可能和" : "已經有內容相同的陳情："} <b>#${esc(t.dup.n)} ${esc(t.dup.title)}</b>${canNew ? " 重複。" : ""}${esc(t.dup.reason || "")}</div>
     <div class="note">把你的描述和照片補充到那件，局處會一起看到，也會幫它 +1。</div>
-    <div class="row"><button class="btn primary" type="button" data-dup="add">補充到 #${esc(t.dup.n)}</button>
-    <button class="btn" type="button" data-dup="vote">只幫 #${esc(t.dup.n)} 按 +1</button>
-    ${canNew ? `<button class="btn" type="button" data-dup="new">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
+    <div class="row"><button class="btn primary" type="button" data-dup="add" aria-describedby="dupNotice">補充到 #${esc(t.dup.n)}</button>
+    <button class="btn" type="button" data-dup="vote" aria-describedby="dupNotice">只幫 #${esc(t.dup.n)} 按 +1</button>
+    ${canNew ? `<button class="btn" type="button" data-dup="new" aria-describedby="dupNotice">仍要送出新案件</button>` : `<button class="btn" type="button" data-dup="edit">修改內容</button>`}</div>`;
   $("dupBox").hidden = false;
   $("dupBox").querySelector("[data-dup=add]").focus();
 }
@@ -1401,12 +1406,17 @@ function completeCreatedReport(attempt) {
   if (unchanged) {
     clearReportFlow();
     $("newText").value = ""; $("asp0").checked = true; $("cReal").checked = false; $("cRealRow").hidden = true;
-    formEpoch++; pickMapIntent++; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots(); restoreFormFocus();
+    formEpoch++; pickMapIntent++; $("newBox").hidden = true; $("newStatus").textContent = ""; clearPick(); clearShots();
   } else {
     pending = null; $("dupBox").replaceChildren(); $("dupBox").hidden = true;
     $("newStatus").textContent = "通報已送出；目前修改中的內容已保留";
   }
   render();
+  if (unchanged) {
+    // The form is gone; put focus on the case the citizen just filed (render already scrolled it into view).
+    const created = document.querySelector(`[data-open="${CSS.escape(full)}"]`);
+    if (created) created.focus({ preventScroll:true }); else restoreFormFocus();
+  }
   if (item.flagged) toast("已送出，內容需經局處審核後才會公開");
   else if (attempt.maskedN) toast(`已送出，${attempt.maskedN} 項個資已遮蔽`);
 }
