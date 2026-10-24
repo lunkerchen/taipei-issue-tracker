@@ -1165,7 +1165,7 @@ function render() {
     const byMerge = focused.merge ? document.querySelector(`[data-merge="${CSS.escape(focused.merge)}"]`) : null;
     const noteSubmit = focused.noteSubmit && document.querySelector(`[data-note="${CSS.escape(focused.caseId)}"] button[type=submit]`);
     const caseTitle = focused.caseId ? document.querySelector(`[data-open="${CSS.escape(focused.caseId)}"]`) : null;
-    const target = focused.id ? $(focused.id) : focused.open ? caseTitle :
+    const target = focused.id ? $(focused.id) : focused.open ? document.querySelector(`[data-open="${CSS.escape(focused.open)}"]`) :
       focused.vote ? document.querySelector(`[data-vote="${CSS.escape(focused.vote)}"]`) : focused.share ? document.querySelector(`[data-share="${CSS.escape(focused.share)}"]`) :
       focused.shareUrl ? [...document.querySelectorAll("#list [data-share-url]")].find(x => x.dataset.shareUrl === focused.shareUrl) :
       noteSubmit || byStatus || byHide || byContact || byPr || byMerge || caseTitle;
