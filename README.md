@@ -321,6 +321,12 @@ BASE=http://localhost:8788 node worker/test/tab-hash.mjs
 分頁與網址測試使用桌面視窗。測試開啟一件未完成案件，切到「已修復」，確認案件收起且網址回到列表。重新載入頁面後，確認沒有殘留的案件詳情。測試也確認目前列表中的案件切換分頁後仍保持展開。可用 `BASE` 指定其他本機網址。測試不會寫入資料。
 
 ```bash
+BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
+```
+
+里返回焦點測試使用桌機與 390×844 手機視窗，確認從里頁面返回各里清單時，鍵盤焦點會回到剛剛瀏覽的該里按鈕上。
+
+```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 ```
 

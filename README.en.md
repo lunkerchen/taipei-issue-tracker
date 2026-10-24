@@ -321,6 +321,12 @@ BASE=http://localhost:8788 node worker/test/tab-hash.mjs
 The tab and URL test uses a desktop viewport. It opens an unfinished case, switches to 已修復, and checks that the case closes and the URL goes back to the list. It reloads the page and checks that no case detail stays. It also checks that a case in the current list stays open. Set `BASE` to use another local URL. The test does not write data.
 
 ```bash
+BASE=http://localhost:8788 node worker/test/li-back-focus.mjs
+```
+
+The Li back focus test checks both desktop and 390x844 mobile viewports. It checks that returning from a Li page to the Li list returns keyboard focus to the button of the Li that was just open.
+
+```bash
 BASE=http://localhost:8788 node worker/test/map-short-viewport.mjs
 ```
 

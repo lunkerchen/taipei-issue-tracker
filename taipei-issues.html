@@ -2039,8 +2039,11 @@ function selectLi(li) {
 }
 function backToList() {
   const prev = liLayers[curLi]; if (prev) prev.setStyle(LI_STYLE);
+  const leavingLi = curLi;
   curLi = ""; $("liDetail").hidden = true; $("liPanel").hidden = false; renderLiList(); mapMode();
   if (distLayers[curDist]) mainLM.flyToBounds(distLayers[curDist].getBounds(), { padding:[24, 24], duration:.5 });
+  const backTarget = leavingLi ? document.querySelector(`#liList button[data-li="${CSS.escape(leavingLi)}"]`) : null;
+  if (backTarget) backTarget.focus();
 }
 $("liBack").onclick = backToList;
 
