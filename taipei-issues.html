@@ -294,6 +294,7 @@ Switched to branch 'taipei'
       <label for="newText"><b>描述你遇到的問題</b><span class="note">　送出後由 taipei-bot 自動分類、轉給負責局處</span></label>
       <fieldset class="aspects" id="aspects"><legend class="note">先選大方向（可略過）：</legend></fieldset>
       <div class="row" id="tpls"><span class="note">範本：</span></div>
+      <div class="row" id="micRow" hidden><button class="btn" type="button" id="micBtn" aria-pressed="false">🎤 語音輸入</button><span class="status" id="micStatus" role="status"></span></div>
       <textarea id="newText" maxlength="1000" placeholder="例：信義路四段 200 號前人行道磚塊鬆動，下雨會噴水，已經有人跌倒。"></textarea>
       <div class="row" id="photoRow" hidden>
         <input type="file" id="photoIn" class="vh" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
@@ -478,22 +479,36 @@ const ROAD = "地點（路名、門牌或地標）：\n狀況（坑洞大小、�
 const NOISE = "地點：\n噪音來源（店家、工地、住戶…）：\n時段（幾點到幾點、每天或只有週末）：";
 const LAMP = "地點（路名、巷弄、最近的門牌）：\n狀況（不亮、閃爍、白天也亮）：\n從什麼時候開始：";
 const TEMPLATES = {
-  "": { "路面或人行道": ROAD, "噪音": NOISE, "路燈": LAMP },
+  "": { "路面或人行道": ROAD, "噪音": NOISE, "路燈": LAMP,
+         "路樹倒塌或斷枝": "地點（路名、門牌或地標）：\n狀況（倒塌、斷枝、擋住車道或人行道）：\n是否有人車受困：",
+         "淹水或積水": "地點（路名、巷弄或地標）：\n積水深度（腳踝、小腿、膝蓋）：\n側溝或人孔狀況：" },
   "食": { "食品衛生": "店家名稱與地點：\n問題（過期、異物、環境髒亂…）：\n購買或用餐時間：",
           "餐飲油煙": "店家名稱與地點：\n狀況（油煙、異味、排水）：\n時段：",
-          "攤販占用": "地點（路名、門牌或地標）：\n狀況（占用騎樓、人行道、車道）：\n時段：" },
+          "攤販占用": "地點（路名、門牌或地標）：\n狀況（占用騎樓、人行道、車道）：\n時段：",
+          "市場環境": "市場名稱：\n狀況（積水、髒亂、異味、病媒）：\n攤位或位置：" },
   "住": { "噪音": NOISE,
           "垃圾堆積": "地點（路名、門牌或地標）：\n狀況（垃圾種類、多久沒清、有無異味）：",
-          "違建或漏水": "地點（路名、巷弄或地標）：\n狀況（違建、外牆剝落、漏水）：\n影響（危險、鄰居受害…）：" },
+          "違建或漏水": "地點（路名、巷弄或地標）：\n狀況（違建、外牆剝落、漏水）：\n影響（危險、鄰居受害…）：",
+          "招牌或外牆危險": "地點（路名、門牌）：\n狀況（招牌鬆動、外牆磁磚掉落、鷹架不穩）：\n下方是否有行人通行：",
+          "停水或漏水": "地點（路名、門牌）：\n狀況（停水、水壓低、路面冒水、水質異常）：\n開始時間：",
+          "流浪動物": "地點（路名、門牌或地標）：\n動物種類與數量：\n狀況（受傷、攻擊人、需要救援）：" },
   "行": { "路面或人行道": ROAD, "路燈": LAMP,
           "號誌": "路口（兩條路名）：\n狀況（不亮、一直閃黃燈、秒數太短）：\n方向（往哪個方向）：",
-          "違規停車": "地點（路名、門牌或地標）：\n狀況（占用人行道、紅線、身障車位）：\n時段：" },
+          "違規停車": "地點（路名、門牌或地標）：\n狀況（占用人行道、紅線、身障車位）：\n時段：",
+          "公車或站牌": "路線與站名：\n狀況（過站不停、站牌損壞、動態資訊不準）：\n發生時間：",
+          "YouBike": "站點名稱：\n狀況（車輛故障、無車可借、無位可還）：\n車號（如有）：",
+          "人孔蓋或溝蓋": "地點（路名、門牌或地標）：\n狀況（凸起、凹陷、破損、遺失、冒水）：" },
   "育": { "通學安全": "學校與路段：\n狀況（缺斑馬線、車速快、人行道窄）：\n時段（上學、放學）：",
-          "學校或圖書館設施": "地點（學校或圖書館名稱）：\n設施與狀況：" },
+          "學校或圖書館設施": "地點（學校或圖書館名稱）：\n設施與狀況：",
+          "校園周邊環境": "學校名稱：\n狀況（違停接送、攤販、菸味、照明不足）：\n時段：" },
   "樂": { "公園遊具": "公園名稱：\n設施（溜滑梯、鞦韆、座椅…）：\n狀況（鬆脫、破損、尖角）：",
-          "運動或文化設施": "場館名稱：\n設施與狀況：\n影響：" },
+          "運動或文化設施": "場館名稱：\n設施與狀況：\n影響：",
+          "河濱或步道": "河濱公園或步道名稱：\n狀況（路面破損、積水、照明、廁所）：\n位置（出入口、橋下）：",
+          "公廁": "地點（公園、捷運站、市場）：\n狀況（髒亂、故障、缺衛生紙、無障礙設施）：" },
   "醫療": { "病媒": "地點（路名、門牌或地標）：\n狀況（老鼠、蚊蟲、積水容器）：\n出現時段：",
-          "醫療院所或藥品": "院所或店家名稱與地點：\n問題：\n發生時間：" }
+          "醫療院所或藥品": "院所或店家名稱與地點：\n問題：\n發生時間：",
+          "登革熱孳生源": "地點（路名、門牌或地標）：\n積水容器（花盆、廢輪胎、空地積水）：\n附近是否有人發燒：",
+          "空氣或異味": "地點（路名、門牌或地標）：\n狀況（燒東西、化學味、粉塵）：\n時段：" }
 };
 const TPL_LINES = Object.values(TEMPLATES).flatMap(g => Object.values(g)).flatMap(t => t.split("\n")).filter(Boolean);
 // What the user actually wrote once template labels are removed; empty means only a template was submitted
@@ -1620,6 +1635,21 @@ $("aspects").insertAdjacentHTML("beforeend", ["不確定", ...Object.keys(ASPECT
 function renderTpls() { const g = TEMPLATES[document.querySelector('[name=aspect]:checked')?.value || ""] || TEMPLATES[""];
   $("tpls").innerHTML = `<span class="note">範本：</span>` + Object.keys(g).map(k => `<button class="btn" type="button" data-tpl="${esc(k)}">${esc(k)}</button>`).join(""); }
 renderTpls();
+// Voice input: Web Speech API (Chrome, Safari); hidden where unsupported. Phone keyboards' own dictation still works everywhere.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  let rec = null;
+  $("micRow").hidden = false;
+  $("micBtn").onclick = () => {
+    if (rec) return rec.stop();
+    rec = new SR(); rec.lang = "zh-TW"; rec.interimResults = true; rec.continuous = true;
+    const base = $("newText").value, sep = base && !/\s$/.test(base) ? "\n" : "";
+    rec.onresult = e => { $("newText").value = (base + sep + [...e.results].map(r => r[0].transcript).join("")).slice(0, 1000); $("newText").dispatchEvent(new Event("input")); };
+    rec.onerror = e => { $("micStatus").textContent = e.error === "not-allowed" || e.error === "service-not-allowed" ? "麥克風權限被拒絕，請到瀏覽器設定開啟" : e.error === "no-speech" ? "沒有聽到聲音，請再試一次" : "語音辨識失敗，請改用打字"; };
+    rec.onend = () => { rec = null; $("micBtn").textContent = "🎤 語音輸入"; $("micBtn").setAttribute("aria-pressed", "false"); if ($("micStatus").textContent === "聆聽中…") $("micStatus").textContent = ""; };
+    try { rec.start(); $("micBtn").textContent = "■ 停止"; $("micBtn").setAttribute("aria-pressed", "true"); $("micStatus").textContent = "聆聽中…"; } catch { rec = null; }
+  };
+}
 $("aspects").addEventListener("change", renderTpls);
 $("newText").addEventListener("input", () => { $("cRealRow").hidden = !REPORT_RE.test($("newText").value); });
 $("tpls").addEventListener("click", e => { const b = e.target.closest("[data-tpl]"); if (!b) return;
