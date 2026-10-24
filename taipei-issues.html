@@ -1046,6 +1046,7 @@ function render() {
   heatmap();
   const c = counts();
   const q = $("q").value.trim().toLowerCase();
+  const qRef = /^[#＃]?\s*(\d+)$/.exec(q.normalize("NFKC")), qNum = qRef ? Number(qRef[1]) : null;
   const dept = $("deptFilter").value;
   const openN = issues.filter(i => i.status !== "fixed").length;
   $("shareNotice").textContent = shareNotice;
@@ -1070,7 +1071,8 @@ function render() {
   let rows = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
     .filter(i => view.mine || !dept || i.dept === dept)
     .filter(i => view.mine || !ms || i.milestone === ms)
-    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q));
+    .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
+      || (qNum !== null && Number(i.n) === qNum));
   const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
     votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
   rows.sort(sorts[$("sort").value]);
@@ -1273,7 +1275,11 @@ function onListChange(e) {
   if (j) act(j, [{ type:"milestone", title:(milestones.find(m => m.id === s.value) || {}).title || "", by:"1999 管理者" }], { milestone:s.value }).then(done, bad);
 }
 $("list").addEventListener("change", onListChange);
-["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", render));
+// The list must not filter on pre-edit IME text: keep the current result until the composition is committed.
+let qComposing = false;
+$("q").addEventListener("compositionstart", () => { qComposing = true; });
+$("q").addEventListener("compositionend", () => { qComposing = false; render(); });
+["q","deptFilter","msFilter","sort"].forEach(id => $(id).addEventListener("input", () => { if (!(id === "q" && qComposing)) render(); }));
 const switchClosedTab = closed => {
   view.closed = closed;
   // A case from the other tab leaves the list; close it and move the URL back to the list.
