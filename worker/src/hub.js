@@ -449,11 +449,21 @@ export class Hub extends DurableObject {
     const hit = this.cacheGet("news3");
     if (hit) return hit;
     const [g, p] = await Promise.allSettled([bingNews(), pttNews()]);
-    const out = { items: [...THREADS, ...(g.value || []), ...(p.value || [])] };
+    const live = [...(g.value || []), ...(p.value || [])];
+    // Both sources down: serve the last daily snapshot instead of an empty ticker
+    const out = { items: [...THREADS, ...(live.length ? live : this.cacheGet("news-daily")?.items || [])] };
     if (!out.items.length) return { error: "upstream_error", status: 502 };
     // A source that failed or came back empty (bot page, changed markup) counts as down: retry in 1 min, not 10
     const up = r => r.status === "fulfilled" && r.value.length > 0;
     this.cachePut("news3", out, up(g) && up(p) ? 10 * 60e3 : 60e3);
     return out;
+  }
+
+  // Daily cron (wrangler.jsonc triggers): keep a snapshot of the live feed for news() to fall back on.
+  async refreshNews() {
+    const [g, p] = await Promise.allSettled([bingNews(), pttNews()]);
+    const fresh = [...(g.value || []), ...(p.value || [])];
+    if (fresh.length) this.cachePut("news-daily", { items: fresh, at: Date.now() }, 2 * 864e5);
+    return fresh.length;
   }
 }

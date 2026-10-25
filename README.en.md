@@ -73,7 +73,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Relative time**: Times on cases and supplements show the full minutes, hours or days that passed. 90 minutes shows 1 hour. 23 hours 40 minutes shows 23 hours, not 24. 36 hours shows 1 day.
 - **Long text**: Titles, report text, additions, addresses, timeline entries and queue titles wrap at any character when a word or URL is longer than the available width. The text does not cover the +1 button or the department selector, and it stays inside the page.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the stored identity with the Worker on each page load. If the signature is not valid, the Worker issues a new identity before the page becomes writable. If the Worker cannot issue an identity, or the browser cannot keep it, the site stays read-only and hides report buttons. Allow site storage and reload to send reports. On browsers with Web Locks, tabs opened at the same time use one identity.
-- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24. A pause and resume button with an `aria-pressed` state and a 44px touch target stops the CSS marquee or the reduced-motion rotation. The browser keeps your paused selection across page reloads.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board. A daily cron job saves a snapshot of both feeds; the ticker uses it when both sources are down. It does not show posts about trade or requests. It also shows Threads posts that a person selected. Each item starts with its date, for example 10/24. A pause and resume button with an `aria-pressed` state and a 44px touch target stops the CSS marquee or the reduced-motion rotation. The browser keeps your paused selection across page reloads.
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
@@ -100,7 +100,8 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/db, /api/ws ── Hub Durable Object (SQLite): shared database and live updates
   ├─ /api/sample ─────── Claude API (Haiku for sorting, Sonnet for releases)
   ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
-  ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
+  ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes; falls back to the daily snapshot when both are down)
+  ├─ cron 01:00 UTC ─── Daily: saves a news snapshot in the Hub (kept 2 days)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
   ├─ /api/mine ───────── Owner only: the number of your cases that an administrator hid (signed visitor token)
