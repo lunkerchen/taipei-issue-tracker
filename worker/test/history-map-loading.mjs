@@ -15,16 +15,19 @@ const fixture = {
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const results = [];
 
-async function withMap({ width, height, leafletDelay = 0, leafletFailures = 0, historyDelay = 0, historyFailures = 0 }) {
+async function withMap({ width, height, holdLeaflet = false, leafletFailures = 0, historyDelay = 0, historyFailures = 0 }) {
   const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({ viewport:{ width, height } });
   const page = await context.newPage();
   const counts = { leaflet:0, history:0 };
   let failedLeaflets = leafletFailures, failedHistories = historyFailures;
+  // A held Leaflet request waits for the test to release it, so a slow page load cannot finish the map before the pending checks.
+  let releaseLeaflet;
+  const leafletHeld = new Promise(resolve => releaseLeaflet = resolve);
   await page.route("**/leaflet.min.js", async route => {
     counts.leaflet++;
     if (failedLeaflets > 0) { failedLeaflets--; return route.abort("failed"); }
-    if (leafletDelay) await pause(leafletDelay);
+    if (holdLeaflet) await leafletHeld;
     return route.continue();
   });
   await page.route("**/history-2026.json", async route => {
@@ -39,11 +42,11 @@ async function withMap({ width, height, leafletDelay = 0, leafletFailures = 0, h
   await page.route("https://wmts.nlsc.gov.tw/**", route => route.fulfill({ status:204, body:"" }));
   await page.goto(`${base}/#map`, { waitUntil:"domcontentloaded" });
   await page.locator("#tline:not([hidden])").waitFor({ state:"visible" });
-  if (leafletDelay || leafletFailures) {
+  if (holdLeaflet || leafletFailures) {
     assert.equal(counts.leaflet, 1, "the map has started its Leaflet request");
     assert.equal(await page.locator("#map").evaluate(el => el.classList.contains("leaflet-container")), false, "the delayed or failed Leaflet request keeps the map pending");
   }
-  return { browser, context, page, counts };
+  return { browser, context, page, counts, releaseLeaflet };
 }
 
 async function record(name, run) {
@@ -64,11 +67,12 @@ async function close({ browser, context }) {
 try {
   for (const viewport of [{ width:1440, height:1000 }, { width:390, height:844 }]) {
     await record(`queued-history-shows-after-leaflet-${viewport.width}`, async () => {
-      const run = await withMap({ ...viewport, leafletDelay:2500 });
+      const run = await withMap({ ...viewport, holdLeaflet:true });
       try {
         await run.page.locator("#histOn").click();
         assert.equal(await run.page.locator("#histOn").isChecked(), true, "the user's history selection stays checked while the map loads");
         assert.match(await run.page.locator("#histCount").innerText(), /地圖載入中/, "the pending selection has a visible loading state");
+        run.releaseLeaflet();
         await run.page.locator("#histRow").waitFor({ state:"visible", timeout:15000 });
         await run.page.waitForFunction(() => document.querySelector("#histCount").textContent === "1 件派工");
         assert.equal(await run.page.locator("#histOn").isChecked(), true);
@@ -80,10 +84,11 @@ try {
   }
 
   await record("cancel-during-leaflet-load-does-not-open-history", async () => {
-    const run = await withMap({ width:390, height:844, leafletDelay:2500 });
+    const run = await withMap({ width:390, height:844, holdLeaflet:true });
     try {
       await run.page.locator("#histOn").click();
       await run.page.locator("#histOn").click();
+      run.releaseLeaflet();
       await run.page.locator("#map.leaflet-container").waitFor({ state:"attached", timeout:15000 });
       await pause(250);
       assert.equal(await run.page.locator("#histOn").isChecked(), false);

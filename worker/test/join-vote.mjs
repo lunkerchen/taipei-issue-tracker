@@ -15,8 +15,8 @@ try {
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(`${BASE}/#map`, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => typeof openDistrict === "function", null, { timeout: 15000 });
-  await page.waitForTimeout(2000);
+  // Wait for the outline and its open cases, not a fixed pause: openDistrict does nothing before the outline loads.
+  await page.waitForFunction(() => typeof distLayers !== "undefined" && distLayers["中正區"] && issues.some(i => i.district === "中正區" && i.status !== "fixed"), null, { timeout: 30000 });
   await page.evaluate(() => openDistrict("中正區"));
   await page.locator("#hotList [data-join]").first().waitFor({ state: "visible", timeout: 15000 });
 

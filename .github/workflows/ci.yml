@@ -30,7 +30,6 @@ jobs:
           for i in $(seq 1 90); do curl -sf -o /dev/null --max-time 2 "$BASE/api/db" && exit 0; sleep 1; done
           cat "$RUNNER_TEMP/wrangler.log"; exit 1
 
-      # ponytail: Node-only API tests; the Playwright tests still run locally (see README)
       - name: Worker API tests
         run: |
           for t in smoke create-item-validation hidden-cases release-tag-path report-contact-bypass public-snapshot release-hidden-after-publish report-contact visitor-doc-schema; do
@@ -40,3 +39,25 @@ jobs:
       - name: Worker log
         if: failure()
         run: cat "$RUNNER_TEMP/wrangler.log" || true
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright and Wrangler
+        run: |
+          npm install -g playwright@1.64.1
+          playwright install --with-deps chromium
+          npx --yes wrangler@4.151.3 --version
+
+      - name: Browser tests (shard ${{ matrix.shard }}/4)
+        run: PLAYWRIGHT_MODULE="$(npm root -g)/playwright" node worker/test/browser.mjs --shard=${{ matrix.shard }}/4

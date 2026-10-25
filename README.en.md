@@ -132,8 +132,8 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 |---|---|
 | `taipei-issues.html` | All of the front end (one file) |
 | `check.mjs` | Front-end logic checks: personal data mask, data cleanup, Taipei boundary, templates, photo keys, area of daily life |
-| `worker/` | Cloudflare Worker: `src/index.js` (routes), `src/hub.js` (Durable Object), `build.mjs`, `data.json` (seed data), `test/` |
-| `.github/workflows/ci.yml` | GitHub Actions CI: front-end checks and Worker API tests |
+| `worker/` | Cloudflare Worker: `src/index.js` (routes), `src/hub.js` (Durable Object), `build.mjs`, `data.json` (seed data), `test/` (`test/browser.mjs` runs the browser tests) |
+| `.github/workflows/ci.yml` | GitHub Actions CI: front-end checks, Worker API tests and browser regression tests |
 | `data/1999-categories.json` | Official 1999 case categories (9 main categories, 136 subcategories) |
 | `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
 | `data/history-roads.json` | Cache of road coordinates |
@@ -203,7 +203,13 @@ node worker/test/votes.mjs
 node worker/test/visitor.mjs
 ```
 
-GitHub Actions runs CI (`.github/workflows/ci.yml`) on each pull request and on each push to `master`. CI does `node check.mjs` and the Node tests that do not need a server: `relative-time`, `sync`, `visitor` and `votes`. Then CI starts a local Worker with `wrangler dev` on port 8877 and runs the Worker API tests against it: `smoke`, `create-item-validation`, `hidden-cases`, `release-tag-path`, `report-contact-bypass`, `public-snapshot`, `release-hidden-after-publish`, `report-contact` and `visitor-doc-schema`. CI does not run the browser regression tests. Run them on your computer.
+GitHub Actions runs CI (`.github/workflows/ci.yml`) on each pull request and on each push to `master`. CI does `node check.mjs` and the Node tests that do not need a server: `relative-time`, `sync`, `visitor` and `votes`. Then CI starts a local Worker with `wrangler dev` on port 8877 and runs the Worker API tests against it: `smoke`, `create-item-validation`, `hidden-cases`, `release-tag-path`, `report-contact-bypass`, `public-snapshot`, `release-hidden-after-publish`, `report-contact` and `visitor-doc-schema`. A second CI job runs the browser regression tests in four parallel shards with `node worker/test/browser.mjs --shard=<n>/4`. For each test, this runner starts a new local Worker with empty state on port 8877. It gives the Worker URL to the test in `BASE` and in the test's own `*_BASE` variable, and stops the Worker when the test ends. The runner leaves out `map-long-press.mjs` until its history section is rewritten: that section still targets the timeline canvas, and the timeline now uses pins. Give the file name to run it anyway.
+
+To run all browser tests on your computer, stop other Workers on port 8877 or set `BROWSER_TEST_PORT`, then do this command. Add test file names to run only those tests.
+
+```bash
+PLAYWRIGHT_MODULE="$(npm root -g)/playwright" node worker/test/browser.mjs
+```
 
 Browser regression tests need Playwright and a running local Worker. Install Playwright in your test environment. You can set `PLAYWRIGHT_MODULE` to a module path and `CHROME_EXECUTABLE_PATH` to an installed Chrome executable. The phone mask test uses port 8788 by default; set `PHONE_MASK_BASE` to use another local URL. Set `PHONE_MASK_EVIDENCE_DIR` to save a browser screenshot.
 
