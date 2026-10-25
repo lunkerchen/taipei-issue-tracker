@@ -10,44 +10,56 @@ import { fileURLToPath } from "node:url";
 const here = fileURLToPath(new URL(".", import.meta.url));
 const PORT = +(process.env.BROWSER_TEST_PORT || 8877), URL_ = `http://127.0.0.1:${PORT}`;
 const WRANGLER = ["npx", "--yes", "wrangler@4.151.3"];
-const shardArg = process.argv.find(a => a.startsWith("--shard="));
-const [shard, shards] = shardArg ? shardArg.slice(8).split("/").map(Number) : [1, 1];
-if (!(Number.isInteger(shard) && Number.isInteger(shards) && shard >= 1 && shard <= shards)) throw new Error(`bad --shard: ${shardArg}`);
-const named = process.argv.slice(2).filter(a => !a.startsWith("--"));
+const flags = process.argv.slice(2).filter(a => a.startsWith("--")), named = process.argv.slice(2).filter(a => !a.startsWith("--"));
+const shardMatch = flags.length === 1 && flags[0].match(/^--shard=(\d+)\/(\d+)$/);
+if (flags.length && !shardMatch) throw new Error(`unknown flags: ${flags.join(" ")}; use --shard=<n>/<total>`);
+const [shard, shards] = shardMatch ? [+shardMatch[1], +shardMatch[2]] : [1, 1];
+if (!(shard >= 1 && shard <= shards)) throw new Error(`bad --shard: ${flags[0]}`);
 // Left out of the default run until rewritten. Name a file to run it anyway.
 const SKIP = { "map-long-press.mjs": "its history section still targets the timeline canvas, which f16dc1e replaced with pins" };
 const files = (named.length ? named : readdirSync(here).filter(f => /\.[cm]?js$/.test(f) && f !== "browser.mjs" && !SKIP[f] && readFileSync(join(here, f), "utf8").includes("playwright")).sort())
   .filter((_, i) => i % shards === shard - 1);
 if (!named.length) for (const [f, why] of Object.entries(SKIP)) console.log(`SKIP ${f}: ${why}`);
+if (!files.length) throw new Error("no tests to run");
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const up = async () => { try { return (await fetch(URL_ + "/api/db", { signal: AbortSignal.timeout(2000) })).ok; } catch { return false; } };
-const exit = child => new Promise(r => child.exitCode !== null ? r(child.exitCode) : child.once("exit", code => r(code)));
+// Any HTTP answer means something listens on the port; only a refused connection means it is free
+const listening = async () => { try { await fetch(URL_, { signal: AbortSignal.timeout(2000) }); return true; } catch (e) { return e.cause?.code !== "ECONNREFUSED"; } };
+const ready = async () => { try { return (await fetch(URL_ + "/api/db", { signal: AbortSignal.timeout(2000) })).ok; } catch { return false; } };
+const running = child => child.exitCode === null && child.signalCode === null;
+const exited = (child, ms) => new Promise(r => { if (!running(child)) return r(true); const t = setTimeout(() => r(false), ms); child.once("exit", () => { clearTimeout(t); r(true); }); });
+// Each child leads its own process group (detached), so this also stops workerd and Chromium, even after the leader exits
+const stop = async child => {
+  const kill = signal => { try { process.kill(-child.pid, signal); } catch {} }; // ESRCH: the group is already gone
+  kill("SIGTERM");
+  await exited(child, 10_000);
+  kill("SIGKILL");
+  await exited(child, 10_000);
+};
+const portFree = async () => { for (let i = 0; i < 50; i++) { if (!await listening()) return; await sleep(200); } throw new Error(`port ${PORT} is still in use; set BROWSER_TEST_PORT`); };
 
-if (await up()) throw new Error(`port ${PORT} is already in use; set BROWSER_TEST_PORT`);
 const failed = [];
 for (const file of files) {
+  await portFree();
   const state = mkdtempSync(join(tmpdir(), "taipei-ci-")), log = join(state, "wrangler.log"), out = openSync(log, "w");
-  // detached: own process group, so one kill stops npx, wrangler and workerd together
   const worker = spawn(WRANGLER[0], [...WRANGLER.slice(1), "dev", "--port", String(PORT), "--ip", "127.0.0.1", "--var", "VISITOR_SECRET:ci", "--persist-to", join(state, "data")],
     { cwd: join(here, ".."), detached: true, stdio: ["ignore", out, out], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
   let ok = false, started = Date.now();
-  for (let i = 0; i < 90 && !(ok = await up()); i++) await sleep(1000);
+  // Ready only while our Worker still runs: the port was free before it started
+  for (let i = 0; i < 90 && running(worker) && !(ok = await ready()); i++) await sleep(1000);
+  ok &&= running(worker);
   if (ok) {
     // Each test reads BASE or its own *_BASE name; give all of them this Worker
     const env = { ...process.env, BASE: URL_ };
     for (const [, name] of readFileSync(join(here, file), "utf8").matchAll(/process\.env\.([A-Z_]*BASE)\b/g)) env[name] = URL_;
-    const test = spawn("node", [join(here, file)], { env, stdio: "inherit" });
-    const timer = setTimeout(() => test.kill("SIGKILL"), 300_000);
-    ok = await exit(test) === 0;
-    clearTimeout(timer);
+    const test = spawn("node", [join(here, file)], { env, stdio: "inherit", detached: true });
+    ok = await exited(test, 300_000) && test.exitCode === 0;
+    await stop(test);
   }
-  try { process.kill(-worker.pid, "SIGTERM"); } catch {}
-  await exit(worker);
+  await stop(worker);
   console.log(`${ok ? "PASS" : "FAIL"} ${file} (${Math.round((Date.now() - started) / 1000)} s)`);
   if (!ok) { failed.push(file); console.log(readFileSync(log, "utf8").split("\n").slice(-30).join("\n")); }
   rmSync(state, { recursive: true, force: true });
-  for (let i = 0; i < 50 && await up(); i++) await sleep(200);
 }
 console.log(`${files.length - failed.length}/${files.length} passed${failed.length ? "; failed: " + failed.join(", ") : ""}`);
 process.exit(failed.length ? 1 : 0);
