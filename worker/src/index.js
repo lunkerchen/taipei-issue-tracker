@@ -180,6 +180,10 @@ async function claude(env, model, prompt) {
 }
 
 export default {
+  // ponytail: daily snapshot only; the page still pulls live news through /api/news
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(hub(env).refreshNews());
+  },
   async fetch(req, env) {
     const { pathname, searchParams } = new URL(req.url);
     if (pathname === "/api/health") return Response.json({ ai: !!(env.ANTHROPIC_API_KEY || env.AI_PROXY_URL) });

@@ -19,5 +19,7 @@
   // Secrets: VISITOR_SECRET, ANTHROPIC_API_KEY (local: worker/.dev.vars)
   "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "Hub" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Daily 01:00 UTC (09:00 Taipei): refresh the news fallback snapshot (Hub.refreshNews)
+  "triggers": { "crons": ["0 1 * * *"] }
 }
