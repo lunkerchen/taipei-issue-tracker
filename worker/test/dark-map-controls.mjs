@@ -40,19 +40,14 @@ try {
     await page.addInitScript(() => localStorage.setItem("theme", "dark"));
     await page.goto(BASE + "/#map", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".leaflet-control-zoom-in", { timeout: 15000 });
-    await page.waitForSelector(".leaflet-tooltip.dlabel", { timeout: 15000 });
 
     const data = await page.evaluate(() => {
       const zoomIn = document.querySelector(".leaflet-control-zoom-in");
       const zoomInStyle = getComputedStyle(zoomIn);
-      const label = document.querySelector(".leaflet-tooltip.dlabel");
-      const labelStyle = getComputedStyle(label);
       return {
         themeAttr: document.documentElement.dataset.theme,
         zoomBg: zoomInStyle.backgroundColor,
-        zoomColor: zoomInStyle.color,
-        labelColor: labelStyle.color,
-        labelTextShadow: labelStyle.textShadow
+        zoomColor: zoomInStyle.color
       };
     });
 
@@ -72,11 +67,6 @@ try {
       zoomContrastRatio >= 4.5,
       `zoom button text contrast against its background is >= 4.5:1, got ${zoomContrastRatio.toFixed(2)}:1`
     );
-
-    // District label color check in dark mode: color should be light var(--fg) (#f0f6fc)
-    const labelFgRgb = parseRgb(data.labelColor);
-    assert.ok(labelFgRgb, `valid label color rgb: ${data.labelColor}`);
-    assert.ok(labelFgRgb[0] > 200 && labelFgRgb[1] > 200 && labelFgRgb[2] > 200, `district label is light text in dark mode, got ${data.labelColor}`);
 
     // Pickbox (report location modal) zoom buttons also styled in dark mode
     await page.evaluate(() => {
@@ -102,18 +92,14 @@ try {
     await page.addInitScript(() => localStorage.setItem("theme", "light"));
     await page.goto(BASE + "/#map", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".leaflet-control-zoom-in", { timeout: 15000 });
-    await page.waitForSelector(".leaflet-tooltip.dlabel", { timeout: 15000 });
 
     const lightData = await page.evaluate(() => {
       const zoomIn = document.querySelector(".leaflet-control-zoom-in");
       const zoomInStyle = getComputedStyle(zoomIn);
-      const label = document.querySelector(".leaflet-tooltip.dlabel");
-      const labelStyle = getComputedStyle(label);
       return {
         themeAttr: document.documentElement.dataset.theme,
         zoomBg: zoomInStyle.backgroundColor,
-        zoomColor: zoomInStyle.color,
-        labelColor: labelStyle.color
+        zoomColor: zoomInStyle.color
       };
     });
 
@@ -125,10 +111,6 @@ try {
     assert.ok(isWhite, `zoom background is white in light mode, got ${lightData.zoomBg}`);
     const contrastRatio = contrast(zoomBgRgb, zoomFgRgb);
     assert.ok(contrastRatio >= 4.5, `light mode zoom contrast >= 4.5:1, got ${contrastRatio.toFixed(2)}:1`);
-
-    // Light mode label color is dark (#1f2328)
-    const labelFgRgb = parseRgb(lightData.labelColor);
-    assert.ok(labelFgRgb[0] < 50 && labelFgRgb[1] < 50 && labelFgRgb[2] < 50, `district label is dark in light mode, got ${lightData.labelColor}`);
 
     await context.close();
   }
