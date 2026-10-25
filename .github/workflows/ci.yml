@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: http://127.0.0.1:8877
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Front-end checks
+        run: |
+          node check.mjs
+          for t in relative-time sync visitor votes; do node worker/test/$t.mjs; done
+
+      - name: Start local Worker
+        working-directory: worker
+        run: |
+          npx --yes wrangler@4.151.3 dev --port 8877 --ip 127.0.0.1 --var VISITOR_SECRET:ci --persist-to "$RUNNER_TEMP/state" > "$RUNNER_TEMP/wrangler.log" 2>&1 &
+          for i in $(seq 1 90); do curl -sf -o /dev/null --max-time 2 "$BASE/api/db" && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/wrangler.log"; exit 1
+
+      - name: Worker API tests
+        run: |
+          for t in smoke create-item-validation hidden-cases release-tag-path report-contact-bypass public-snapshot release-hidden-after-publish report-contact visitor-doc-schema; do
+            echo "::group::$t"; node worker/test/$t.mjs; echo "::endgroup::"
+          done
+
+      - name: Worker log
+        if: failure()
+        run: cat "$RUNNER_TEMP/wrangler.log" || true
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright and Wrangler
+        run: |
+          npm install -g playwright@1.64.1
+          playwright install --with-deps chromium
+          npx --yes wrangler@4.151.3 --version
+
+      - name: Browser tests (shard ${{ matrix.shard }}/4)
+        run: PLAYWRIGHT_MODULE="$(npm root -g)/playwright" node worker/test/browser.mjs --shard=${{ matrix.shard }}/4
