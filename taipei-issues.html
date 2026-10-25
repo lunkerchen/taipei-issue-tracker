@@ -254,6 +254,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a{background-color:var(--panel);color:var(--fg);border-bottom:1px solid var(--line)}
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a:hover{background-color:var(--hover);color:var(--fg)}
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a.leaflet-disabled{background-color:var(--hover);color:var(--muted)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 var(--bg),1px 0 var(--bg),0 -1px var(--bg),0 1px var(--bg)}
+}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 var(--bg),1px 0 var(--bg),0 -1px var(--bg),0 1px var(--bg)}
 .pop b{display:block;margin-bottom:2px}
 .pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
@@ -273,6 +277,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .leaflet-districts-pane path:focus-visible,.rpin:focus-visible,.mapbox .leaflet-popup-close-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .leaflet-districts-pane path:focus-visible,.rpin:focus-visible{border-radius:4px}
 @media (prefers-reduced-motion:reduce){.leaflet-districts-pane path{transition:none}.leaflet-districts-pane path.hot{transform:none}}
+.leaflet-dlabels-pane{pointer-events:none}
+.leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:var(--ink);font-weight:600;font-size:14px;text-shadow:-1px 0 var(--on-dark),1px 0 var(--on-dark),0 -1px var(--on-dark),0 1px var(--on-dark);pointer-events:none}
+.leaflet-tooltip.dlabel::before{display:none}
+.leaflet-tooltip.dlabel.gone{display:none}
 .leaflet-li-pane path{cursor:pointer}
 .lipanel ol{list-style:none;margin:0;padding:0}
 .lipanel li{border-top:1px solid var(--line)}
@@ -1969,12 +1977,14 @@ async function drawDistricts() {
   try { gj = await tryTwice(async () => { const r = await fetch("districts.geojson"); if (!r.ok) throw new Error("districts " + r.status); return r.json(); }, 10000); }
   catch { addBase(mainLM); return; } // the artifact build has no boundary file: fall back to the street map
   mainLM.createPane("districts").style.zIndex = 350;
+  mainLM.createPane("dlabels").style.zIndex = 360; // own pane: inside "districts" the labels sat under the fills
   distGeo = gj.features.map(f => ({ d:f.properties.district, polys:f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates }));
   for (const r of markers.values()) { const ll = r.m.getLatLng(); r.dist = distAt(ll.lat, ll.lng) || r.i.district; }
   L.geoJSON(gj, { pane:"districts", style: f => ({ ...DIST_STYLE, fillColor:DIST_COLOR[f.properties.district] || "#ddd" }),
     onEachFeature: (f, l) => {
       const d = f.properties.district;
       distLayers[d] = l;
+      l.bindTooltip(d, { permanent:true, direction:"center", className:"dlabel", pane:"dlabels", opacity:1 });
       l.on("add", () => {
         const el = l.getElement(); if (!el) return;
         el.setAttribute("role", "button");
