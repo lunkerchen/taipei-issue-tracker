@@ -5,6 +5,7 @@
 /* Hallmark · pre-emit critique: P4 H3 E4 S3 R4 V3 · weakest: S, the header and list read as GitHub on purpose; kept, the concept is the repo metaphor */
 /* Hallmark · waive 24b · section gaps now sit on the 4px grid (18 to 16); the off-grid values left are list padding · Primer's dense list rhythm is part of the GitHub concept */
 /* Hallmark · dismissed 54 · the box label is a GitHub box title; the section is named by its box and its list */
+/* Hallmark · waive 38iii · the gold mark is one star glyph inside the village headings, not a coloured word · guard: the star is a single symbol with no letters in the accent colour */
 /* Hallmark · dismissed F7 · Primer's box recipe is the concept; roles differ by fill and ink */
 /* Layout: repo-style header, one issue list column; filters wrap above it on phones */
 /* GitHub Primer palette, light + dark */
@@ -15,7 +16,7 @@
   --merged:#8250df; --hm0:#eff2f5; --hm1:#aceebb; --hm2:#4ac26b; --hm3:#2da44e; --hm4:#116329;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
-  --on-dark:#ffffff; --ink:#1f2328; --nav-ink:#fd8c73; --badge-l:#555555;
+  --on-dark:#ffffff; --ink:#1f2328; --nav-ink:#fd8c73; --badge-l:#555555; --gold:#d4a72c;
   --r-sm:6px; --r-md:10px; --r-lg:12px;
   --elev-1:0 1px 2px var(--shadow-soft); --elev-2:0 8px 24px var(--shadow);
   --scrim:rgba(0,0,0,.5); --scrim-strong:rgba(0,0,0,.85); --scrim-ctl:rgba(0,0,0,.6); --shadow:rgba(0,0,0,.3); --shadow-soft:rgba(0,0,0,.12);
@@ -204,7 +205,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapmsg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;color:var(--muted);background:var(--hover);z-index:500}
 .mapmsg:empty{display:none}
 .mapnote{position:absolute;top:12px;right:12px;max-width:min(320px,calc(100% - 24px));z-index:1000;background:var(--term);color:var(--term-fg);border-radius:var(--r-md);padding:8px 12px;font-size:14px;box-shadow:0 4px 16px var(--shadow)}
-#dataNote{left:56px;right:12px}
+#dataNote{left:12px;right:auto;top:auto;bottom:12px}
 #dataNote[hidden]{display:none}
 #dataNote button{margin-left:8px}
 .mapside{display:flex;flex-direction:column;min-height:0;overflow:auto}
@@ -312,7 +313,8 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .mapside[hidden]{display:none}
 .lipanel .boxhead #liBack{font-size:18px;line-height:1;padding:2px 10px}
 .ldsec{padding:12px 14px;border-bottom:1px solid var(--line)}
-.ldsec h2{margin:0 0 8px;font-size:15px}
+.ldsec h2,.ldsec h3{margin:0 0 8px;font-size:15px}
+.ldsec h2 span,.ldsec h3 span{color:var(--gold)}
 .ldrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .ldrow:first-child{border-top:0}
 .ldrow .who{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -3181,7 +3183,10 @@ document.addEventListener("keydown", e => {
 });
 
 (async () => {
-  if (typeof claude === "undefined") return render(); // no host API (file opened without the Worker): show the offline state, do not throw
+  if (typeof claude === "undefined") { // no host API (file opened without the Worker): show the offline note over the map, do not throw
+    loadErr = true; syncDataNote();
+    return render();
+  }
   const opt = n => Promise.resolve().then(() => claude.use(n)).catch(() => null); // geocode/news exist only on the Worker host
   [db, sample, geocode, revgeo, newsFn] = await Promise.all([claude.use("db"), claude.use("sample"), opt("geocode"), opt("revgeo"), opt("news")]);
   if (typeof revgeo !== "function") revgeo = null;
