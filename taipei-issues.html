@@ -256,10 +256,8 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a.leaflet-disabled{background-color:var(--hover);color:var(--muted)}
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 var(--bg),1px 0 var(--bg),0 -1px var(--bg),0 1px var(--bg)}
-  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 }
 :root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 var(--bg),1px 0 var(--bg),0 -1px var(--bg),0 1px var(--bg)}
-:root[data-theme="dark"] .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 .pop b{display:block;margin-bottom:2px}
 .pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
 .pop .head b{flex:1}
@@ -282,7 +280,6 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .leaflet-dlabels-pane{pointer-events:none}
 .leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:var(--ink);font-weight:600;font-size:14px;text-shadow:-1px 0 var(--on-dark),1px 0 var(--on-dark),0 -1px var(--on-dark),0 1px var(--on-dark);pointer-events:none}
 .leaflet-tooltip.dlabel::before{display:none}
-.leaflet-tooltip.dlabel.hot{background:var(--ink);color:var(--on-dark);text-shadow:none;padding:4px 10px;border-radius:var(--r-sm);box-shadow:0 2px 8px var(--shadow);z-index:1}
 .leaflet-tooltip.dlabel.gone{display:none}
 .leaflet-li-pane path{cursor:pointer}
 .lipanel ol{list-style:none;margin:0;padding:0}
@@ -1998,8 +1995,8 @@ async function drawDistricts() {
           e.preventDefault(); openDistrict(d);
         });
       });
-      l.on("mouseover", () => { if (curDist) return; l.getElement()?.classList.add("hot"); l.bringToFront(); l.setTooltipContent(`${d}・點擊查看各里`); l.getTooltip().getElement()?.classList.add("hot"); });
-      l.on("mouseout", () => { l.getElement()?.classList.remove("hot"); l.setTooltipContent(d); l.getTooltip().getElement()?.classList.remove("hot"); });
+      l.on("mouseover", () => { if (curDist) return; l.getElement()?.classList.add("hot"); l.bringToFront(); });
+      l.on("mouseout", () => { l.getElement()?.classList.remove("hot"); });
       l.on("click", () => openDistrict(d));
     } }).addTo(mainLM);
   cityBounds = L.geoJSON(gj).getBounds(); flyBounds(mainLM, cityBounds, { padding:[12, 12] });
