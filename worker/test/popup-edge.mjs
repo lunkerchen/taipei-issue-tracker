@@ -38,7 +38,10 @@ try {
       await page.goto(BASE, { waitUntil:"domcontentloaded" });
       await page.waitForFunction(() => localStorage.getItem("tit-visitor") && !document.querySelector("#navReport").hidden);
       await page.waitForTimeout(3500);
+      // At 320px the fixed bottom bars cover 全選, so the click scrolls the page; put the map back where the page had it.
+      const scrolled = await page.evaluate(() => scrollY);
       await page.locator("#layerAll").click();
+      await page.evaluate(y => window.scrollTo(0, y), scrolled);
       await page.waitForTimeout(1200);
 
       // The seeded case is north of every demo case, so the top visible marker is a tall, photo pop-up.

@@ -48,7 +48,7 @@ const mapCoordinatesAt = point => page.evaluate(({ x, y }) => {
   return [p.lat, p.lng];
 }, point);
 const caseMarkerPoint = markerId => page.evaluate(id => {
-  const record = markers.get(id), path = record?.m?._path;
+  const record = markers.get(id), path = record?.m?.getElement?.();
   if (!path) return { id, visible:false };
   const rect = path.getBoundingClientRect();
   if (!rect.width || !rect.height) return { id, visible:false };
@@ -83,6 +83,11 @@ const closeReportPopup = async () => {
   const closeButton = page.locator("#map .leaflet-popup-close-button");
   if (await closeButton.count()) await closeButton.click();
 };
+// A tap in a trial can open the district under it, which hides the layer list. Go back to the city view and wait for its fly-out.
+const backToCity = async () => {
+  if (!await page.locator("#distBack").isVisible()) return;
+  await page.evaluate(() => new Promise(done => { mainLM.once("moveend", done); setTimeout(done, 3000); document.querySelector("#distBack").click(); }));
+};
 const toggleTapHold = enabled => page.evaluate(value => {
   if (!mainLM.tapHold) throw new Error("Leaflet did not install its tapHold handler");
   if (value && !mainLM.tapHold.enabled()) mainLM.tapHold.enable();
@@ -93,16 +98,16 @@ const trial = async (target, targetSpec, tapHold) => {
   await closeReportPopup();
   await toggleTapHold(tapHold);
   if (targetSpec.markerId) {
-    await page.evaluate(() => mainLM.setView([25.0478, 121.5319], 13));
+    await page.evaluate(() => mainLM.setView([25.0478, 121.5319], 13, { animate:false }));
     await page.waitForFunction(id => {
-      const record = markers.get(id), rect = record?.m?._path?.getBoundingClientRect();
+      const record = markers.get(id), rect = record?.m?.getElement?.()?.getBoundingClientRect();
       return !!rect && rect.width > 0 && rect.height > 0 && mainLM.hasLayer(record.m);
     }, targetSpec.markerId, { timeout:10000 });
   }
   const markerPoint = targetSpec.markerId ? await caseMarkerPoint(targetSpec.markerId) : null;
   if (targetSpec.markerId) {
     assert.ok(markerPoint.visible, `${target} is an application-rendered issue marker path`);
-    assert.ok(markerPoint.targetIsPath, `${target} touch point hits that issue's SVG path`);
+    assert.ok(markerPoint.targetIsPath, `${target} touch point hits that issue's marker`);
   }
   const point = markerPoint?.point || await mapPoint(targetSpec.selector, targetSpec.fx ?? .5, targetSpec.fy ?? .5);
   const domTarget = await targetAt(point);
@@ -193,19 +198,26 @@ try {
     return record && { key:record.key, title:record.i.title, coordinates:[record.i.lat, record.i.lng] };
   }, caseMarkerId);
   assert.ok(caseMarker, `the seeded issue ${caseMarkerId} is loaded from the app's report data`);
+  await backToCity();
   const caseLayer = page.locator(`#mapLayers input[data-layer="${caseMarker.key}"]`);
+  // Checking the layer scrolls the page down to the list; put the map back where the page had it.
+  const scrolled = await page.evaluate(() => scrollY);
   await caseLayer.check();
-  await page.evaluate(() => mainLM.setView([25.0478, 121.5319], 13));
+  await page.evaluate(y => window.scrollTo(0, y), scrolled);
+  // No zoom animation: a tap during it leaves the popup half-panned above the map.
+  await page.evaluate(() => mainLM.setView([25.0478, 121.5319], 13, { animate:false }));
   await page.waitForFunction(id => {
-    const record = markers.get(id), path = record?.m?._path;
+    const record = markers.get(id), path = record?.m?.getElement?.();
     const rect = path?.getBoundingClientRect();
     return !!rect && rect.width > 0 && rect.height > 0 && mainLM.hasLayer(record.m);
   }, caseMarkerId, { timeout:10000 });
   const shortPoint = await caseMarkerPoint(caseMarkerId);
-  assert.ok(shortPoint.targetIsPath, "the short tap lands on the real issue's interactive SVG path");
+  assert.ok(shortPoint.targetIsPath, "the short tap lands on the real issue's interactive marker");
   await toggleTapHold(true);
   await page.touchscreen.tap(shortPoint.point.x, shortPoint.point.y);
   await page.locator("#map .leaflet-popup").waitFor({ state:"visible", timeout:3000 });
+  // The taller pin popup pans the map to fit; let the pan end before anything reads or clicks the popup.
+  await page.waitForFunction(() => !mainLM._panAnim?._inProgress);
   const caseShortTap = {
     markerId:caseMarkerId,
     markerCoordinates:shortPoint.markerCoordinates,
@@ -229,6 +241,7 @@ try {
   caseMarkerPair.push(await trial("live case marker", caseMarkerTarget, true));
   comparisons.push(...caseMarkerPair);
   assert.equal(await caseLayer.isChecked(), true, "the tested real issue marker layer stays selected for the path comparison");
+  await backToCity();
   await caseLayer.uncheck();
 
   await page.evaluate(() => { window.__mapContextmenuEvents = []; });
@@ -254,6 +267,7 @@ try {
   assert.equal(await page.evaluate(() => window.__mapContextmenuEvents.length), 0, "a multi-touch gesture does not fire contextmenu");
 
   // The timeline renders to canvas. Compare native behavior with Leaflet tapHold at the same canvas point.
+  await backToCity();
   await page.locator("#mapLayers input[type=checkbox]").first().check();
   await page.locator("#histOn").check();
   await page.waitForFunction(() => /件派工$/.test(document.querySelector("#histCount").textContent), null, { timeout:30000 });

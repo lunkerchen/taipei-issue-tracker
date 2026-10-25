@@ -9,14 +9,13 @@ const playwrightPath = process.env.PLAYWRIGHT_MODULE || "playwright";
 const { chromium } = require(playwrightPath);
 
 const BASE = process.env.BASE || "http://localhost:8903";
-const executablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const viewports = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "mobile 390x844", width: 390, height: 844 },
 ];
 
-const browser = await chromium.launch({ executablePath, headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_EXECUTABLE_PATH ? { executablePath: process.env.CHROME_EXECUTABLE_PATH } : {}) });
 try {
   for (const vp of viewports) {
     const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
