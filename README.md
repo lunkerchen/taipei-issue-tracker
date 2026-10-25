@@ -133,6 +133,7 @@ Cloudflare Worker（worker/src/index.js）
 | `taipei-issues.html` | 整個前端（單一檔案） |
 | `check.mjs` | 前端邏輯檢查：個資遮蔽、資料清理、台北市界、範本、照片 key、食住行育樂醫分類 |
 | `worker/` | Cloudflare Worker：`src/index.js`（路由）、`src/hub.js`（Durable Object）、`build.mjs`、`data.json`（種子資料）、`test/` |
+| `.github/workflows/ci.yml` | GitHub Actions CI：前端檢查與 Worker API 測試 |
 | `data/1999-categories.json` | 1999 官方案件分類（9 大類、136 子類） |
 | `data/history-2026.json` | 2026 年 1 月到 9 月的 1999 派工（路段層級） |
 | `data/history-roads.json` | 路段座標快取 |
@@ -201,6 +202,8 @@ node check.mjs
 node worker/test/votes.mjs
 node worker/test/visitor.mjs
 ```
+
+GitHub Actions 會在每個 pull request 與每次 push 到 `master` 時執行 CI（`.github/workflows/ci.yml`）。CI 先執行 `node check.mjs` 與不需伺服器的 Node 測試：`relative-time`、`sync`、`visitor`、`votes`。接著用 `wrangler dev` 在 8877 埠啟動本機 Worker，對它執行 Worker API 測試：`smoke`、`create-item-validation`、`hidden-cases`、`release-tag-path`、`report-contact-bypass`、`public-snapshot`、`release-hidden-after-publish`、`report-contact`、`visitor-doc-schema`。CI 不執行瀏覽器回歸測試，請在自己的電腦上執行。
 
 瀏覽器回歸測試需要 Playwright 與運作中的本機 Worker。請在測試環境安裝 Playwright，也可以用 `PLAYWRIGHT_MODULE` 指定套件路徑、`CHROME_EXECUTABLE_PATH` 指定已安裝的 Chrome 執行檔。電話遮罩測試預設使用 8788 埠；其他本機網址可用 `PHONE_MASK_BASE` 設定。設定 `PHONE_MASK_EVIDENCE_DIR` 可儲存瀏覽器截圖。
 
