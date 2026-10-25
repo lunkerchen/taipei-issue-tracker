@@ -194,7 +194,14 @@ Worker API 測試從 `BASE` 讀取 Worker 網址，清單在 `.github/workflows/
 BASE=http://localhost:8788 node worker/test/smoke.mjs
 ```
 
-瀏覽器測試需要 Playwright。`worker/test/browser.mjs` 為每支測試在 8877 埠啟動一個空狀態的新本機 Worker。請先停掉佔用 8877 埠的 Worker，或設定 `BROWSER_TEST_PORT`。在指令後加測試檔名，可只跑那些測試。要用已安裝的 Chrome，請設定 `CHROME_EXECUTABLE_PATH`。
+瀏覽器測試需要 Playwright 與 Chromium。請安裝與 CI 相同的版本；在 Linux 上加 `--with-deps` 一併安裝系統函式庫。
+
+```bash
+npm install -g playwright@1.64.1
+playwright install chromium
+```
+
+`worker/test/browser.mjs` 為每支測試在 8877 埠啟動一個空狀態的新本機 Worker。請先停掉佔用 8877 埠的 Worker，或設定 `BROWSER_TEST_PORT`。在指令後加測試檔名，可只跑那些測試。要用已安裝的 Chrome，請設定 `CHROME_EXECUTABLE_PATH`。
 
 ```bash
 PLAYWRIGHT_MODULE="$(npm root -g)/playwright" node worker/test/browser.mjs

@@ -194,7 +194,14 @@ The Worker API tests use the Worker URL in `BASE`. The list of these tests is in
 BASE=http://localhost:8788 node worker/test/smoke.mjs
 ```
 
-The browser tests need Playwright. `worker/test/browser.mjs` starts a new local Worker with empty state on port 8877 for each test. Stop other Workers on that port, or set `BROWSER_TEST_PORT`. Add test file names to run only those tests. Set `CHROME_EXECUTABLE_PATH` to use an installed Chrome.
+The browser tests need Playwright and Chromium. Install the same version as CI. On Linux, add `--with-deps` to install the system libraries.
+
+```bash
+npm install -g playwright@1.64.1
+playwright install chromium
+```
+
+`worker/test/browser.mjs` starts a new local Worker with empty state on port 8877 for each test. Stop other Workers on that port, or set `BROWSER_TEST_PORT`. Add test file names to run only those tests. Set `CHROME_EXECUTABLE_PATH` to use an installed Chrome.
 
 ```bash
 PLAYWRIGHT_MODULE="$(npm root -g)/playwright" node worker/test/browser.mjs
