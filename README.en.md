@@ -70,7 +70,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Relative time**: Times show the full minutes, hours or days that passed. For example, 90 minutes shows 1 hour.
 - **Long text**: A word or URL that is longer than the available width wraps at any character. The text stays inside the page.
 - **Browser identity**: The Worker site keeps your visitor identity in this browser. It confirms the identity on each page load. If the browser cannot keep the identity, the site stays read-only. Allow site storage and reload to send reports.
-- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board, and selected Threads posts. A pause button stops the ticker. The browser keeps your selection.
+- **News ticker**: The bottom of the page shows Taipei news from Bing News and the PTT Taipei board, and selected Threads posts. A daily cron job saves a snapshot of both feeds; the ticker uses it when both sources are down. A pause button stops the ticker. The browser keeps your selection.
 
 **Department administrators** (demo mode, no verification: click **局處後台（示範，免驗證）** at the bottom of the page, or add `?admin` to the URL. **回到市民畫面** or `?citizen` goes back. Anyone with the link can use all administrator functions, including the reporters' names and phone numbers. Use only simulated data.)
 
@@ -95,7 +95,8 @@ Cloudflare Worker (worker/src/index.js)
   ├─ /api/db, /api/ws ── Hub Durable Object (SQLite): shared database and live updates
   ├─ /api/sample ─────── Claude API (Haiku for sorting, Sonnet for releases)
   ├─ /api/geocode ────── OpenStreetMap Nominatim (address to point and point to address, cache 7 days)
-  ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes)
+  ├─ /api/news ───────── Bing News RSS, PTT Taipei board (cache 10 minutes; falls back to the daily snapshot when both are down)
+  ├─ cron 01:00 UTC ─── Daily: saves a news snapshot in the Hub (kept 2 days)
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── Name, mobile number and email address of the citizen (private DO table, the admin console can read it; the demo admin console needs no verification)
   ├─ /api/mine ───────── Owner only: the number of your cases that an administrator hid (signed visitor token)

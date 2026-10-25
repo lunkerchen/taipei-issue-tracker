@@ -70,7 +70,7 @@
 - **相對時間**：只顯示完整經過的分鐘、小時或天數，例如 90 分鐘顯示 1 小時。
 - **長字串**：比可用寬度更長的單字或網址會在任何字元換行，不會超出頁面。
 - **瀏覽器身分**：Worker 網站會在這個瀏覽器保留訪客身分，並在每次載入頁面時確認。瀏覽器無法保留身分時，網站維持唯讀；允許網站儲存資料並重新整理後即可通報。
-- **跑馬燈**：頁面底部顯示 Bing News 與 PTT Taipei 板的台北新聞，以及人工挑選的 Threads 貼文。暫停按鈕可停止跑馬燈，瀏覽器會記住你的選擇。
+- **跑馬燈**：頁面底部顯示 Bing News 與 PTT Taipei 板的台北新聞，以及人工挑選的 Threads 貼文；每日排程會存一份新聞快照，兩來源都失敗時跑馬燈改用此快照。暫停按鈕可停止跑馬燈，瀏覽器會記住你的選擇。
 
 **局處管理者**（示範模式，不需驗證：點頁面底部的 **局處後台（示範，免驗證）**，或在網址加上 `?admin`；點 **回到市民畫面** 或加上 `?citizen` 回到市民畫面。任何拿到網址的人都能使用全部管理功能，包含通報者姓名與電話，只能放模擬資料。）
 
@@ -95,7 +95,8 @@ Cloudflare Worker（worker/src/index.js）
   ├─ /api/db、/api/ws ── Hub Durable Object（SQLite）：共享資料庫與即時更新
   ├─ /api/sample ─────── Claude API（分類用 Haiku，release 用 Sonnet）
   ├─ /api/geocode ────── OpenStreetMap Nominatim（地址轉座標與座標轉地址，快取 7 天）
-  ├─ /api/news ───────── Bing News RSS、PTT Taipei 板（快取 10 分鐘）
+  ├─ /api/news ───────── Bing News RSS、PTT Taipei 板（快取 10 分鐘；兩來源都失敗時改用每日快照）
+  ├─ cron 01:00 UTC ─── 每日：在 Hub 存一份新聞快照（保留 2 天）
   ├─ /api/photo ──────── R2 bucket `taipei-issue-photos`
   ├─ /api/contact ────── 市民姓名、手機與 Email（DO 私有資料表，後台可讀，示範站後台免驗證）
   ├─ /api/mine ───────── 僅案件作者：被管理者隱藏的陳情件數（需簽章訪客權杖）
