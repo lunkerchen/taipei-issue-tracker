@@ -36,6 +36,13 @@ const stop = async child => {
   kill("SIGKILL");
   await exited(child, 10_000);
 };
+// Ctrl-C reaches only this runner, not the detached groups: stop them and remove the temporary state here
+let current = [], currentState = null;
+for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => {
+  for (const child of current) try { process.kill(-child.pid, "SIGKILL"); } catch {}
+  if (currentState) rmSync(currentState, { recursive: true, force: true });
+  process.exit(130);
+});
 const portFree = async () => { for (let i = 0; i < 50; i++) { if (!await listening()) return; await sleep(200); } throw new Error(`port ${PORT} is still in use; set BROWSER_TEST_PORT`); };
 
 const failed = [];
@@ -44,6 +51,7 @@ for (const file of files) {
   const state = mkdtempSync(join(tmpdir(), "taipei-ci-")), log = join(state, "wrangler.log"), out = openSync(log, "w");
   const worker = spawn(WRANGLER[0], [...WRANGLER.slice(1), "dev", "--port", String(PORT), "--ip", "127.0.0.1", "--var", "VISITOR_SECRET:ci", "--persist-to", join(state, "data")],
     { cwd: join(here, ".."), detached: true, stdio: ["ignore", out, out], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
+  current = [worker]; currentState = state;
   let ok = false, started = Date.now();
   // Ready only while our Worker still runs: the port was free before it started
   for (let i = 0; i < 90 && running(worker) && !(ok = await ready()); i++) await sleep(1000);
@@ -53,6 +61,7 @@ for (const file of files) {
     const env = { ...process.env, BASE: URL_ };
     for (const [, name] of readFileSync(join(here, file), "utf8").matchAll(/process\.env\.([A-Z_]*BASE)\b/g)) env[name] = URL_;
     const test = spawn("node", [join(here, file)], { env, stdio: "inherit", detached: true });
+    current.push(test);
     ok = await exited(test, 300_000) && test.exitCode === 0;
     await stop(test);
   }
@@ -60,6 +69,7 @@ for (const file of files) {
   console.log(`${ok ? "PASS" : "FAIL"} ${file} (${Math.round((Date.now() - started) / 1000)} s)`);
   if (!ok) { failed.push(file); console.log(readFileSync(log, "utf8").split("\n").slice(-30).join("\n")); }
   rmSync(state, { recursive: true, force: true });
+  current = []; currentState = null;
 }
 console.log(`${files.length - failed.length}/${files.length} passed${failed.length ? "; failed: " + failed.join(", ") : ""}`);
 process.exit(failed.length ? 1 : 0);
