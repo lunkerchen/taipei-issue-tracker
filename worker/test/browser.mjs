@@ -14,7 +14,7 @@ const flags = process.argv.slice(2).filter(a => a.startsWith("--")), named = pro
 const shardMatch = flags.length === 1 && flags[0].match(/^--shard=(\d+)\/(\d+)$/);
 if (flags.length && !shardMatch) throw new Error(`unknown flags: ${flags.join(" ")}; use --shard=<n>/<total>`);
 const [shard, shards] = shardMatch ? [+shardMatch[1], +shardMatch[2]] : [1, 1];
-if (!(shard >= 1 && shard <= shards)) throw new Error(`bad --shard: ${flags[0]}`);
+if (!(Number.isSafeInteger(shard) && Number.isSafeInteger(shards) && shard >= 1 && shard <= shards)) throw new Error(`bad --shard: ${flags[0]}`);
 // Left out of the default run until rewritten. Name a file to run it anyway.
 const SKIP = { "map-long-press.mjs": "its history section still targets the timeline canvas, which f16dc1e replaced with pins" };
 const files = (named.length ? named : readdirSync(here).filter(f => /\.[cm]?js$/.test(f) && f !== "browser.mjs" && !SKIP[f] && readFileSync(join(here, f), "utf8").includes("playwright")).sort())
@@ -24,8 +24,8 @@ if (!files.length) throw new Error("no tests to run");
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Any HTTP answer means something listens on the port; only a refused connection means it is free
-const listening = async () => { try { await fetch(URL_, { signal: AbortSignal.timeout(2000) }); return true; } catch (e) { return e.cause?.code !== "ECONNREFUSED"; } };
-const ready = async () => { try { return (await fetch(URL_ + "/api/db", { signal: AbortSignal.timeout(2000) })).ok; } catch { return false; } };
+const listening = async () => { try { await fetch(URL_, { redirect: "manual", signal: AbortSignal.timeout(2000) }); return true; } catch (e) { return e.cause?.code !== "ECONNREFUSED"; } };
+const ready = async () => { try { return (await fetch(URL_ + "/api/db", { redirect: "manual", signal: AbortSignal.timeout(2000) })).ok; } catch { return false; } };
 const running = child => child.exitCode === null && child.signalCode === null;
 const exited = (child, ms) => new Promise(r => { if (!running(child)) return r(true); const t = setTimeout(() => r(false), ms); child.once("exit", () => { clearTimeout(t); r(true); }); });
 // Each child leads its own process group (detached), so this also stops workerd and Chromium, even after the leader exits
@@ -53,8 +53,9 @@ for (const file of files) {
     { cwd: join(here, ".."), detached: true, stdio: ["ignore", out, out], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
   current = [worker]; currentState = state;
   let ok = false, started = Date.now();
-  // Ready only while our Worker still runs: the port was free before it started
-  for (let i = 0; i < 90 && running(worker) && !(ok = await ready()); i++) await sleep(1000);
+  // Ready only when our own Worker says it listens on this URL and still runs, so another server on the port cannot pass
+  const ours = () => running(worker) && readFileSync(log, "utf8").includes(`Ready on ${URL_}`);
+  for (let i = 0; i < 90 && running(worker) && !(ok = ours() && await ready()); i++) await sleep(1000);
   ok &&= running(worker);
   if (ok) {
     // Each test reads BASE or its own *_BASE name; give all of them this Worker
