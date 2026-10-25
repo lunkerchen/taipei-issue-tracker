@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, openSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -54,7 +55,7 @@ for (const file of files) {
   current = [worker]; currentState = state;
   let ok = false, started = Date.now();
   // Ready only when our own Worker says it listens on this URL and still runs, so another server on the port cannot pass
-  const ours = () => running(worker) && readFileSync(log, "utf8").includes(`Ready on ${URL_}`);
+  const ours = () => running(worker) && stripVTControlCharacters(readFileSync(log, "utf8")).includes(`Ready on ${URL_}`);
   for (let i = 0; i < 90 && running(worker) && !(ok = ours() && await ready()); i++) await sleep(1000);
   ok &&= running(worker);
   if (ok) {
