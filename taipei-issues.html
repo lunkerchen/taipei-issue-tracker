@@ -245,10 +245,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a:hover{background-color:var(--hover);color:var(--fg)}
 :is(.mapbox,.pickbox) .leaflet-control-container .leaflet-bar a.leaflet-disabled{background-color:var(--hover);color:var(--muted)}
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+  :root:not([data-theme="light"]) .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 #0d1117,1px 0 #0d1117,0 -1px #0d1117,0 1px #0d1117}
   :root:not([data-theme="light"]) .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 }
-:root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:0 0 3px #0d1117,0 0 3px #0d1117}
+:root[data-theme="dark"] .leaflet-tooltip.dlabel{color:var(--fg);text-shadow:-1px 0 #0d1117,1px 0 #0d1117,0 -1px #0d1117,0 1px #0d1117}
 :root[data-theme="dark"] .leaflet-tooltip.dlabel.hot{background:var(--fg);color:var(--bg)}
 .pop b{display:block;margin-bottom:2px}
 .pop .head{display:flex;align-items:flex-start;gap:8px;padding-right:36px}
@@ -270,7 +270,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .leaflet-districts-pane path:focus-visible,.rpin:focus-visible{border-radius:4px}
 @media (prefers-reduced-motion:reduce){.leaflet-districts-pane path{transition:none}.leaflet-districts-pane path.hot{transform:none}}
 .leaflet-dlabels-pane{pointer-events:none}
-.leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:#1f2328;font-weight:700;font-size:14px;text-shadow:0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+.leaflet-tooltip.dlabel{background:none;border:0;box-shadow:none;padding:0;color:#1f2328;font-weight:700;font-size:14px;text-shadow:-1px 0 #fff,1px 0 #fff,0 -1px #fff,0 1px #fff;pointer-events:none}
 .leaflet-tooltip.dlabel::before{display:none}
 .leaflet-tooltip.dlabel.hot{background:#1f2328;color:#fff;text-shadow:none;padding:4px 10px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:1}
 .leaflet-tooltip.dlabel.gone{display:none}
