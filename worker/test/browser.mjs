@@ -12,6 +12,7 @@ const PORT = +(process.env.BROWSER_TEST_PORT || 8877), URL_ = `http://127.0.0.1:
 const WRANGLER = ["npx", "--yes", "wrangler@4.151.3"];
 const shardArg = process.argv.find(a => a.startsWith("--shard="));
 const [shard, shards] = shardArg ? shardArg.slice(8).split("/").map(Number) : [1, 1];
+if (!(Number.isInteger(shard) && Number.isInteger(shards) && shard >= 1 && shard <= shards)) throw new Error(`bad --shard: ${shardArg}`);
 const named = process.argv.slice(2).filter(a => !a.startsWith("--"));
 // Left out of the default run until rewritten. Name a file to run it anyway.
 const SKIP = { "map-long-press.mjs": "its history section still targets the timeline canvas, which f16dc1e replaced with pins" };
