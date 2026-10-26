@@ -8,13 +8,19 @@
 
 這個網站把台北市呈現成一個 GitHub repo。市民的 1999 陳情是 issue。局處的修繕是 pull request。每月的派工摘要是 release。
 
-這是手機優先的 1999 快速通報網站。市民送出陳情。AI 分類陳情，並分派給負責的局處。陳情會立即出現在地圖上。網站標題是「台北市，你給我聽好了｜市民 1999 通報地圖」。
+這是個人製作的非官方示範網站，參考 1999 通報流程。本站不是臺北市政府或 1999 官方網站。本站陳情是模擬案件，不會轉交市府或 1999。AI 會分類通報，並建議負責局處。案件會立即出現在地圖上。網站標題是「台北市，你給我聽好了｜市民 1999 通報地圖（非官方示範）」。
 
 - 線上網站：<https://taipei-issue-tracker.labanchen.workers.dev>
 - 局處後台（示範，免驗證）：<https://taipei-issue-tracker.labanchen.workers.dev/?admin>
 - 黑客松題目：[puma.taipei/hackathon](https://puma.taipei/hackathon)「你看見的市政 bug」
 
 > 網站上的陳情、修繕單與 +1 是**模擬資料**，不是台北市政府的真實案件。地圖時間軸與每月派工報告使用 data.taipei 的真實 1999 派工資料。請參閱〈資料來源〉。
+
+## 搜尋資料
+
+Worker 產生的頁面有 Schema.org JSON-LD，包含 `WebSite`、`WebPage` 與 `WebApplication` 三個節點。描述會說明這是個人製作的非官方示範；公開案件與分派為模擬，不會送到臺北市政府或 1999。Canonical 與 Open Graph 網址都指向本站。
+
+執行 `node worker/test/structured-data.mjs`，即可重新建置頁面並檢查 JSON-LD、節點關係、canonical 網址、頁面 metadata 與可見聲明。這項本機檢查不保證 Google 搜尋結果會顯示特殊功能。
 
 ## 畫面截圖
 
@@ -52,7 +58,7 @@
 - **白話進度卡**：市民案件詳情顯示示範進度卡，列出目前狀態、負責單位、最近一次處理動作與日期。市民補充分開顯示，不會重置處理日期。沒有後續處理紀錄時會直接說明，不推算完工日期。市民畫面以白話中文顯示尚未完成、修繕單已完成，以及超過 7 天沒有處理進度；局處後台保留原有用語。
 - **補充與草稿**：你可以在自己的案件新增文字和最多 3 張照片，每件案件最多 10 則補充。撰寫補充時若案件轉為不公開，網站會把文字保留在列表上方。
 - **定位**：使用 GPS、在小地圖拖曳大頭針，或在地圖上長按約一秒。在電腦上，對地圖按右鍵。確認地址後才開啟通報表單。
-- **AI 分派（taipei-bot）**：Claude 判斷負責局處、1999 官方分類（9 大類、136 子類）與行政區。它也會找出重複的陳情、台北市以外的地點、內容不清楚的陳情與垃圾訊息。
+- **AI 分類與局處建議（taipei-bot）**：Claude 建議負責局處、1999 官方分類（9 大類、136 子類）與行政區。它也會找出重複的陳情、台北市以外的地點、內容不清楚的陳情與垃圾訊息。
 - **個資遮蔽**：送出陳情或補充前，網站會遮蔽台灣電話、Email 與身分證字號。聯絡資料欄位不遮蔽。瀏覽器會把每張照片縮小並重新編碼，這樣會移除 EXIF 資料與拍攝位置。
 - **地圖**：地圖依 1999 九大類各分一個圖層。新通報會立即出現（WebSocket）。地圖下方的 **Live** 顯示今天最新的陳情。陳情資料載入失敗時，地圖會顯示連線中斷與重新整理按鈕。陳情圖標與行政區都可用 Tab 聚焦。
 - **行政區地圖**：網站一開啟就進入地圖。主地圖以平面色塊顯示 12 個行政區。點擊行政區會拉近到該區，按 **← 全市** 回到全市。界線檔載入失敗時，改顯示街道底圖。
@@ -132,7 +138,7 @@ Cloudflare Worker（worker/src/index.js）
 | `taipei-issues.html` | 整個前端（單一檔案） |
 | `check.mjs` | 前端邏輯檢查：個資遮蔽、資料清理、台北市界、範本、照片 key、食住行育樂醫分類 |
 | `worker/` | Cloudflare Worker：`src/index.js`（路由）、`src/hub.js`（Durable Object）、`build.mjs`、`data.json`（種子資料）、`test/`（`test/browser.mjs` 執行瀏覽器測試） |
-| `.github/workflows/ci.yml` | GitHub Actions CI：前端檢查、Worker API 測試與瀏覽器回歸測試 |
+| `.github/workflows/ci.yml` | GitHub Actions CI：前端與結構化資料檢查、Worker API 測試與瀏覽器回歸測試 |
 | `data/1999-categories.json` | 1999 官方案件分類（9 大類、136 子類） |
 | `data/history-2026.json` | 2026 年 1 月到 9 月的 1999 派工（路段層級） |
 | `data/history-roads.json` | 路段座標快取 |
@@ -190,6 +196,7 @@ cd worker && npx wrangler dev --port 8788
 ```bash
 node check.mjs
 for t in relative-time sync visitor votes; do node worker/test/$t.mjs; done
+node worker/test/structured-data.mjs
 ```
 
 Worker API 測試從 `BASE` 讀取 Worker 網址，清單在 `.github/workflows/ci.yml`。例如：

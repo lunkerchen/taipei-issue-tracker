@@ -8,13 +8,19 @@
 
 This website shows Taipei City as a GitHub repository. A 1999 citizen report is an issue. A repair by a city department is a pull request. Each monthly dispatch summary is a release.
 
-This is a 1999 quick-report website for mobile phones. A citizen sends a report. AI sorts the report and sends it to the correct department. The report shows on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖」.
+This is a personal, non-official demonstration of the 1999 reporting process. It is not a Taipei City Government or official 1999 website. Reports on this site are simulated. The site does not forward them to the government or 1999. AI classifies each report and suggests a department. Reports show on the map immediately. The website title is 「台北市，你給我聽好了｜市民 1999 通報地圖（非官方示範）」.
 
 - Live website: <https://taipei-issue-tracker.labanchen.workers.dev>
 - Admin console (demo, no verification): <https://taipei-issue-tracker.labanchen.workers.dev/?admin>
 - Hackathon topic: [puma.taipei/hackathon](https://puma.taipei/hackathon), "the city bug that you see"
 
 > The reports, repair orders and +1 votes on the website are **simulated data**. They are not real cases of the Taipei City Government. The map timeline and the monthly dispatch reports use real 1999 dispatch data from data.taipei. Refer to "Data sources".
+
+## Search data
+
+The generated Worker page has a Schema.org JSON-LD graph with `WebSite`, `WebPage` and `WebApplication` nodes. Their descriptions identify this personal, non-official demonstration. They state that public reports and assignments are simulated and are not sent to Taipei City Government or 1999. The canonical and Open Graph URLs point to this website.
+
+Run `node worker/test/structured-data.mjs` to rebuild the page and check its JSON-LD, node links, canonical URL, page metadata and visible notice. This local check does not guarantee a Google search enhancement.
 
 ## Screenshots
 
@@ -52,7 +58,7 @@ These screenshots show the live website on 2026-10-24 (light mode, simulated dat
 - **Plain-language progress**: Citizen case details show a demo progress card with the current status, the department, the last handling action and its date. Citizen additions show separately and do not reset the handling date. If there is no later handling record, the card says so. The website does not estimate a completion date. Citizen pages use plain Chinese for unfinished cases, completed repair records and cases with no handling progress for more than 7 days. The admin console keeps its existing terms.
 - **Additions and drafts**: You can add text and a maximum of 3 photos to your own case. Each case can have a maximum of 10 additions. If the case becomes private while you write, the website keeps your text above the list.
 - **Location**: Use GPS, move the pin on the small map, or push and hold on the map for about one second. On a computer, right-click the map. The report form opens after you confirm the address.
-- **AI dispatch (taipei-bot)**: Claude finds the department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
+- **AI suggestions (taipei-bot)**: Claude suggests a department, the official 1999 category (9 main categories, 136 subcategories) and the district. It also finds duplicate reports, locations outside Taipei, text that is not clear, and spam.
 - **Personal data mask**: Before the website sends a report or an addition, it hides Taiwan telephone numbers, email addresses and ID numbers. The mask does not apply to the contact fields. The browser makes each photo smaller and encodes it again. This removes EXIF data and the photo location.
 - **Map**: The map has one layer for each of the 9 main 1999 categories. New reports show immediately (WebSocket). Below the map, **Live** shows the newest reports of today. If report data cannot load, the map shows a connection error and a reload button. You can reach each report pin and district with Tab.
 - **District map**: The website opens on the map. The main map shows the 12 districts as flat colour areas. Click a district to zoom in. **← 全市** goes back to the full city. If the boundary file cannot load, the map shows the street basemap.
@@ -132,7 +138,7 @@ The same `taipei-issues.html` page can also operate as a claude.ai artifact. `wo
 | `taipei-issues.html` | All of the front end (one file) |
 | `check.mjs` | Front-end logic checks: personal data mask, data cleanup, Taipei boundary, templates, photo keys, area of daily life |
 | `worker/` | Cloudflare Worker: `src/index.js` (routes), `src/hub.js` (Durable Object), `build.mjs`, `data.json` (seed data), `test/` (`test/browser.mjs` runs the browser tests) |
-| `.github/workflows/ci.yml` | GitHub Actions CI: front-end checks, Worker API tests and browser regression tests |
+| `.github/workflows/ci.yml` | GitHub Actions CI: front-end and structured data checks, Worker API tests and browser regression tests |
 | `data/1999-categories.json` | Official 1999 case categories (9 main categories, 136 subcategories) |
 | `data/history-2026.json` | 1999 dispatches from January to September 2026 (road section level) |
 | `data/history-roads.json` | Cache of road coordinates |
@@ -190,6 +196,7 @@ These checks do not need a server:
 ```bash
 node check.mjs
 for t in relative-time sync visitor votes; do node worker/test/$t.mjs; done
+node worker/test/structured-data.mjs
 ```
 
 The Worker API tests use the Worker URL in `BASE`. The list of these tests is in `.github/workflows/ci.yml`. For example:

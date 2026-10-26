@@ -5,6 +5,8 @@ import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from
 import { fileURLToPath } from "node:url";
 const here = p => fileURLToPath(new URL(p, import.meta.url));
 const page = readFileSync(here("../taipei-issues.html"), "utf8");
+// The artifact keeps its own title, but the Worker page already emits one in <head>.
+const workerPage = page.replace(/^<title\b[^>]*>[\s\S]*?<\/title>\s*/i, "");
 
 const shim = `<script>
 (() => {
@@ -206,13 +208,51 @@ window.claude = { use: async n => n === "sample" ? ((await ai) ? sample : null) 
 
 mkdirSync(here("public"), { recursive: true });
 // Share card: og:image needs an absolute URL, so the live site address is fixed here
-const SITE = "https://taipei-issue-tracker.labanchen.workers.dev", TITLE = "台北市，你給我聽好了｜市民 1999 通報地圖";
-const DESC = "手機優先的 1999 快速通報網站：送出陳情，AI 分類並分派給負責局處，陳情立即出現在地圖上。";
+const SITE = "https://taipei-issue-tracker.labanchen.workers.dev", SITE_URL = `${SITE}/`;
+const SITE_NAME = "台北市，你給我聽好了｜非官方示範";
+const TITLE = "台北市，你給我聽好了｜市民 1999 通報地圖（非官方示範）";
+const DESC = "個人開發的非官方示範網站，與臺北市政府及 1999 官方網站無關。本站通報不會轉交臺北市政府或 1999；公開案件與分派均為模擬。地圖時間軸與月報引用 data.taipei 的歷史派工資料。";
+const WEBSITE_ID = `${SITE_URL}#website`, WEBPAGE_ID = `${SITE_URL}#webpage`, APPLICATION_ID = `${SITE_URL}#application`;
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": WEBSITE_ID,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: DESC,
+      inLanguage: "zh-Hant"
+    },
+    {
+      "@type": "WebPage",
+      "@id": WEBPAGE_ID,
+      url: SITE_URL,
+      name: TITLE,
+      description: DESC,
+      isPartOf: { "@id": WEBSITE_ID },
+      mainEntity: { "@id": APPLICATION_ID },
+      inLanguage: "zh-Hant"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": APPLICATION_ID,
+      url: SITE_URL,
+      name: TITLE,
+      description: DESC,
+      isPartOf: { "@id": WEBSITE_ID },
+      browserRequirements: "需要支援 JavaScript 的現代瀏覽器。",
+      isAccessibleForFree: true,
+      inLanguage: "zh-Hant"
+    }
+  ]
+};
+const jsonLd = JSON.stringify(structuredData, null, 2).replace(/</g, "\\u003c");
 copyFileSync(here("../docs/og.jpg"), here("public/og.jpg"));
 for (const f of ["history-2026.json", "districts.geojson", "li.geojson", "li-contacts.json", "councilors.json"]) if (existsSync(here("../data/" + f))) copyFileSync(here("../data/" + f), here("public/" + f));
 writeFileSync(here("public/index.html"), `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${TITLE}</title>
-<meta name="description" content="${DESC}"><meta property="og:type" content="website"><meta property="og:site_name" content="${TITLE}"><meta property="og:title" content="${TITLE}"><meta property="og:description" content="${DESC}">
-<meta property="og:url" content="${SITE}/"><meta property="og:image" content="${SITE}/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${TITLE}"><meta name="twitter:card" content="summary_large_image"></head><body style="margin:0">
-<div style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">展示版：資料為模擬資料，所有訪客共用、即時同步。</div>
-${shim}${page}</body></html>`);
+<meta name="description" content="${DESC}"><link rel="canonical" href="${SITE_URL}"><meta property="og:type" content="website"><meta property="og:site_name" content="${SITE_NAME}"><meta property="og:title" content="${TITLE}"><meta property="og:description" content="${DESC}">
+<meta property="og:url" content="${SITE_URL}"><meta property="og:image" content="${SITE}/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${TITLE}"><meta name="twitter:card" content="summary_large_image"><script type="application/ld+json">${jsonLd}</script></head><body style="margin:0">
+<div id="demo-notice" style="font:13px system-ui;padding:6px 12px;background:#fff3cd;color:#664d03">非官方示範：本站通報為模擬案件，不會轉交市府。所有訪客共用、即時同步。</div>
+${shim}${workerPage}</body></html>`);
 console.log("built public/index.html");

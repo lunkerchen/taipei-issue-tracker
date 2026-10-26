@@ -22,6 +22,7 @@ jobs:
         run: |
           node check.mjs
           for t in relative-time sync visitor votes; do node worker/test/$t.mjs; done
+          node worker/test/structured-data.mjs
 
       - name: Start local Worker
         working-directory: worker
