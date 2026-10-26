@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 
 const src = readFileSync(new URL("../../taipei-issues.html", import.meta.url), "utf8");
 const handler = src.slice(src.indexOf("function setVote("), src.indexOf("function heatmap()"));
-const make = new Function("db", "initial", `
+const make = new Function("db", "initial", "captureProgressForParticipation", "finishProgressRead", `
   let myVotes = { ...initial }, me = "visitor", votesRevision = 0;
   const pendingVoteWrites = new Map();
   const render = () => {}, fail = () => {};
@@ -12,12 +12,14 @@ const make = new Function("db", "initial", `
   return { vote: setVote, state: () => myVotes };
 `);
 
+const captureProgressForParticipation = () => null;
+const finishProgressRead = () => false;
 let stored = {};
 const db = { updateCreates: true, collection: () => ({ doc: () => ({
   set: async data => { stored = { ...data.issues }; },
   update: async data => { stored = { ...stored, ...data.issues }; }
 }) }) };
-const a = make(db, {}), b = make(db, {});
+const a = make(db, {}, captureProgressForParticipation, finishProgressRead), b = make(db, {}, captureProgressForParticipation, finishProgressRead);
 await Promise.all([a.vote("case-a", true), b.vote("case-b", true)]);
 assert.deepEqual(stored, { "case-a": true, "case-b": true }, "stale tabs preserve votes for different cases");
 await a.vote("case-a", false);
@@ -27,7 +29,7 @@ let rejectWrite;
 const failed = new Promise((_, reject) => { rejectWrite = reject; });
 const flaky = make({ updateCreates: true, collection: () => ({ doc: () => ({
   update: data => Object.hasOwn(data.issues, "case-a") ? failed : Promise.resolve()
-}) }) }, {});
+}) }) }, {}, captureProgressForParticipation, finishProgressRead);
 const pending = flaky.vote("case-a", true);
 await flaky.vote("case-b", true);
 rejectWrite(new Error("offline"));

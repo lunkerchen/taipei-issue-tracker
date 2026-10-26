@@ -73,6 +73,9 @@ input,select,textarea{font:inherit;font-size:14px;background:var(--panel);color:
 .repo h1{color:var(--link)}
 .vote:disabled{cursor:default}
 .detail{grid-column:2/4;display:flex;flex-direction:column;gap:10px;padding:6px 0 4px}
+.progress-card{border:1px solid var(--line);border-left:4px solid var(--link);border-radius:var(--r-md);padding:10px 12px;background:color-mix(in srgb,var(--link) 4%,var(--panel));max-width:68ch}
+.progress-card h3{font-size:15px;margin:0 0 8px}.progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px 14px;margin:0}
+.progress-grid>div{min-width:0}.progress-grid dt{font-size:12px;color:var(--muted)}.progress-grid dd{margin:2px 0 0;overflow-wrap:anywhere}
 .share-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .share-url{flex:1 1 260px;min-width:0}
 .share-notice{padding:10px 14px;text-align:left;color:var(--fg);border-bottom:1px solid var(--line)}
@@ -366,7 +369,11 @@ html{scroll-padding-bottom:32px}
 @media (max-width:760px){html.citizen{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + 2px)}html.citizen.has-tk{scroll-padding-bottom:calc(var(--navh,calc(57px + env(safe-area-inset-bottom))) + var(--tkh,33px) + 2px)}}
 /* Citizen face: visitors get plain Chinese labels and, on phones, a bottom tab bar. Admins keep the GitHub-style 局處後台. */
 .cz,.cz-only,.nav .ni,.mine-h{display:none!important}
-#v-issues.mine > :not(#newBox,.listbox),#v-issues.mine .tab{display:none!important}#v-issues.mine .mine-h{display:inline!important}
+#v-issues.mine > :not(#newBox,.listbox),#v-issues.mine #tabOpen,#v-issues.mine #tabClosed{display:none!important}
+#v-issues.mine .mine-h{display:flex!important}
+.mine-switch{gap:14px;align-items:center}
+.mine-switch .tab{min-height:44px}
+.progress-unread{display:inline-flex;align-items:center;font-size:12px;font-weight:600;border-radius:99px;padding:1px 8px;color:var(--link);background:color-mix(in srgb,var(--link) 12%,transparent);white-space:nowrap}
 .citizen .gh,.citizen .term{display:none!important}.citizen .cz{display:inline!important}.citizen .cz-only{display:inline-flex!important}
 html.citizen [hidden]{display:none!important}
 .citizen #nav :is([data-view=code],[data-view=pulls],[data-view=milestones],[data-view=releases]){display:none}
@@ -487,7 +494,10 @@ Switched to branch 'taipei'
 
   <section class="box listbox">
     <div class="boxhead">
-      <b class="mine-h">我送出的陳情</b>
+      <div class="mine-switch mine-h" id="mineSwitch" role="group" aria-label="我的陳情篩選">
+        <button class="tab" id="mineSent" aria-pressed="true" type="button">我送出</button>
+        <button class="tab" id="mineParticipated" aria-pressed="false" type="button">我參與</button>
+      </div>
       <button class="tab" id="tabOpen" aria-pressed="true" type="button"></button>
       <button class="tab" id="tabClosed" aria-pressed="false" type="button"></button>
       <span class="spacer"></span>
@@ -615,7 +625,7 @@ Switched to branch 'taipei'
     <li><b>後台可見</b>：姓名、手機、Email，以及是否實名檢舉。不會出現在市民畫面，但本示範站的局處後台不需驗證，任何人都能進入並看到。請不要填寫真實個資。</li>
     <li><b>訪客 ID</b>：存在你的瀏覽器（localStorage），用來辨識「我的陳情」。清除瀏覽器資料後，就無法再補充原本的陳情。</li>
     <li><b>IP 位址</b>：用於限流與防洗版，約 24 小時後刪除。Cloudflare 的服務紀錄依 Cloudflare 的政策保存。</li>
-    <li><b>瀏覽器暫存</b>：深色或淺色模式設定（localStorage）；本次填寫的姓名、手機與 Email（sessionStorage，關閉分頁後清除）。</li>
+    <li><b>瀏覽器暫存</b>：深色或淺色模式設定，以及案件已讀狀態（localStorage，只存案件 ID 與內容版本，不保存聯絡資料或案件內容）；本次填寫的姓名、手機與 Email（sessionStorage，關閉分頁後清除）。</li>
   </ul>
   <h3>第三方處理與跨境傳輸</h3>
   <ul>
@@ -761,6 +771,8 @@ const pendingVoteWrites = new Map();
 // Official 1999 case categories (categories/<main id> → { name, subs:[{id,name}] }), scraped from 1999.gov.taipei. SUBS: sub id → { name, main }.
 let cats = [], SUBS = {};
 let view = { closed:false, open:new Set() };
+let mineMode = "sent";
+const participates = i => i.author !== me && (myVotes[i.id] === true || i.notes.some(x => x.other === false));
 const PR_ICON = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.12v5.26a2.25 2.25 0 1 1-1.5 0V5.37A2.25 2.25 0 0 1 1.5 3.25Zm5.68-.53L9.4.5a.25.25 0 0 1 .43.18V2h1.25A2.5 2.5 0 0 1 13.58 4.5v6.13a2.25 2.25 0 1 1-1.5 0V4.5a1 1 0 0 0-1-1H9.83v1.32a.25.25 0 0 1-.43.18L7.18 2.78a.25.25 0 0 1 0-.36ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>';
 
 const $ = id => document.getElementById(id);
@@ -792,7 +804,7 @@ function fail(e, statusNode = null) {
 }
 function applyRole() {
   $("who").textContent = admin ? "你是局處管理者，可變更狀態" : canWrite ? "" : "唯讀檢視";
-  document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "已受理";
+  document.documentElement.classList.toggle("citizen", !admin); STATUS.open[0] = admin ? "Open" : "尚未完成";
   $("newBtn").hidden = $("navReport").hidden = $("reportBtn").hidden = $("lpHint").hidden = !canWrite; $("relBtn").hidden = !admin; $("demoTools").hidden = !admin; $("navAdmin").hidden = !admin; if (admin && wantAdmin) show("admin", true);
   $("roleLink").textContent = admin ? "回到市民畫面" : "局處後台（示範，免驗證）"; $("roleLink").href = admin ? "?citizen#map" : "?admin#admin";
   $("submitBtn").textContent = admin ? "Submit new issue" : "預覽通報";
@@ -925,7 +937,7 @@ function cleanItem(key, it, docId) {
     tags:tags.filter(x => TAGS.includes(x)).slice(0, 5), category:isStr(it.category) && /^TYPEA-AC\d{4}$/.test(it.category) ? it.category : "", flagged:it.flagged === true, triage:{ by:isStr(t.by) ? t.by : "", reason:isStr(t.reason) ? t.reason : "" },
     createdAt:it.createdAt, author:isStr(it.author) ? it.author : "", photos,
     // Follow-ups the reporter added later: text plus up to 3 own photos each, at most 10
-    notes:Array.isArray(it.notes) ? it.notes.filter(x => isObj(x) && isStr(x.text) && validDate(x.t)).slice(0, 10).map(x => ({ t:x.t, text:x.text.slice(0, 500),
+    notes:Array.isArray(it.notes) ? it.notes.filter(x => isObj(x) && isStr(x.text) && validDate(x.t)).slice(0, 10).map(x => ({ id:isStr(x.id) ? x.id : "", t:x.t, text:x.text.slice(0, 500),
       photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(own)).slice(0, 3) : [] })) : [] };
 }
 const defined = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
@@ -937,6 +949,166 @@ function cleanTri(t) {
   return defined({ status:Object.hasOwn(STATUS, t.status) ? t.status : undefined, dept:isStr(t.dept) && Object.hasOwn(DEPTS, t.dept) ? t.dept : undefined,
     milestone:isStr(t.milestone) ? t.milestone : undefined, hidden:typeof t.hidden === "boolean" ? t.hidden : undefined, events:events.length ? events : undefined });
 }
+
+const progressEventTypes = new Set(["labeled", "status", "pr", "merged", "milestone"]);
+function progressVersion(i) {
+  const data = JSON.stringify({
+    status:i.status || "open", dept:i.dept || "1999 待分派",
+    events:(Array.isArray(i.events) ? i.events : []).filter(e => progressEventTypes.has(e.type)).map(e =>
+      [e.type, e.t, e.by || "", e.dept || "", e.to || "", e.pr ?? "", e.n ?? "", e.title || ""]),
+    notes:(Array.isArray(i.notes) ? i.notes : []).map(n =>
+      [n.other === true ? 1 : 0, n.id || "", n.t || "", n.text || "", Array.isArray(n.photos) ? n.photos : []])
+  });
+  // Two independent 32-bit hashes make a compact content version without saving report text locally.
+  let a = 0x811c9dc5, b = 0x9e3779b9;
+  for (let n = 0; n < data.length; n++) {
+    const c = data.charCodeAt(n);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ (c + n), 0x85ebca6b);
+  }
+  return `${data.length}:${(a >>> 0).toString(16)}${(b >>> 0).toString(16)}`;
+}
+function progressActivityAt(i) {
+  return Math.max(lastAct(i), ...(Array.isArray(i.notes) ? i.notes.map(n => +new Date(n.t)) : []));
+}
+const progressFresh = { reports:false, triage:false, addenda:false, votes:false };
+let progressSnapshotError = false, progressTrackingReady = false, progressReadsLoaded = false;
+let progressReads = Object.create(null), progressReadKey = "", progressSyncTimer = 0, visibleReadFrame = 0;
+const pendingProgressReads = new Map(), PROGRESS_READ_PREFIX = "tit-progress-read:";
+function progressSnapshotsReady() {
+  return !admin && !loadErr && !progressSnapshotError && gotReports && gotTriage && Object.values(progressFresh).every(Boolean);
+}
+function confirmProgressSnapshot(name, snapshot) {
+  progressFresh[name] = snapshot?.metadata?.fromCache === false;
+  if (Object.values(progressFresh).every(Boolean)) {
+    progressSnapshotError = false;
+    scheduleProgressSync();
+  }
+}
+function failProgressSnapshots() {
+  progressSnapshotError = true;
+  for (const name of Object.keys(progressFresh)) progressFresh[name] = false;
+}
+function loadProgressReads() {
+  progressReadKey = me && !admin ? PROGRESS_READ_PREFIX + me : "";
+  progressReads = Object.create(null); progressReadsLoaded = true;
+  if (!progressReadKey) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(progressReadKey) || "{}");
+    if (isObj(saved)) for (const [id, version] of Object.entries(saved))
+      if (/^[\w:-]{1,140}$/.test(id) && typeof version === "string" && version.length <= 80) progressReads[id] = version;
+  } catch {}
+}
+function saveProgressReads() {
+  if (!progressReadKey) return;
+  try { localStorage.setItem(progressReadKey, JSON.stringify(progressReads)); } catch {}
+}
+function hasNewProgress(i) {
+  return progressTrackingReady && progressSnapshotsReady() && !!progressReads[i.id] && progressReads[i.id] !== progressVersion(i);
+}
+function reconcileProgressReads() {
+  if (!progressSnapshotsReady()) return false;
+  if (!progressReadsLoaded) loadProgressReads();
+  let changed = false;
+  for (const i of issues) if (!Object.hasOwn(progressReads, i.id)) {
+    progressReads[i.id] = progressVersion(i); changed = true;
+  }
+  for (const [id, version] of pendingProgressReads) {
+    if (progressReads[id] !== version) { progressReads[id] = version; changed = true; }
+  }
+  pendingProgressReads.clear();
+  progressTrackingReady = true;
+  if (changed) saveProgressReads();
+  return changed;
+}
+function recordProgressRead(id, override) {
+  if (admin || loadErr) return false;
+  const i = override || issues.find(x => x.id === id);
+  if (!i || i.id !== id || hiddenFor(i)) return false;
+  const version = progressVersion(i);
+  if (!progressTrackingReady || !progressSnapshotsReady()) {
+    if (progressFresh.reports && progressFresh.triage && progressFresh.addenda) pendingProgressReads.set(id, version);
+    return false;
+  }
+  if (progressReads[id] === version) return false;
+  progressReads[id] = version; saveProgressReads(); return true;
+}
+function copyProgressState(i) {
+  return { id:i.id, status:i.status, dept:i.dept, hidden:i.hidden, flagged:i.flagged,
+    events:(Array.isArray(i.events) ? i.events : []).map(e => ({ ...e })),
+    notes:(Array.isArray(i.notes) ? i.notes : []).map(n => ({ ...n, photos:Array.isArray(n.photos) ? [...n.photos] : [] })) };
+}
+function captureProgressForParticipation(id) {
+  if (admin || loadErr || !progressTrackingReady || !progressSnapshotsReady()) return null;
+  const issue = issues.find(x => x.id === id);
+  if (!issue || hiddenFor(issue)) return null;
+  const item = copyProgressState(issue);
+  return { id, item, version:progressVersion(item), priorRead:progressReads[id] ?? null };
+}
+function finishProgressRead(capture) {
+  if (!capture || admin || loadErr || !progressTrackingReady || !progressSnapshotsReady()) return false;
+  const issue = issues.find(x => x.id === capture.id);
+  if (!issue || hiddenFor(issue) || (progressReads[capture.id] ?? null) !== capture.priorRead) return false;
+  return recordProgressRead(capture.id, capture.item);
+}
+function captureOwnProgress(id) {
+  const capture = captureProgressForParticipation(id);
+  return capture && capture.priorRead === capture.version ? capture : null;
+}
+function finishOwnProgress(capture, addition) {
+  if (!capture || !addition || !validDate(addition.t) || !progressTrackingReady || !progressSnapshotsReady() || admin || loadErr) return false;
+  const issue = issues.find(x => x.id === capture.id), currentRead = progressReads[capture.id] ?? null;
+  if (!issue || hiddenFor(issue)) return false;
+  let base;
+  if (currentRead === capture.version) base = copyProgressState(capture.item);
+  else {
+    // If the visitor read another version while the request was pending, add only this confirmed note to that version.
+    base = copyProgressState(issue);
+    base.notes = base.notes.filter(n => n.id !== addition.id && (!addition.contact || n.contact !== addition.contact));
+    if (currentRead !== progressVersion(base)) return false;
+  }
+  base.notes = base.notes.filter(n => n.id !== addition.id && (!addition.contact || n.contact !== addition.contact));
+  base.notes.push({ ...addition, other:false, photos:Array.isArray(addition.photos) ? [...addition.photos] : [] });
+  base.notes.sort((a, b) => String(a.t).localeCompare(String(b.t)));
+  return recordProgressRead(capture.id, base);
+}
+function scheduleProgressSync() {
+  if (progressSyncTimer || !progressSnapshotsReady()) return;
+  progressSyncTimer = setTimeout(() => {
+    progressSyncTimer = 0;
+    if (!progressSnapshotsReady()) return;
+    const wasReady = progressTrackingReady;
+    const changed = reconcileProgressReads();
+    if (!wasReady || changed) render();
+  }, 120);
+}
+function markVisibleProgressRead() {
+  visibleReadFrame = 0;
+  if (!progressTrackingReady || !progressSnapshotsReady() || admin || document.visibilityState !== "visible") return;
+  let top = 0, bottom = innerHeight, left = 0, right = innerWidth;
+  for (const bar of [$("nav"), $("ticker")]) {
+    if (!bar || bar.hidden || !bar.getClientRects().length || getComputedStyle(bar).position !== "fixed") continue;
+    const r = bar.getBoundingClientRect();
+    if (r.top <= top && r.bottom > top) top = Math.min(bottom, r.bottom);
+    if (r.bottom >= bottom && r.top < bottom) bottom = Math.max(top, r.top);
+  }
+  let changed = false;
+  for (const id of view.open) {
+    const row = [...document.querySelectorAll("#list .issue")].find(x => x.querySelector(`[data-open="${CSS.escape(id)}"]`));
+    const detail = row?.querySelector(".detail");
+    if (!detail) continue;
+    const r = detail.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && r.bottom > top && r.top < bottom && r.right > left && r.left < right)
+      changed = recordProgressRead(id) || changed;
+  }
+  if (changed) render();
+}
+function scheduleVisibleProgressRead() {
+  if (!visibleReadFrame) visibleReadFrame = requestAnimationFrame(markVisibleProgressRead);
+}
+addEventListener("scroll", scheduleVisibleProgressRead, { passive:true });
+addEventListener("resize", scheduleVisibleProgressRead);
+document.addEventListener("visibilitychange", scheduleVisibleProgressRead);
 
 // reports/<user> holds each citizen's own items; triage/<id> holds what departments decided. Merge by id.
 const hiddenFor = i => i.hidden === true || (!!i.flagged && i.hidden !== false);
@@ -989,8 +1161,9 @@ async function act(i, list, patch = {}) {
   } finally { acting = false; }
 }
 
-function setVote(id, on) {
+function setVote(id, on, { markParticipationRead = true } = {}) {
   const prev = myVotes[id], revision = votesRevision;
+  const progressCapture = on && markParticipationRead ? captureProgressForParticipation(id) : null;
   myVotes = { ...myVotes, [id]: on }; render();
   let writes = pendingVoteWrites.get(id);
   if (!writes) pendingVoteWrites.set(id, writes = new Set());
@@ -1002,13 +1175,14 @@ function setVote(id, on) {
       else await ref.set(patch);
       // The Worker shim publishes the acknowledged write on the next task; let sorting see it before a redirect scrolls.
       await new Promise(resolve => setTimeout(resolve, 0));
-      return true;
     }
     catch (e) {
       // Another tab can save this vote while this write fails; its snapshot is newer than this rollback.
       if (myVotes[id] === on && votesRevision === revision) myVotes = { ...myVotes, [id]: prev === true };
       fail(e); render(); return false;
     }
+    if (progressCapture) try { if (finishProgressRead(progressCapture)) render(); } catch {}
+    return true;
   })().finally(() => {
     writes.delete(tracked);
     if (!writes.size) pendingVoteWrites.delete(id);
@@ -1018,7 +1192,7 @@ function setVote(id, on) {
 }
 async function voteForSupplement(id) {
   while (pendingVoteWrites.has(id)) await Promise.all([...pendingVoteWrites.get(id)]);
-  return myVotes[id] || await setVote(id, true);
+  return myVotes[id] || await setVote(id, true, { markParticipationRead:false });
 }
 
 function heatmap() {
@@ -1043,18 +1217,40 @@ function timeline(i) {
     if (e.type === "opened") return `<div class="ev"><b>市民</b> 開立了這個案件${when}</div>`;
     if (e.type === "labeled") return `<div class="ev">${who} 加上標籤 ${lbl(e.dept, DEPTS[e.dept] || DEPTS["1999 待分派"])}${when}</div>`;
     if (e.type === "status") { const s = STATUS[e.to] || STATUS.open; return `<div class="ev">${who} 把狀態改成 ${lbl(s[0], s[1])}${when}</div>`; }
-    if (e.type === "merged") return `<div class="ev">${who} 合併了 #${esc(e.pr)}，這個案件自動關閉${when}</div>`;
+    if (e.type === "merged") return `<div class="ev">${admin ? `${who} 合併了 #${esc(e.pr)}，這個案件自動關閉` : `${who} 完成修繕單 #${esc(e.pr)}，案件已修復`}${when}</div>`;
     if (e.type === "milestone") return `<div class="ev">${who} ${e.title ? `把案件加入里程碑 <b>${esc(e.title)}</b>` : "移除了里程碑"}${when}</div>`;
     if (e.type === "pr") { const m = merged.has(e.n);
       return `<div class="ev">${who} 開了修繕單${when}
         <div class="pr" style="color:${m ? "var(--merged)" : "var(--open)"}">${PR_ICON}
           <b style="color:var(--fg)">${esc(e.title)}</b><span class="meta">#${esc(e.n)}</span>
-          <span class="pill" style="background:${m ? "var(--merged)" : "var(--accent)"}">${m ? "Merged" : "Open"}</span>
-          <span class="meta">Closes #${esc(i.n)}</span>
+          <span class="pill" style="background:${m ? "var(--merged)" : "var(--accent)"}">${admin ? (m ? "Merged" : "Open") : (m ? "修繕單已完成" : "尚未完成")}</span>
+          <span class="meta">${admin ? `Closes #${esc(i.n)}` : `對應陳情 #${esc(i.n)}`}</span>
           ${admin && !m ? `<button class="btn" data-merge="${esc(e.n)}" data-id="${esc(i.id)}">Merge pull request</button>` : ""}
         </div></div>`; }
     return "";
-  }).join("")}${isStale(i) ? `<div class="ev"><b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度 · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
+  }).join("")}${isStale(i) ? `<div class="ev">${admin ? `<b>taipei-bot</b> 加上標籤 ${lbl("stale", "var(--muted)")}：超過 ${STALE_DAYS} 天沒有進度` : `<b>案件進度提醒</b>：超過 ${STALE_DAYS} 天沒有處理進度`} · ${ago(lastAct(i) + STALE_DAYS * DAY)}</div>` : ""}</div>`;
+}
+const handlingEvent = e => progressEventTypes.has(e.type);
+function handlingAction(e, i) {
+  if (e.type === "labeled") return `分派至 ${e.dept || i.dept}`;
+  if (e.type === "status") return e.to === "fixed" ? "案件標記為已修復" : e.to === "progress" ? "案件開始處理" : "案件狀態更新為尚未完成";
+  if (e.type === "pr") return `建立修繕單「${e.title || `#${e.n}`}」`;
+  if (e.type === "merged") return `修繕單 #${e.pr} 已完成`;
+  if (e.type === "milestone") return e.title ? `加入處理里程碑「${e.title}」` : "更新處理里程碑";
+  return "更新案件進度";
+}
+function progressCard(i) {
+  const latest = (Array.isArray(i.events) ? i.events : []).filter(handlingEvent).sort((a, b) => +new Date(b.t) - +new Date(a.t))[0];
+  const st = STATUS[i.status] || STATUS.open;
+  return `<section class="progress-card" aria-label="案件處理進度">
+    <h3>處理進度 <span class="note">本站示範紀錄</span></h3>
+    <dl class="progress-grid">
+      <div><dt>目前狀態</dt><dd><span class="progress-status">${esc(st[0])}</span></dd></div>
+      <div><dt>負責單位</dt><dd>示範負責單位：<b class="progress-dept">${esc(i.dept)}</b></dd></div>
+      <div><dt>最新處理動作與日期</dt><dd class="progress-latest">${latest ? `${esc(handlingAction(latest, i))} · ${esc(fmtDate(latest.t))}` : "尚無後續處理紀錄"}</dd></div>
+      <div><dt>多久沒有處理進度</dt><dd class="progress-idle">${latest ? esc(ago(latest.t)) : "尚無後續處理紀錄"}</dd></div>
+    </dl>
+  </section>`;
 }
 
 function syncDataNote() {
@@ -1064,6 +1260,12 @@ function syncDataNote() {
   $("dataNote").hidden = !loadErr;
 }
 $("dataNoteRetry").onclick = () => location.reload();
+function focusAfterRemovedListRow(fallbackIds = []) {
+  const target = fallbackIds.map(id => document.querySelector(`#list [data-open="${CSS.escape(id)}"]`)).find(Boolean) ||
+    document.querySelector("#list [data-open]") || document.querySelector("#list [data-browse]") ||
+    (view.mine ? $(mineMode === "participated" ? "mineParticipated" : "mineSent") : $("q"));
+  target?.focus();
+}
 function render() {
   // A live update can remove a case under a half-written addendum; snapshot the draft before rebuilding.
   document.querySelectorAll("#list textarea[id^=note-]").forEach(ta => {
@@ -1085,10 +1287,12 @@ function render() {
   $("tabClosed").innerHTML = ICON.fixed + `${issues.length - openN} 已修復`;
   $("tabOpen").setAttribute("aria-pressed", !view.closed);
   $("tabClosed").setAttribute("aria-pressed", view.closed);
+  $("mineSent").setAttribute("aria-pressed", mineMode === "sent");
+  $("mineParticipated").setAttribute("aria-pressed", mineMode === "participated");
 
   const prev = dept, ms = $("msFilter").value;
   // Option counts follow the tab, the search and the milestone, so a count never opens a different number of rows.
-  const counted = issues.filter(i => view.mine ? i.author === me : (i.status === "fixed") === view.closed)
+  const counted = issues.filter(i => view.mine ? (mineMode === "sent" ? i.author === me : participates(i)) : (i.status === "fixed") === view.closed)
     .filter(i => view.mine || !ms || i.milestone === ms)
     .filter(i => view.mine || !q || (i.title + i.body + (i.tags||[]).join(" ") + i.district).toLowerCase().includes(q)
       || (qNum !== null && Number(i.n) === qNum));
@@ -1107,7 +1311,9 @@ function render() {
   let rows = counted.filter(i => view.mine || !dept || i.dept === dept);
   const sorts = { new:(a, b) => b.n - a.n, stale:(a, b) => lastAct(a) - lastAct(b),
     votes:(a, b) => (c[b.id] || 0) - (c[a.id] || 0) || b.n - a.n };
-  rows.sort(sorts[$("sort").value]);
+  if (view.mine) rows.sort((a, b) => Number(hasNewProgress(b)) - Number(hasNewProgress(a)) ||
+    progressActivityAt(b) - progressActivityAt(a));
+  else rows.sort(sorts[$("sort").value]);
 
   if (!db) { $("list").innerHTML = `<div class="empty">請登入 Claude 後開啟此頁，才能讀取陳情案件與按 +1。</div>`; return; }
   if (loadErr) { $("list").innerHTML = `<div class="empty">連線中斷，請重新整理頁面。</div>`; return; }
@@ -1118,6 +1324,13 @@ function render() {
   const staleOpen = [...view.open].filter(id => !rows.some(i => i.id === id) && !noteDrafts.has(id)
     && !((id === mine || id === scrollTo) && !issues.some(i => i.id === id)));
   const dropHadFocus = staleOpen.length > 0 && $("list").contains(document.activeElement);
+  const focusedRow = $("list").contains(document.activeElement) ? document.activeElement.closest(".issue") : null;
+  const focusedRowId = focusedRow?.querySelector("[data-open]")?.dataset.open;
+  const focusDroppedRow = !!focusedRowId && !rows.some(i => i.id === focusedRowId);
+  const oldListRows = [...document.querySelectorAll("#list .issue")];
+  const oldFocusedIndex = oldListRows.indexOf(focusedRow);
+  const focusFallbackIds = oldFocusedIndex < 0 ? [] : oldListRows.slice(oldFocusedIndex + 1).concat(oldListRows.slice(0, oldFocusedIndex).reverse())
+    .map(row => row.querySelector("[data-open]")?.dataset.open).filter(Boolean);
   if (staleOpen.length) {
     for (const id of staleOpen) view.open.delete(id);
     if (staleOpen.includes(activeShareId)) activeShareId = null;
@@ -1130,12 +1343,13 @@ function render() {
   if (!rows.length) {
     // Hidden cases stay out of issues, so an empty mine view must not claim the citizen never sent one.
     let empty;
-    if (view.mine && myHidden > 0) empty = `你的 ${myHidden} 件陳情目前未公開，可能已被管理者隱藏。如果這不是預期情況，請透過頁尾的聯絡信箱詢問。`;
+    if (view.mine && mineMode === "sent" && myHidden > 0) empty = `你的 ${myHidden} 件陳情目前未公開，可能已被管理者隱藏。如果這不是預期情況，請透過頁尾的聯絡信箱詢問。`;
+    else if (view.mine && mineMode === "participated") empty = `你還沒有參與任何陳情。<br>到陳情列表按「+1」參與；你提交過共同補充的案件也會列在這裡。<br><button class="btn" type="button" data-browse>到陳情列表看看</button>`;
     else if (view.mine) empty = "你還沒有送出陳情。按「通報」回報第一個問題，處理進度會出現在這裡。";
     else empty = issues.length ? "沒有符合條件的案件。" : admin ? "還沒有任何陳情。按右上角 New issue 送出第一筆。" : "還沒有任何陳情。按「我要通報」送出第一筆。";
     $("list").innerHTML = `<div class="empty">${empty}</div>`;
-    if (dropHadFocus) $("q").focus();
-    if (view.mine && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
+    if (dropHadFocus || focusDroppedRow) focusAfterRemovedListRow(focusFallbackIds);
+    if (view.mine && mineMode === "sent" && myHidden === null && !myHiddenPending && userApi?.hiddenMine) {
       myHiddenPending = true;
       userApi.hiddenMine().then(n => { myHiddenPending = false; const v = Number(n) || 0; if (v !== myHidden) { myHidden = v; render(); } })
         .catch(() => { myHiddenPending = false; myHidden = 0; });
@@ -1162,9 +1376,10 @@ function render() {
     const st = STATUS[i.status] || STATUS.open;
     const mine = !!myVotes[i.id];
     const labels = [lbl(i.dept, DEPTS[i.dept] || DEPTS["1999 待分派"])]
-      .concat(i.status !== "open" ? [lbl(st[0], st[1])] : [])
+      .concat([lbl(st[0], st[1])])
       .concat((i.tags || []).map(t => lbl(t, "var(--muted)")))
-      .concat(isStale(i) ? [lbl("stale", "var(--muted)")] : [])
+      .concat(isStale(i) ? [lbl(admin ? "stale" : `超過 ${STALE_DAYS} 天沒有處理進度`, "var(--muted)")] : [])
+      .concat(hasNewProgress(i) ? ['<span class="progress-unread">有新進度</span>'] : [])
       .concat(admin && hiddenFor(i) ? [lbl(i.hidden === true ? "已隱藏" : "待審", "var(--progress)")] : []).join("");
     const m = milestones.find(m => m.id === i.milestone);
     const t = i.triage || {}, sub = SUBS[i.category];
@@ -1176,6 +1391,7 @@ function render() {
       </div>
       <div class="plus"><button class="vote" data-vote="${esc(i.id)}" aria-pressed="${mine}" ${canWrite ? "" : "disabled"} aria-label="+1，目前 ${c[i.id] || 0}">+1 <span>${c[i.id] || 0}</span></button></div>
       ${view.open.has(i.id) ? `<div class="detail">
+        ${progressCard(i)}
         <div class="share-row"><button class="btn" type="button" data-share="${esc(i.id)}">複製案件連結</button>
           <input class="share-url" type="text" readonly hidden data-share-url="${esc(i.id)}" aria-label="案件分享連結">
           <span class="status" role="status" data-share-status></span></div>
@@ -1244,8 +1460,7 @@ function render() {
     }
   }
   // Focus was inside the case that just left the list, so the restore above has no target; stay in the list.
-  if (dropHadFocus && document.activeElement === document.body)
-    (document.querySelector("#list [data-open]") || $("q")).focus();
+  if ((dropHadFocus || focusDroppedRow) && document.activeElement === document.body) focusAfterRemovedListRow(focusFallbackIds);
   // Just-submitted case: the list is sorted by +1, so a new case lands far down; bring it into view once
   drawMinis();
   const own = scrollTo && document.querySelector(`[data-open="${CSS.escape(scrollTo)}"]`);
@@ -1254,9 +1469,11 @@ function render() {
     const card = own.closest(".issue") || own; card.classList.add("hl"); card.scrollIntoView({ block:"start" }); /* instant: a live re-render would cancel a smooth scroll */
     setTimeout(() => card.classList.remove("hl"), 4000);
   }
+  scheduleVisibleProgressRead();
 }
 
 async function onListClick(e) {
+  if (e.target.closest("[data-browse]")) { show("issues"); window.scrollTo(0, 0); return; }
   const mapOpen = e.target.closest("[data-openmap]");
   if (mapOpen) return openIssueOnMap(mapOpen.dataset.openmap);
   const o = e.target.closest("[data-open]");
@@ -1352,6 +1569,14 @@ const switchClosedTab = closed => {
 };
 $("tabOpen").onclick = () => switchClosedTab(false);
 $("tabClosed").onclick = () => switchClosedTab(true);
+$("mineSent").onclick = () => switchMineMode("sent");
+$("mineParticipated").onclick = () => switchMineMode("participated");
+function switchMineMode(mode) {
+  if (mineMode === mode) return;
+  mineMode = mode; view.open.clear(); activeShareId = null;
+  if (view.mine && issueIdFromHash() !== null) replaceHash("#mine");
+  render();
+}
 let formFrom = "issues", formEpoch = 0, locationIntent = 0, pickMapIntent = 0;
 $("newBtn").onclick = () => {
   if (!canWrite) return;
@@ -1680,7 +1905,7 @@ async function supplement(t, text, photos, signature) {
   const startRevision = reportRevision, attemptKey = JSON.stringify([t.dup.id, signature]);
   let attempt = supplementAttempts.get(attemptKey);
   if (!attempt) {
-    attempt = { id:crypto.randomUUID(), target:t.dup.id, text, photoKeys:new Map(), photos:null };
+    attempt = { id:crypto.randomUUID(), target:t.dup.id, text, photoKeys:new Map(), photos:null, progressCapture:captureOwnProgress(t.dup.id) };
     supplementAttempts.set(attemptKey, attempt);
   }
   const unchanged = () => startRevision === reportRevision && signature === reportInputStamp();
@@ -1719,16 +1944,23 @@ async function supplement(t, text, photos, signature) {
     }
     supplementBusy = false; reportCreating = true; $("cancelBtn").disabled = true;
     const item = { id:attempt.id, target:attempt.target, text:attempt.text, photos:[...attempt.photos] };
+    let savedAddendum = null;
     if (typeof db.appendAddendum === "function") {
       const result = await db.appendAddendum("addenda/" + me, item);
       if (!result || typeof result.created !== "boolean") throw new Error("bad_addendum_response");
+      savedAddendum = result.data?.items?.[attempt.id] || null;
     } else {
       const ref = db.doc("addenda/" + me), snap = await ref.get(), items = snap.exists && isObj(snap.data().items) ? snap.data().items : {};
       const stored = items[attempt.id];
       if (stored && (stored.target !== item.target || stored.text !== item.text || JSON.stringify(stored.photos) !== JSON.stringify(item.photos)))
         throw Object.assign(new Error("idempotency_conflict"), { status:409 });
-      if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }) : ref.set({ items:{ [attempt.id]:{ ...item, t:new Date().toISOString() } } }));
+      savedAddendum = stored || { ...item, t:new Date().toISOString() };
+      if (!stored) await (snap.exists || db.updateCreates ? ref.update({ items:{ [attempt.id]:savedAddendum } }) : ref.set({ items:{ [attempt.id]:savedAddendum } }));
     }
+    if (savedAddendum && validDate(savedAddendum.t)) try {
+      finishOwnProgress(attempt.progressCapture,
+        { id:attempt.id, t:savedAddendum.t, text:item.text, photos:item.photos });
+    } catch {}
     const voteSaved = await voteForSupplement(attempt.target);
     supplementAttempts.delete(attemptKey);
     if (unchanged()) doneReport(attempt.target, { publicTarget:true });
@@ -1793,7 +2025,11 @@ function completeCreatedReport(attempt) {
   const { id, item, signature } = attempt, full = `${me}:${id}`;
   reportAttempt = null;
   if (!all.some(i => i.id === full)) mine = full;
-  if (!admin) show("mine"); // Phones land on 我的陳情, not the 20th row of the list.
+  if (!admin) {
+    mineMode = "sent";
+    try { recordProgressRead(full, { ...item, id:full, status:"open", events:[], notes:item.notes || [] }); } catch {}
+    show("mine"); // Phones land on 我的陳情, not the 20th row of the list.
+  }
   view.open.add(full); view.closed = false; scrollTo = full; setTimeout(() => { if (scrollTo === full) scrollTo = null; }, 10000);
   const unchanged = signature === reportInputStamp();
   if (unchanged) {
@@ -2611,7 +2847,8 @@ async function togglePickMap() {
 $("pinBtn").onclick = () => togglePickMap();
 
 // ---- News ticker: only when the host offers claude.use("news") and it returns at least one item ----
-let newsItems = [], tkTimer = 0, tkI = 0, tkPaused = localStorage.getItem("tit-ticker-paused") === "1";
+let newsItems = [], tkTimer = 0, tkI = 0, tkPaused = false;
+try { tkPaused = localStorage.getItem("tit-ticker-paused") === "1"; } catch {}
 const reduceMQ = matchMedia("(prefers-reduced-motion:reduce)");
 function syncTkPauseBtn() {
   const btn = $("tkPause");
@@ -2623,8 +2860,10 @@ function syncTkPauseBtn() {
 }
 function toggleTkPause() {
   tkPaused = !tkPaused;
-  if (tkPaused) localStorage.setItem("tit-ticker-paused", "1");
-  else localStorage.removeItem("tit-ticker-paused");
+  try {
+    if (tkPaused) localStorage.setItem("tit-ticker-paused", "1");
+    else localStorage.removeItem("tit-ticker-paused");
+  } catch {}
   syncTkPauseBtn();
   if (reduceMQ.matches) {
     clearInterval(tkTimer);
@@ -2716,6 +2955,7 @@ function show(v, replace, preserveHash = false, preserveNotice = false) {
   $("wrap").classList.toggle("wide", v === "map");
   VIEWS.forEach(x => { const el = $("v-" + x); if (el) el.hidden = x !== page; });
   $("v-issues").classList.toggle("mine", view.mine); if (wasMine !== view.mine && db) render();
+  scheduleVisibleProgressRead();
   document.querySelectorAll("#nav button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   scrollActiveNav();
   if (v === "map") openMap();
@@ -2841,20 +3081,29 @@ $("list").addEventListener("submit", async e => {
   const signature = JSON.stringify([m.text, pics]);
   let attempt = noteAttempts.get(id);
   if (!attempt || attempt.signature !== signature) {
-    attempt = { signature, id:crypto.randomUUID() };
+    attempt = { signature, id:crypto.randomUUID(), progressCapture:captureOwnProgress(id) };
     noteAttempts.set(id, attempt);
   }
   state.sending = true; state.status = "送出中…"; render();
   try {
     const key = id.slice(me.length + 1), note = { id:attempt.id, text:m.text, photos:pics };
-    if (typeof db.appendNote === "function") await db.appendNote("reports/" + me, key, note);
+    let savedNote = null;
+    if (typeof db.appendNote === "function") {
+      const result = await db.appendNote("reports/" + me, key, note);
+      savedNote = result.data?.items?.[key]?.notes?.find(x => x.id === attempt.id) || null;
+    }
     else {
       const ref = db.doc("reports/" + me), snap = await ref.get(), raw = snap.exists && (snap.data().items || {})[key];
       if (!raw) throw new Error("not_found");
       const notes = Array.isArray(raw.notes) ? raw.notes : [];
       if (notes.length >= 10) throw Object.assign(new Error("note_limit"), { error:"note_limit" });
-      await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, { ...note, t:new Date().toISOString() }] } } });
+      savedNote = { ...note, t:new Date().toISOString() };
+      await ref.update({ items:{ [key]:{ ...raw, notes:[...notes, savedNote] } } });
     }
+    if (savedNote && validDate(savedNote.t)) try {
+      finishOwnProgress(attempt.progressCapture,
+        { id:attempt.id, t:savedNote.t, text:m.text, photos:pics });
+    } catch {}
     // a live re-render may already have replaced this form: clear the current one by id
     notePics.delete(id); noteAttempts.delete(id); noteStates.delete(id);
     const cur = $("note-" + id); if (cur) cur.value = ""; render(); toast(m.count ? `已補充，${m.count} 項個資已遮蔽` : "已補充");
@@ -3199,15 +3448,16 @@ document.addEventListener("keydown", e => {
   me = user ? await user.id() : null;
   admin = user ? await user.canEdit() : false;
   canWrite = !!me;
+  if (!admin) loadProgressReads();
   applyRole();
   if (typeof user?.storageBlocked === "function" && await user.storageBlocked()) {
     const message = "瀏覽器無法保留你的通報身分。請允許網站儲存資料後重新整理，再開始通報。";
     $("who").textContent = message; toast(message);
   }
-  const lost = () => { loadErr = true; render(); };
-  db.collection("reports").onSnapshot(s => { loadErr = false; reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= !s.metadata.fromCache; build(true); }, lost);
+  const lost = () => { loadErr = true; failProgressSnapshots(); render(); };
+  db.collection("reports").onSnapshot(s => { if (s.metadata?.fromCache === false) loadErr = false; confirmProgressSnapshot("reports", s); reports = s.docs.map(d => ({ id: d.id, items: isObj(d.data().items) ? d.data().items : {} })); gotReports ||= s.metadata?.fromCache === false; build(true); }, lost);
   // Cached triage can be stale or partial and would un-hide cases, so only server-confirmed snapshots count
-  db.collection("triage").onSnapshot(s => { if (s.metadata.fromCache) return; loadErr = false; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
+  db.collection("triage").onSnapshot(s => { if (s.metadata?.fromCache === false) loadErr = false; confirmProgressSnapshot("triage", s); if (s.metadata?.fromCache !== false) return; tri = Object.fromEntries(s.docs.map(d => [d.id, cleanTri(d.data())])); gotTriage = true; build(); }, lost);
   db.collection("milestones").onSnapshot(s => { milestones = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.due || "").localeCompare(String(b.due || ""))); render(); });
   db.collection("releases").onSnapshot(s => { releases = s.docs.map(d => { const x = d.data(); return { ...x, id: d.id, tag: String(x.tag ?? d.id), createdAt: String(x.createdAt ?? "") }; }).sort((a, b) => (+new Date(b.createdAt) || 0) - (+new Date(a.createdAt) || 0)); render(); });
   db.collection("categories").onSnapshot(s => {
@@ -3219,14 +3469,16 @@ document.addEventListener("keydown", e => {
   db.doc("stats/history").onSnapshot(s => { history = (s.exists && s.data().days) || {}; render(); });
   // Supplements from other citizens: target must be a case id, photos only from the writer's own folder
   db.collection("addenda").onSnapshot(s => {
+    confirmProgressSnapshot("addenda", s);
     const out = {};
     for (const d of s.docs) for (const [aid, x] of Object.entries(isObj(d.data().items) ? d.data().items : {}).slice(0, 20))
       if (isObj(x) && isStr(x.target) && x.target.length <= 140 && isStr(x.text) && validDate(x.t))
-        (out[x.target] ||= []).push({ other:d.id !== me, t:x.t, text:x.text.slice(0, 500), contact:`${d.id}:${aid}`,
+        (out[x.target] ||= []).push({ id:aid, other:d.id !== me, t:x.t, text:x.text.slice(0, 500), contact:`${d.id}:${aid}`,
           photos:Array.isArray(x.photos) ? x.photos.filter(k => isStr(k) && PHOTO_RE.test(k) && k.startsWith(d.id + "/")).slice(0, 3) : [] });
     addenda = out; build();
-  }, () => {});
+  }, lost);
   db.collection("votes").onSnapshot(s => {
+    confirmProgressSnapshot("votes", s);
     votesRevision++;
     votes = s.docs.map(d => d.data());
     const mine = s.docs.find(d => d.id === me);
@@ -3234,6 +3486,6 @@ document.addEventListener("keydown", e => {
     votesLoaded = true;
     if (scrollAfterVotes) { if (activeShareId === scrollAfterVotes) scrollTo = scrollAfterVotes; scrollAfterVotes = null; }
     render();
-  });
+  }, lost);
 })();
 </script>
